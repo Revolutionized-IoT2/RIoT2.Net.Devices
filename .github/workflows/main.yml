@@ -22,7 +22,7 @@ jobs:
        run: dotnet nuget add source -n github -u AZ -p ${{ secrets.NUGET_PACKAGE_TOKEN }} --store-password-in-clear-text https://nuget.pkg.github.com/Revolutionized-IoT2/index.json
 
      - name: Restore
-       run: dotnet restore "./RIoT2.Net.Orchestrator.csproj"
+       run: dotnet restore "./RIoT2.Net.Devices.csproj"
 
      - name: Build
        run: dotnet build --configuration Release
