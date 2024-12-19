@@ -3,11 +3,12 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
+	<EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Google.Apis.Auth" Version="1.68.0" />
-    <PackageReference Include="RIoT2.Core" Version="0.1.0" />
+    <PackageReference Include="RIoT2.Core" Version="0.1.1" />
   </ItemGroup>
 
 </Project>
