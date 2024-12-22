@@ -1,6 +1,6 @@
 # RIoT2.Net.Devices
 
-## Default plugin and it's devices
+## Default plugin for Net node and it's devices
 
 1. Azure Relay - Receive webhooks or other messages from the internet into privete web through Azure Relay service
 2. Easy PLC - Control Easy PLC from Eaton / Moeller
