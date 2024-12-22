@@ -1,6 +1,6 @@
 # RIoT2.Net.Devices
 
-## Default plugin for Net node and it's devices
+## Default Net Node plugin
 
 ### Azure Relay
 Receive webhooks or other messages from the internet into privete web through Azure Relay service
