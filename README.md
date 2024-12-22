@@ -1,6 +1,6 @@
 # RIoT2.Net.Devices
 
-## Currently Supported Devices
+## Default plugin for Net node and it's devices
 
 1. Azure Relay - Receive webhooks or other messages from the internet into privete web through Azure Relay service
 2. Easy PLC - Control Easy PLC from Eaton / Moeller
@@ -17,5 +17,4 @@
 13. Web Device - Call generic service on web or trigger actions based on received webhooks
 
 ## TODO
-Plugin mechanism to dynamically load Devices  
-Raspberry PI (net core)
+- Instructions and an example for creating a pluging and a device 
