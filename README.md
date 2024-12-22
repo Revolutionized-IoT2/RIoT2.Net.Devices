@@ -2,10 +2,23 @@
 
 ## Default plugin for Net node and it's devices
 
-1. Azure Relay - Receive webhooks or other messages from the internet into privete web through Azure Relay service
-2. Easy PLC - Control Easy PLC from Eaton / Moeller
-3. Electricity Price - Receive current electricity price from entsoe.eu
-4. FTP - Trigger events from received files (e.g. Web cam sending images via FTP)
+### Azure Relay
+> [!NOTE]
+> Receive webhooks or other messages from the internet into privete web through Azure Relay service
+
+### Easy PLC
+> [!NOTE]
+> Control Easy PLC from Eaton / Moeller
+
+### Electricity Price
+> [!NOTE]
+> Receive current electricity price from entsoe.eu
+
+
+### FTP
+> [!NOTE]
+> Trigger events from received files (e.g. Web cam sending images via FTP)
+
 5. Philips HUE - Control HUE lamps
 6. Messaging - Send / Receive firebase messages or email
 7. MQTT - Send / Receive mqtt messages
