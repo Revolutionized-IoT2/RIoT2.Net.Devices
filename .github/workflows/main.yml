@@ -26,14 +26,14 @@ jobs:
 
      - name: Build
        run: dotnet build --configuration Release
-     
-     - name: Package
-       run: >
-        dotnet pack --no-restore --no-build --configuration Release
-        -p:PackageVersion=${{ github.ref_name }} --output .
-     
-     - name: Publish
-       run: >
-        dotnet nuget push RIoT2.Net.Devices.${{ github.ref_name }}.nupkg
-        -s https://nuget.pkg.github.com/Revolutionized-IoT2/index.json
-        -k ${{ secrets.NUGET_PACKAGE_TOKEN }}
+
+     - name: upload DLL AS RELEASE
+       uses: actions/upload-release-asset@v1
+       env:
+         GITHUB_TOKEN: ${{ secrets.NUGET_PACKAGE_TOKEN }}
+       with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: RIoT2.Net.Devices.dll
+        asset_name: RIoT2.Net.Devices.dll
+        asset_content_type: application/x-msdownload
+    
