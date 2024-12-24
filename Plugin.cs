@@ -21,6 +21,27 @@ namespace RIoT2.Net.Devices
             IMemoryStorageService memoryStorageService = services.GetRequiredService<IMemoryStorageService>();
             IAzureRelayService azureRelayService = services.GetRequiredService<IAzureRelayService>();
 
+            //Test that all services are ok!
+            if (configurationService == null ||
+                logger == null ||
+                webhookService == null ||
+                ftpService == null ||
+                storageService == null ||
+                downloadService == null ||
+                memoryStorageService == null ||
+                azureRelayService == null
+                ) {
+                throw new Exception($"At Least one required Service is not setup properly. Could not start plugin. " +
+                    $"configurationService({configurationService != null}) " +
+                    $"logger({logger != null}) " +
+                    $"webhookService({webhookService != null}) " +
+                    $"ftpService({ftpService != null}) " +
+                    $"storageService({storageService != null}) " +
+                    $"downloadService({downloadService != null}) " +
+                    $"memoryStorageService({memoryStorageService != null}) " +
+                    $"azureRelayService({azureRelayService != null})");
+            }
+
             _devices = [
                //new Web(logger, webhookService),
                //new Catalog.Timer(logger),
