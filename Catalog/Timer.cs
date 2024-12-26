@@ -15,11 +15,11 @@ namespace RIoT2.Net.Devices.Catalog
             Configuration.RefreshSchedule = null; //always force this devices schedule to null -> use report template schedules instead!
         }
 
-        public void Start()
+        public override void StartDevice()
         {
 
         }
-        public void Stop()
+        public override void StopDevice()
         {
 
         }

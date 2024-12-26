@@ -51,7 +51,7 @@ namespace RIoT2.Net.Devices.Catalog
             _apikey = GetConfiguration<string>("apiKey");
         }
 
-        public void Start()
+        public override void StartDevice()
         {
             _cancellationTokenSource = new CancellationTokenSource();
             startEventsListener(_cancellationTokenSource.Token);
@@ -92,7 +92,7 @@ namespace RIoT2.Net.Devices.Catalog
                 sendReport(light);
         }
 
-        public void Stop()
+        public override void StopDevice()
         {
             if(_cancellationTokenSource != null)
                 _cancellationTokenSource.Cancel();

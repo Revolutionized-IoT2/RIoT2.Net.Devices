@@ -38,12 +38,12 @@ namespace RIoT2.Net.Devices.Catalog
                 );
         }
 
-        public void Start()
+        public override void StartDevice()
         {
             _azureRelayService?.StartAsync();
         }
 
-        public void Stop()
+        public override void StopDevice()
         {
             _azureRelayService?.StopAsync();
         }

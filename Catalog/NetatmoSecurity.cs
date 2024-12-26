@@ -41,6 +41,8 @@ namespace RIoT2.Net.Devices.Catalog
             deviceConfiguration.RefreshSchedule = "0 0/5 0 ? * * *";
 
             var reportConfigurations = new List<ReportTemplate>();
+            //TODO if not configured...
+
             var data = GetNetatmoHomeStatus(_home.body.homes[0].id).Result;
             if (data == null)
                 return deviceConfiguration;
@@ -100,7 +102,7 @@ namespace RIoT2.Net.Devices.Catalog
             ConfigureNetatmo(token, refreshToken, clientId, clientSecret);
         }
 
-        public void Start()
+        public override void StartDevice()
         {
             _home = GetNetatmoHomesData().Result;
 
@@ -112,7 +114,7 @@ namespace RIoT2.Net.Devices.Catalog
 
             generateSecurityReports().Wait();
         }
-        public void Stop()
+        public override void StopDevice()
         {
             //no actions needed
         }

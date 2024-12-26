@@ -63,10 +63,16 @@ namespace RIoT2.Net.Devices.Catalog
             }*/
         }
 
-        public void Start()
+        public override void StartDevice()
         {
             _ftpService.StartAsync(_ftpUsers, _ftpPort);
             _ftpService.FileReceived += _ftpService_FileReceived;
+        }
+
+        public override void StopDevice()
+        {
+            _ftpService.Stop();
+            _ftpService.FileReceived -= _ftpService_FileReceived;
         }
 
         private void _ftpService_FileReceived(InMemoryStream inMemoryStream)
@@ -117,12 +123,6 @@ namespace RIoT2.Net.Devices.Catalog
             });
 
             inMemoryStream.Dispose();
-        }
-
-        public void Stop()
-        {
-            _ftpService.Stop();
-            _ftpService.FileReceived -= _ftpService_FileReceived;
         }
     }
 }

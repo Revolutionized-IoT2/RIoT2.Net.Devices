@@ -39,10 +39,15 @@ namespace RIoT2.Net.Devices.Catalog
             _mqttClient = new MqttClient(clientId, serverUrl, userName, password);
         }
 
-        public async void Start()
+        public override async void StartDevice()
         {
             await _mqttClient.Start(_topics.Split(';'));
             _mqttClient.MessageReceived += mqttClient_MessageReceived;
+        }
+
+        public override async void StopDevice()
+        {
+            await _mqttClient.Stop();
         }
 
         private void mqttClient_MessageReceived(MqttEventArgs mqttEventArgs)
@@ -58,11 +63,6 @@ namespace RIoT2.Net.Devices.Catalog
                 Value = new ValueModel(mqttEventArgs.Message),
                 Filter = ""
             });
-        }
-
-        public async void Stop()
-        {
-            await _mqttClient.Stop();
         }
     }
 }

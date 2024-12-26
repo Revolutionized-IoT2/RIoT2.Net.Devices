@@ -29,6 +29,25 @@ namespace RIoT2.Net.Devices.Catalog
             _vat = GetConfiguration<double>("vat");
         }
 
+        public override void StartDevice()
+        {
+            load();
+
+            var template = getPriceReportTemplate();
+            SendReport(this, new Report()
+            {
+                Id = template.Id,
+                TimeStamp = DateTime.UtcNow.ToEpoch(),
+                Value = new ValueModel(getCurrentPrice()),
+                Filter = ""
+            });
+        }
+
+        public override void StopDevice()
+        {
+            _priceData = null;
+        }
+
         //This is called by base when time trigger is activated
         public override void Refresh(ReportTemplate report) 
         {
@@ -70,25 +89,6 @@ namespace RIoT2.Net.Devices.Catalog
 
             deviceConfiguration.ReportTemplates = reportConfigurations;
             return deviceConfiguration;
-        }
-
-        public void Start()
-        {
-            load();
-
-            var template = getPriceReportTemplate();
-            SendReport(this, new Report()
-            {
-                Id = template.Id,
-                TimeStamp = DateTime.UtcNow.ToEpoch(),
-                Value = new ValueModel(getCurrentPrice()),
-                Filter = ""
-            });
-        }
-
-        public void Stop()
-        {
-            _priceData = null;
         }
 
         private ReportTemplate getPriceReportTemplate() 

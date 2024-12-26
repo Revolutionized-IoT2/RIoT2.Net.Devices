@@ -45,14 +45,19 @@ namespace RIoT2.Net.Devices.Catalog
             });
         }
 
-        public void Start()
+        public override void StartDevice()
         {
             _virtualData = new Dictionary<string, object>();
         }
 
-        public void Stop()
+        public override void StopDevice()
         {
             _virtualData = null;
+        }
+
+        public override void ConfigureDevice()
+        { 
+        
         }
     }
 }

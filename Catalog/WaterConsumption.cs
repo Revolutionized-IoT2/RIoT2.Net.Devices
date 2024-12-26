@@ -70,7 +70,7 @@ namespace RIoT2.Net.Devices.Catalog
             return deviceConfiguration;
         }
 
-        public void Start()
+        public override void StartDevice()
         {
             var template = getReportTemplate();
             var value = getLatestValue().Result;
@@ -87,7 +87,7 @@ namespace RIoT2.Net.Devices.Catalog
             });
         }
 
-        public void Stop()
+        public override void StopDevice()
         {
             _consumption = null;
         }

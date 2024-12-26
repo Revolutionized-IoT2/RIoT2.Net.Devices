@@ -23,11 +23,11 @@ namespace RIoT2.Net.Devices.Catalog
             ConfigureNetatmo(token, refreshToken, clientId, clientSecret);
         }
 
-        public void Start()
+        public override void StartDevice()
         {
             generateWeatherReports().Wait();
         }
-        public void Stop()
+        public override void StopDevice()
         {
             //no actions needed
         }

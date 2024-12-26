@@ -56,14 +56,17 @@ namespace RIoT2.Net.Devices.Catalog
             });
         }
 
-        public void Start()
+        public override void StartDevice()
         {
             _webhookService.WebhookReceived += webhookService_WebhookReceived;
         }
 
-        public void Stop()
+        public override void StopDevice()
         {
             _webhookService.WebhookReceived -= webhookService_WebhookReceived;
         }
+
+        public override void ConfigureDevice()
+        { }
     }
 }

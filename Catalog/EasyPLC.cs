@@ -52,7 +52,13 @@ namespace RIoT2.Net.Devices.Catalog
             }
         }
 
-        public void Start()
+        public override void ConfigureDevice()
+        {
+            _plcIp = GetConfiguration<string>("ipAddress");
+            _plcPort = GetConfiguration<int>("port");
+        }
+
+        public override void StartDevice()
         {
             if (String.IsNullOrEmpty(_plcIp)) 
             {
@@ -62,13 +68,7 @@ namespace RIoT2.Net.Devices.Catalog
             //connect().Wait();
         }
 
-        public override void ConfigureDevice()
-        {
-            _plcIp = GetConfiguration<string>("ipAddress");
-            _plcPort = GetConfiguration<int>("port");
-        }
-
-        public void Stop()
+        public override void StopDevice()
         {
             disconnect();
         }

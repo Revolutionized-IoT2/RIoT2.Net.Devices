@@ -68,13 +68,13 @@ namespace RIoT2.Net.Devices.Catalog
                 _authentication = new GoogleOAuth2(serviceAccountJson);
         }
 
-        public void Start()
+        public override void StartDevice()
         {
             //var temp = _authentication.GetToken().Result;
             //no actions needed...
         }
 
-        public void Stop()
+        public override void StopDevice()
         {
             //no actions needed...
         }
