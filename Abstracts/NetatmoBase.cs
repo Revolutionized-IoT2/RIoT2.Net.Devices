@@ -118,6 +118,7 @@ namespace RIoT2.Net.Devices.Abstracts
             catch (Exception x)
             {
                 _logger.LogError(x, "Could not load Netatmo authentication file");
+                throw new Exception("Could not load Netatmo authentication file");
             }
             return null;
         }
@@ -142,6 +143,7 @@ namespace RIoT2.Net.Devices.Abstracts
             catch (Exception x)
             {
                 _logger.LogError(x, $"Could not save Netatmo auth file {_authDataFile}");
+                throw new Exception("Could not save Netatmo auth file");
             }
         }
 
@@ -219,6 +221,7 @@ namespace RIoT2.Net.Devices.Abstracts
             catch (Exception x) 
             {
                 _logger.LogError(x, "Error while getting data from Netatmo");
+                throw new Exception("Error while getting data from Netatmo");
             }
 
             return default;

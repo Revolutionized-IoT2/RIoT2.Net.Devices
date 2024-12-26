@@ -154,6 +154,7 @@ namespace RIoT2.Net.Devices.Catalog
             catch(Exception x)
             {
                 Logger.LogError(x, "Could not load Electricity Prices");
+                throw new Exception("Could not load Electricity Prices");
             }
         }
 

@@ -58,6 +58,10 @@ namespace RIoT2.Net.Devices.Catalog
             deviceConfiguration.RefreshSchedule = "0 0/15 0 ? * * *";
 
             var reportConfigurations = new List<ReportTemplate>();
+
+            if(State != Core.DeviceState.Running)
+                return deviceConfiguration;
+
             var data = GetNetatmoStationsData(_stationId).Result;
 
             if (data == null || data.status != "ok")

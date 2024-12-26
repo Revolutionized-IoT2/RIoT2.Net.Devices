@@ -56,16 +56,14 @@ namespace RIoT2.Net.Devices.Catalog
         {
             _plcIp = GetConfiguration<string>("ipAddress");
             _plcPort = GetConfiguration<int>("port");
+            
+            if (String.IsNullOrEmpty(_plcIp))
+                throw new Exception("Configuration not valid. Missing IP Adress");
         }
 
         public override void StartDevice()
         {
-            if (String.IsNullOrEmpty(_plcIp)) 
-            {
-                Logger.LogWarning("Could not start PLC Connection. IP address not defined.");
-                return;
-            }
-            //connect().Wait();
+            connect().Wait();
         }
 
         public override void StopDevice()

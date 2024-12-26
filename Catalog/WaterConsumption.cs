@@ -133,6 +133,7 @@ namespace RIoT2.Net.Devices.Catalog
             catch (Exception x)
             {
                 Logger.LogError(x, $"Could not load water consumption from WebAPI");
+                throw new Exception("Error loading Consumption from API");
             }
             return null;
         }

@@ -1,6 +1,29 @@
 # RIoT2.Net.Devices
 
-## Default Net Node plugin
+## Quick note on creating custom net core plugin
+
+- Create new Class library project
+
+- Add reference to RIoT2.Core
+
+- Create Plugin.cs which implements IDevicePlugin -interface
+ - The plugin must have a following contructor: public Plugin(IServiceProvider services)
+ - The plugin provides a list of devices to Net Node
+- Create custom Devices
+ - At minimum, a Device must implement IDevice interface
+ - Implement abstract class DeviceBase for easier implementation
+	- Add configuration logic to: public override void ConfigureDevice()
+	- Add device start logic to: public override async void StartDevice()
+	- Add device stop logic to: public override void StopDevice()
+	- If device is IRefresableReportDevice, add refresh logic to: public override void Refresh(ReportTemplate report)
+	- Throw error from overridden functions. This will change devices state to error. Error message is accessible from devices StateMessage
+ - Implement IDeviceWithConfiguration for device that can provide a configuration template 
+ - Implement ICommandDevice -interface if device is capable of executing commands (switch, etc.)
+ - Implement IRefreshableReportDevice if device data is refreshed periodically 
+	- The refresh logic is implemented by function (from DeviceBase): public override void Refresh(ReportTemplate report) 
+
+
+## Default Net Node plugins
 
 ### Azure Relay
 Receive webhooks or other messages from the internet into privete web through Azure Relay service

@@ -41,7 +41,9 @@ namespace RIoT2.Net.Devices.Catalog
             deviceConfiguration.RefreshSchedule = "0 0/5 0 ? * * *";
 
             var reportConfigurations = new List<ReportTemplate>();
-            //TODO if not configured...
+            
+            if(State != DeviceState.Running)
+                return deviceConfiguration;
 
             var data = GetNetatmoHomeStatus(_home.body.homes[0].id).Result;
             if (data == null)

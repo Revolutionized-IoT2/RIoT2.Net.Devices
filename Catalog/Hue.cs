@@ -5,6 +5,7 @@ using RIoT2.Core.Interfaces;
 using RIoT2.Core.Models;
 using RIoT2.Core.Utils;
 using RIoT2.Net.Devices.Models;
+using System.Diagnostics;
 using ValueType = RIoT2.Core.ValueType;
 
 namespace RIoT2.Net.Devices.Catalog
@@ -111,6 +112,9 @@ namespace RIoT2.Net.Devices.Catalog
 
             var reportConfigurations = new List<ReportTemplate>();
             var commandConfigurations = new List<CommandTemplate>();
+
+            if(State != DeviceState.Running)
+                return deviceConfiguration;
 
             foreach (var light in getLight().Result.data)
             {

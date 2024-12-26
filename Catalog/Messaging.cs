@@ -202,8 +202,8 @@ namespace RIoT2.Net.Devices.Catalog
             catch (Exception e)
             {
                 Logger.LogError(e, $"Could not load service_account.json");
+                throw new Exception("Could not load service_account.json");
             }
-            return null;
         }
     }
 }
