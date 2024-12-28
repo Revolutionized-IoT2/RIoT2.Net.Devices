@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Google.Apis.Auth" Version="1.68.0" />
-    <PackageReference Include="RIoT2.Core" Version="0.1.4" />
+    <PackageReference Include="RIoT2.Core" Version="0.1.5" />
   </ItemGroup>
 
 </Project>
