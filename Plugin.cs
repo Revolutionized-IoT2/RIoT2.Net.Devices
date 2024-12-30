@@ -43,16 +43,16 @@ namespace RIoT2.Net.Devices
             }
 
             _devices = [
-               //new Web(logger, webhookService),
-               //new Catalog.Timer(logger),
-               //new Virtual(logger),
-               //new Mqtt(logger),
-               new WaterConsumption(logger),
+                new Web(logger, webhookService),
+                new Catalog.Timer(logger),
+                new Virtual(logger),
+                new Mqtt(logger),
+                new WaterConsumption(logger),
                 new Messaging(logger),
                 new FTP(logger, ftpService, downloadService, memoryStorageService),
                 new ElectricityPrice(logger),
                 new EasyPLC(logger),
-                //new NetatmoWeather(logger),
+                new NetatmoWeather(logger),
                 new NetatmoSecurity(logger, downloadService, memoryStorageService),
                 new Hue(logger),
                 new AzureRelay(logger, azureRelayService)
