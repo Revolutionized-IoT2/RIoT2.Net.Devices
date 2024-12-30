@@ -97,6 +97,7 @@ namespace RIoT2.Net.Devices.Catalog
                 }
             }
 
+            deviceConfiguration.CommandTemplates = null;
             deviceConfiguration.ReportTemplates = reportConfigurations;
             return deviceConfiguration;
         }
