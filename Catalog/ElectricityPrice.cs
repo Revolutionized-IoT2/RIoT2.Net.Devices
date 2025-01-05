@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
-using RIoT2.Net.Devices.Models;
+﻿using RIoT2.Net.Devices.Models;
 using System.Xml.Serialization;
 using System.Xml;
 using RIoT2.Core.Abstracts;
@@ -7,12 +6,13 @@ using RIoT2.Core.Interfaces;
 using RIoT2.Core.Models;
 using RIoT2.Core;
 using ValueType = RIoT2.Core.ValueType;
+using Microsoft.Extensions.Logging;
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    internal class ElectricityPrice : DeviceBase, IRefreshableReportDevice, IDeviceWithConfiguration
+    public class ElectricityPrice : DeviceBase, IRefreshableReportDevice, IDeviceWithConfiguration
     {
-        internal ElectricityPrice(ILogger logger) : base(logger) { }
+        public ElectricityPrice(ILogger logger) : base(logger) { }
 
         private string _securityToken = "";
         private string _domain = "";

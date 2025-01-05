@@ -2,12 +2,12 @@
 using RIoT2.Core;
 using RIoT2.Core.Abstracts;
 using RIoT2.Core.Interfaces;
-using RIoT2.Core.Interfaces.Services;
 using RIoT2.Core.Models;
+using RIoT2.Net.Devices.Services.Interfaces;
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    internal class Web : DeviceBase, ICommandDevice
+    public class Web : DeviceBase, ICommandDevice
     {
         private readonly IWebhookService _webhookService;
 
@@ -36,7 +36,7 @@ namespace RIoT2.Net.Devices.Catalog
             });
         }
 
-        internal Web(ILogger logger, IWebhookService webhookService) : base(logger)
+        public Web(ILogger logger, IWebhookService webhookService) : base(logger)
         {
             _webhookService = webhookService;
         }

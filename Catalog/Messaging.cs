@@ -10,7 +10,7 @@ using ValueType = RIoT2.Core.ValueType;
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    internal class Messaging : DeviceBase, ICommandDevice, IDeviceWithConfiguration
+    public class Messaging : DeviceBase, ICommandDevice, IDeviceWithConfiguration
     {
         private GoogleOAuth2 _authentication;
         private SmtpClient _smtpClient;
@@ -23,7 +23,7 @@ namespace RIoT2.Net.Devices.Catalog
         private string smtp_Password;
         private const string _serviceAccountFile = "Data/service_account.json";
 
-        internal Messaging(ILogger logger) : base(logger) 
+        public Messaging(ILogger logger) : base(logger) 
         {
     
         }

@@ -10,12 +10,12 @@ namespace RIoT2.Net.Devices.Catalog
     /// <summary>
     /// Mqtt Device is used to connect any mqtt device into system...
     /// </summary>
-    internal class Mqtt : DeviceBase, ICommandDevice
+    public class Mqtt : DeviceBase, ICommandDevice
     {
         private MqttClient _mqttClient;
         private string _topics;
 
-        internal Mqtt(ILogger logger) : base(logger) { }
+        public Mqtt(ILogger logger) : base(logger) { }
 
         public async void ExecuteCommand(string commandId, string value)
         {

@@ -6,9 +6,9 @@ using RIoT2.Core.Models;
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    internal class Timer : DeviceBase, IRefreshableReportDevice
+    public class Timer : DeviceBase, IRefreshableReportDevice
     {
-        internal Timer(ILogger logger) : base(logger) { }
+        public Timer(ILogger logger) : base(logger) { }
 
         public override void ConfigureDevice()
         {

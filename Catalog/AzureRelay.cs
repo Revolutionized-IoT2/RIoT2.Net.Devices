@@ -1,11 +1,11 @@
 ﻿using Microsoft.Extensions.Logging;
 using RIoT2.Core.Abstracts;
 using RIoT2.Core.Interfaces;
-using RIoT2.Core.Interfaces.Services;
+using RIoT2.Net.Devices.Services.Interfaces;
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    internal class AzureRelay : DeviceBase, IDevice
+    public class AzureRelay : DeviceBase, IDevice
     {
         private readonly ILogger _logger;
         private readonly IAzureRelayService _azureRelayService;

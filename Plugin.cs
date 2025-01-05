@@ -1,67 +1,48 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using RIoT2.Core.Interfaces;
-using RIoT2.Core.Interfaces.Services;
-using RIoT2.Net.Devices.Catalog;
+﻿using RIoT2.Net.Devices.Catalog;
+using Microsoft.Extensions.DependencyInjection;
+using RIoT2.Net.Devices.Services.Interfaces;
+using RIoT2.Net.Devices.Services;
+using RIoT2.Net.Devices.Services.FTP;
 
 namespace RIoT2.Net.Devices
 {
-    public class Plugin : IDevicePlugin
+    public class Plugin : Core.Interfaces.IDevicePlugin
     {
-        private List<IDevice> _devices;
+        private List<Core.Interfaces.IDevice> _devices;
+        public Plugin(){ }
 
-        public Plugin(IServiceProvider services)
-        {
-            INodeConfigurationService configurationService = services.GetRequiredService<INodeConfigurationService>();
-            ILogger logger = services.GetRequiredService<ILogger>();
-            IWebhookService webhookService = services.GetRequiredService<IWebhookService>();
-            IFtpService ftpService = services.GetRequiredService<IFtpService>();
-            IStorageService storageService = services.GetRequiredService<IStorageService>();
-            IDownloadService downloadService = services.GetRequiredService<IDownloadService>();
-            IMemoryStorageService memoryStorageService = services.GetRequiredService<IMemoryStorageService>();
-            IAzureRelayService azureRelayService = services.GetRequiredService<IAzureRelayService>();
-
-            //Test that all services are ok!
-            if (configurationService == null ||
-                logger == null ||
-                webhookService == null ||
-                ftpService == null ||
-                storageService == null ||
-                downloadService == null ||
-                memoryStorageService == null ||
-                azureRelayService == null
-                ) {
-                throw new Exception($"At Least one required Service is not setup properly. Could not start plugin. " +
-                    $"configurationService({configurationService != null}) " +
-                    $"logger({logger != null}) " +
-                    $"webhookService({webhookService != null}) " +
-                    $"ftpService({ftpService != null}) " +
-                    $"storageService({storageService != null}) " +
-                    $"downloadService({downloadService != null}) " +
-                    $"memoryStorageService({memoryStorageService != null}) " +
-                    $"azureRelayService({azureRelayService != null})");
-            }
-
-            _devices = [
-                new Web(logger, webhookService),
-                new Catalog.Timer(logger),
-                new Virtual(logger),
-                new Mqtt(logger),
-                new WaterConsumption(logger),
-                new Messaging(logger),
-                new FTP(logger, ftpService, downloadService, memoryStorageService),
-                new ElectricityPrice(logger),
-                new EasyPLC(logger),
-                new NetatmoWeather(logger),
-                new NetatmoSecurity(logger, downloadService, memoryStorageService),
-                new Hue(logger),
-                new AzureRelay(logger, azureRelayService)
-           ];
-        }
-
-        public List<IDevice> Devices
+        public List<Core.Interfaces.IDevice> Devices
         {
             get { return _devices; }
+        }
+
+        public void Initialize(IServiceCollection services) 
+        {
+            //Initialize required device services
+            services.AddSingleton<IWebhookService, WebhookService>();
+            services.AddSingleton<IFtpService, FtpService>();
+            services.AddSingleton<IStorageService, FTPStorageService>();
+            services.AddSingleton<IDownloadService, DownloadService>();
+            services.AddSingleton<IAzureRelayService, AzureRelayService>();
+            services.AddSingleton<IMemoryStorageService, MemoryStorageService>();
+
+            //Initialize devices and add them to list
+            var serviceProvider = services.BuildServiceProvider();
+            _devices = [
+               ActivatorUtilities.CreateInstance<Web>(serviceProvider),
+               ActivatorUtilities.CreateInstance<Catalog.Timer>(serviceProvider),
+               ActivatorUtilities.CreateInstance<Virtual>(serviceProvider),
+               ActivatorUtilities.CreateInstance<Mqtt>(serviceProvider),
+               ActivatorUtilities.CreateInstance<WaterConsumption>(serviceProvider),
+               ActivatorUtilities.CreateInstance<Messaging>(serviceProvider),
+               ActivatorUtilities.CreateInstance<FTP>(serviceProvider), //memorystorage
+               ActivatorUtilities.CreateInstance<ElectricityPrice>(serviceProvider),
+               ActivatorUtilities.CreateInstance<EasyPLC>(serviceProvider),
+               ActivatorUtilities.CreateInstance<NetatmoWeather>(serviceProvider),
+               ActivatorUtilities.CreateInstance<NetatmoSecurity>(serviceProvider), //memorystorage
+               ActivatorUtilities.CreateInstance<Hue>(serviceProvider),
+               ActivatorUtilities.CreateInstance<AzureRelay>(serviceProvider)
+          ];
         }
     }
 }

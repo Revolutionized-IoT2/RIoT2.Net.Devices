@@ -6,11 +6,11 @@ using System.Reflection;
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    internal class NetatmoWeather : NetatmoBase, IDeviceWithConfiguration, IRefreshableReportDevice
+    public class NetatmoWeather : NetatmoBase, IDeviceWithConfiguration, IRefreshableReportDevice
     {
         private string _stationId;
 
-        internal NetatmoWeather(ILogger logger) : base(logger) { }
+        public NetatmoWeather(ILogger logger) : base(logger) { }
 
         public override void ConfigureDevice()
         {

@@ -1,14 +1,14 @@
 ﻿using System.Net.Sockets;
-using Microsoft.Extensions.Logging;
 using RIoT2.Core.Abstracts;
 using RIoT2.Core.Interfaces;
 using RIoT2.Core.Models;
 using RIoT2.Core;
+using Microsoft.Extensions.Logging;
 
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    internal class EasyPLC : DeviceBase, IRefreshableReportDevice, ICommandDevice
+    public class EasyPLC : DeviceBase, IRefreshableReportDevice, ICommandDevice
     {
         private TcpClient _client;
         private string _plcIp;

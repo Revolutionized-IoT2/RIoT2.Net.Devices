@@ -5,12 +5,11 @@ using RIoT2.Core.Interfaces;
 using RIoT2.Core.Models;
 using RIoT2.Core.Utils;
 using RIoT2.Net.Devices.Models;
-using System.Diagnostics;
 using ValueType = RIoT2.Core.ValueType;
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    internal class Hue : DeviceBase, ICommandDevice, IDeviceWithConfiguration
+    public class Hue : DeviceBase, ICommandDevice, IDeviceWithConfiguration
     {
         private event HueEventHandler HueEventReceived;
         private string _bridgeIpAddress = "192.168.0.4";
@@ -27,7 +26,7 @@ namespace RIoT2.Net.Devices.Catalog
             return $"https://{_bridgeIpAddress}/eventstream/clip/v2";
         }
 
-        internal Hue(ILogger logger) : base(logger) 
+        public Hue(ILogger logger) : base(logger) 
         {
         
         }

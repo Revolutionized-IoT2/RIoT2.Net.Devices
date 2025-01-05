@@ -9,7 +9,7 @@ using RIoT2.Core.Utils;
 
 namespace RIoT2.Net.Devices.Abstracts
 {
-    internal abstract class NetatmoBase : DeviceBase
+    public abstract class NetatmoBase : DeviceBase
     {
         private static string _accessToken = "";
         private static string _refreshToken = "";

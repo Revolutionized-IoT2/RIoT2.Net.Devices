@@ -6,11 +6,11 @@ using RIoT2.Core.Models;
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    internal class Virtual : DeviceBase, ICommandDevice
+    public class Virtual : DeviceBase, ICommandDevice
     {
         private Dictionary<string, object> _virtualData;
 
-        internal Virtual(ILogger logger) : base(logger) { }
+        public Virtual(ILogger logger) : base(logger) { }
 
         public void ExecuteCommand(string commandId, string value)
         {

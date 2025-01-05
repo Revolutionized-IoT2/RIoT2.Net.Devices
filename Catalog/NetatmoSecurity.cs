@@ -1,15 +1,15 @@
 ﻿using Microsoft.Extensions.Logging;
 using RIoT2.Core;
 using RIoT2.Core.Interfaces;
-using RIoT2.Core.Interfaces.Services;
 using RIoT2.Core.Models;
 using RIoT2.Net.Devices.Abstracts;
 using RIoT2.Net.Devices.Models;
+using RIoT2.Net.Devices.Services.Interfaces;
 
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    internal class NetatmoSecurity : NetatmoBase, IDeviceWithConfiguration, IRefreshableReportDevice, ICommandDevice
+    public class NetatmoSecurity : NetatmoBase, IDeviceWithConfiguration, IRefreshableReportDevice, ICommandDevice
     {
         private NetatmoHomesData _home;
         private NetatmoSecurityEvents _securityEvents;
@@ -17,7 +17,7 @@ namespace RIoT2.Net.Devices.Catalog
         private IMemoryStorageService _memoryStorageService;
         private ILogger _logger;
 
-        internal NetatmoSecurity(ILogger logger, IDownloadService downloadService, IMemoryStorageService memoryStorageService) : base(logger)
+        public NetatmoSecurity(ILogger logger, IDownloadService downloadService, IMemoryStorageService memoryStorageService) : base(logger)
         {
             _logger = logger;
             _securityEvents = new NetatmoSecurityEvents();

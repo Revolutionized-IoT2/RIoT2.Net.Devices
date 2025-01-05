@@ -2,10 +2,10 @@
 using RIoT2.Core;
 using RIoT2.Core.Abstracts;
 using RIoT2.Core.Interfaces;
-using RIoT2.Core.Interfaces.Services;
 using RIoT2.Core.Models;
-using RIoT2.Core.Services.FTP;
 using RIoT2.Net.Devices.Models;
+using RIoT2.Net.Devices.Services.FTP;
+using RIoT2.Net.Devices.Services.Interfaces;
 
 
 namespace RIoT2.Net.Devices.Catalog
@@ -14,7 +14,7 @@ namespace RIoT2.Net.Devices.Catalog
     /// <summary>
     /// This device is used to receive files from FTP (WebCameras forinstance)
     /// </summary>
-    internal class FTP : DeviceBase, IDevice
+    public class FTP : DeviceBase, IDevice
     {
         private List<FtpUser> _ftpUsers;
         private int _ftpPort = 0;
@@ -22,7 +22,7 @@ namespace RIoT2.Net.Devices.Catalog
         private IDownloadService _downloadService;
         private IMemoryStorageService _memoryStorageService;
 
-        internal FTP(ILogger logger, IFtpService ftpService, IDownloadService downloadService, IMemoryStorageService memoryStorageService) : base(logger) 
+        public FTP(ILogger logger, IFtpService ftpService, IDownloadService downloadService, IMemoryStorageService memoryStorageService) : base(logger) 
         {
             _ftpService = ftpService;
             _downloadService = downloadService;

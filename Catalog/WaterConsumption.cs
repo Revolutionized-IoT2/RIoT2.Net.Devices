@@ -8,9 +8,9 @@ using System.Net.Http.Headers;
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    internal class WaterConsumption : DeviceBase, IRefreshableReportDevice, IDeviceWithConfiguration
+    public class WaterConsumption : DeviceBase, IRefreshableReportDevice, IDeviceWithConfiguration
     {
-        internal WaterConsumption(ILogger logger) : base(logger) { }
+        public WaterConsumption(ILogger logger) : base(logger) { }
 
         private string _securityToken = "";
         private string _endpoint = "";
