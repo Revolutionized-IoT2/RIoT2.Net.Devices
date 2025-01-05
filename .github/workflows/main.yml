@@ -32,24 +32,8 @@ jobs:
         dotnet pack --no-restore --no-build --configuration Release
         -p:PackageVersion=${{ github.ref_name }} --output .
 
-     - name: Create Release
-       id: create_release
-       uses: actions/create-release@v1
-       env:
-        GITHUB_TOKEN: ${{ secrets.NUGET_PACKAGE_TOKEN }}
-       with:
-          tag_name: ${{ github.ref }}
-          release_name: Devices plugin ${{ github.ref }}
-          draft: false
-          prerelease: false
-
-     - name: upload package to releases
-       uses: actions/upload-release-asset@v1
-       env:
-         GITHUB_TOKEN: ${{ secrets.NUGET_PACKAGE_TOKEN }}
-       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: /home/runner/work/RIoT2.Net.Devices/RIoT2.Net.Devices/RIoT2.Net.Devices.${{ github.ref_name }}.nupkg
-        asset_name: RIoT2.Net.Devices.${{ github.ref_name }}.nupkg
-        asset_content_type: application/x-msdownload
-  
+     - name: Publish
+       run: >
+        dotnet nuget push RIoT2.Net.Devices.${{ github.ref_name }}.nupkg
+        -s https://nuget.pkg.github.com/Revolutionized-IoT2/index.json
+        -k ${{ secrets.NUGET_PACKAGE_TOKEN }}
