@@ -41,7 +41,7 @@ jobs:
      - name: Zip files
        shell: pwsh
        run: |
-        zip -r RIoT2.Net.Devices.zip . -i Azure.Core.dll Azure.Identity.dll FluentFTP.dll Google.Apis.Auth.dll Google.Apis.Core.dll Google.Apis.dll Microsoft.Azure.Relay.dll Microsoft.Bcl.AsyncInterfaces.dll Microsoft.Identity.Client.dll Microsoft.Identity.Client.Extensions.Msal.dll Microsoft.IdentityModel.JsonWebTokens.dll Microsoft.IdentityModel.Logging.dll Microsoft.IdentityModel.Tokens.dll RIoT2.Net.Devices.dll System.CodeDom.dll System.Diagnostics.DiagnosticSource.dll System.Management.dll System.Security.Cryptography.ProtectedData.dll Zhaobang.FtpServer.dll
+        zip RIoT2.Net.Devices.zip Azure.Core.dll Azure.Identity.dll FluentFTP.dll Google.Apis.Auth.dll Google.Apis.Core.dll Google.Apis.dll Microsoft.Azure.Relay.dll Microsoft.Bcl.AsyncInterfaces.dll Microsoft.Identity.Client.dll Microsoft.Identity.Client.Extensions.Msal.dll Microsoft.IdentityModel.JsonWebTokens.dll Microsoft.IdentityModel.Logging.dll Microsoft.IdentityModel.Tokens.dll RIoT2.Net.Devices.dll System.CodeDom.dll System.Diagnostics.DiagnosticSource.dll System.Management.dll System.Security.Cryptography.ProtectedData.dll Zhaobang.FtpServer.dll
       
      - name: upload zip to releases
        uses: actions/upload-release-asset@v1
