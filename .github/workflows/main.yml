@@ -49,7 +49,7 @@ jobs:
          GITHUB_TOKEN: ${{ secrets.NUGET_PACKAGE_TOKEN }}
        with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: /home/runner/work/RIoT2.Net.Devices/RIoT2.Net.Devices/bin/Release/net8.0/RIoT2.Net.Devices.${{ github.ref_name }}.nupkg
+        asset_path: /home/runner/work/RIoT2.Net.Devices/RIoT2.Net.Devices/RIoT2.Net.Devices.${{ github.ref_name }}.nupkg
         asset_name: RIoT2.Net.Devices.${{ github.ref_name }}.nupkg
         asset_content_type: application/x-msdownload
   
