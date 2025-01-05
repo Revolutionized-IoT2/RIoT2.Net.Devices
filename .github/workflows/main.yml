@@ -27,13 +27,28 @@ jobs:
      - name: Build
        run: dotnet build --configuration Release
 
-     - name: Package
-       run: >
-        dotnet pack --no-restore --no-build --configuration Release
-        -p:PackageVersion=${{ github.ref_name }} --output .
+     - name: Create Release
+       id: create_release
+       uses: actions/create-release@v1
+       env:
+        GITHUB_TOKEN: ${{ secrets.NUGET_PACKAGE_TOKEN }}
+       with:
+          tag_name: ${{ github.ref }}
+          release_name: Devices plugin ${{ github.ref }}
+          draft: false
+          prerelease: false
 
-     - name: Publish
-       run: >
-        dotnet nuget push RIoT2.Net.Devices.${{ github.ref_name }}.nupkg
-        -s https://nuget.pkg.github.com/Revolutionized-IoT2/index.json
-        -k ${{ secrets.NUGET_PACKAGE_TOKEN }}
+     - name: Zip files
+       shell: pwsh
+       run: |
+        zip -r RIoT2.Net.Devices.zip Azure.Core.dll Azure.Identity.dll FluentFTP.dll Google.Apis.Auth.dll Google.Apis.Core.dll Google.Apis.dll Microsoft.Azure.Relay.dll Microsoft.Bcl.AsyncInterfaces.dll Microsoft.Identity.Client.dll Microsoft.Identity.Client.Extensions.Msal.dll Microsoft.IdentityModel.JsonWebTokens.dll Microsoft.IdentityModel.Logging.dll Microsoft.IdentityModel.Tokens.dll RIoT2.Net.Devices.dll System.CodeDom.dll System.Diagnostics.DiagnosticSource.dll System.Management.dll System.Security.Cryptography.ProtectedData.dll Zhaobang.FtpServer.dll
+      
+     - name: upload zip to releases
+       uses: actions/upload-release-asset@v1
+       env:
+         GITHUB_TOKEN: ${{ secrets.NUGET_PACKAGE_TOKEN }}
+       with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: /home/runner/work/RIoT2.Net.Devices/RIoT2.Net.Devices/bin/Release/net8.0/RIoT2.Net.Devices.zip
+        asset_name: RIoT2.Net.Devices.zip
+        asset_content_type: application/x-msdownload
