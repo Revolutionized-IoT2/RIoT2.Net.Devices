@@ -120,8 +120,8 @@ namespace RIoT2.Net.Devices.Catalog
             }
             catch (Exception x) 
             {
-                Logger.LogError(x, "Error connecting Easy PLC");
                 _connected = false;
+                throw new Exception("Error connecting Easy PLC", x);
             }
         }
         private void disconnect() 
@@ -144,7 +144,6 @@ namespace RIoT2.Net.Devices.Catalog
 
                 try
                 {
-
                     var tcpStream = _client.GetStream();
 
                     byte[] receiveBuffer = new byte[256];
