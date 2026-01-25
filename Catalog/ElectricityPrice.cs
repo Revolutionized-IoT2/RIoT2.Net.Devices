@@ -112,7 +112,7 @@ namespace RIoT2.Net.Devices.Catalog
             if(p < 0)
                 p = 0;
 
-            var minutesFromMidnight = p * 60 + DateTime.Now.Minute;
+            var minutesFromMidnight = p * 60 + DateTime.Now.Minute + 1;
             
             int pos = (int)Math.Ceiling((double)minutesFromMidnight / res);
 
