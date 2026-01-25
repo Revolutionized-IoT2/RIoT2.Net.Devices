@@ -108,8 +108,13 @@ namespace RIoT2.Net.Devices.Catalog
             int res = int.Parse(resStr);
 
             //get current price position based on resolution
-            var minutesFromMidnight = DateTime.Now.Hour * 60 + DateTime.Now.Minute;
-            int pos = minutesFromMidnight / res;
+            var p = (DateTime.Now.Hour - 1);
+            if(p < 0)
+                p = 0;
+
+            var minutesFromMidnight = p * 60 + DateTime.Now.Minute;
+            
+            int pos = (int)Math.Ceiling((double)minutesFromMidnight / res);
 
             var rawPrice = _priceData.TimeSeries.Period.Point.FirstOrDefault(x => x.position == pos).priceamount;
 
