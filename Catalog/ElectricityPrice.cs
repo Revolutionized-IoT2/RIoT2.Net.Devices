@@ -69,12 +69,12 @@ namespace RIoT2.Net.Devices.Catalog
             var deviceConfiguration = new DeviceConfiguration();
             deviceConfiguration.Id = Guid.NewGuid().ToString();
             deviceConfiguration.Name = "Electricity Price Provider";
-            deviceConfiguration.RefreshSchedule = "0 * * * *";
+            deviceConfiguration.RefreshSchedule = "*/15 * * * *"; //0 * * * *
             deviceConfiguration.DeviceParameters = new Dictionary<string, string>();
             deviceConfiguration.DeviceParameters.Add("securityToken", Guid.NewGuid().ToString());
             deviceConfiguration.DeviceParameters.Add("domain", "10YFI-1--------U");
             deviceConfiguration.DeviceParameters.Add("endpoint", "https://web-api.tp.entsoe.eu/api");
-            deviceConfiguration.DeviceParameters.Add("vat", "24");
+            deviceConfiguration.DeviceParameters.Add("vat", "25.5");
 
             deviceConfiguration.ClassFullName = this.GetType().FullName;
             var reportConfigurations = new List<ReportTemplate>();
@@ -102,10 +102,18 @@ namespace RIoT2.Net.Devices.Catalog
             if (!isPriceDataValid(_priceData))
                 load();
 
-            var rawPrice = _priceData.TimeSeries.Period.Point.FirstOrDefault(x => x.position == DateTime.Now.Hour).priceamount;
+            //check resolution
+            var resStr = _priceData.TimeSeries.Period.resolution.Remove(0, 2);
+            resStr = resStr.Remove(resStr.Length - 1);
+            int res = int.Parse(resStr);
 
-            //Add VAT
-            if (_vat != 0.0d) 
+            //get current price position based on resolution
+            var minutesFromMidnight = DateTime.Now.Hour * 60 + DateTime.Now.Minute;
+            int pos = minutesFromMidnight / res;
+
+            var rawPrice = _priceData.TimeSeries.Period.Point.FirstOrDefault(x => x.position == pos).priceamount;
+
+            if (_vat != 0.0d) //Add VAT
             {
                 var vatPercentage = decimal.Divide((decimal)_vat, 100);
                 vatPercentage += 1.0M;
