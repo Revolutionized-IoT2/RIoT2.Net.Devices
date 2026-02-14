@@ -41,14 +41,14 @@ jobs:
      - name: Create NodeInfo.txt file
        run: |
           cat <<EOF > /home/runner/work/RIoT2.Net.Devices/RIoT2.Net.Devices/bin/Release/net8.0/NodeInfo.txt
-          version=${{ github.ref }}
+          version=${{github.ref_name}}
           EOF
           
      - name: Zip files
        shell: pwsh
        run: |
         cd /home/runner/work/RIoT2.Net.Devices/RIoT2.Net.Devices/bin/Release/net8.0/
-        zip RIoT2.Net.Devices.zip Azure.Core.dll Azure.Identity.dll FluentFTP.dll Google.Apis.Auth.dll Google.Apis.Core.dll Google.Apis.dll Microsoft.Azure.Relay.dll Microsoft.Bcl.AsyncInterfaces.dll Microsoft.Identity.Client.dll Microsoft.Identity.Client.Extensions.Msal.dll Microsoft.IdentityModel.JsonWebTokens.dll Microsoft.IdentityModel.Logging.dll Microsoft.IdentityModel.Tokens.dll RIoT2.Net.Devices.dll System.CodeDom.dll System.Diagnostics.DiagnosticSource.dll System.Management.dll System.Security.Cryptography.ProtectedData.dll Zhaobang.FtpServer.dll System.ClientModel.dll System.Memory.Data.dll Microsoft.IdentityModel.Abstractions.dll NodeInfo.txt
+        zip RIoT2.Net.Devices_${{github.ref_name}}.zip Azure.Core.dll Azure.Identity.dll FluentFTP.dll Google.Apis.Auth.dll Google.Apis.Core.dll Google.Apis.dll Microsoft.Azure.Relay.dll Microsoft.Bcl.AsyncInterfaces.dll Microsoft.Identity.Client.dll Microsoft.Identity.Client.Extensions.Msal.dll Microsoft.IdentityModel.JsonWebTokens.dll Microsoft.IdentityModel.Logging.dll Microsoft.IdentityModel.Tokens.dll RIoT2.Net.Devices.dll System.CodeDom.dll System.Diagnostics.DiagnosticSource.dll System.Management.dll System.Security.Cryptography.ProtectedData.dll Zhaobang.FtpServer.dll System.ClientModel.dll System.Memory.Data.dll Microsoft.IdentityModel.Abstractions.dll NodeInfo.txt
       
      - name: upload zip to releases
        uses: actions/upload-release-asset@v1
@@ -56,6 +56,6 @@ jobs:
          GITHUB_TOKEN: ${{ secrets.NUGET_PACKAGE_TOKEN }}
        with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: /home/runner/work/RIoT2.Net.Devices/RIoT2.Net.Devices/bin/Release/net8.0/RIoT2.Net.Devices.zip
-        asset_name: RIoT2.Net.Devices.zip
+        asset_path: /home/runner/work/RIoT2.Net.Devices/RIoT2.Net.Devices/bin/Release/net8.0/RIoT2.Net.Devices_${{github.ref_name}}.zip
+        asset_name: RIoT2.Net.Devices_${{github.ref_name}}.zip
         asset_content_type: application/x-msdownload
