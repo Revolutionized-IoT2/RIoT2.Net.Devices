@@ -34,7 +34,11 @@ namespace RIoT2.Net.Devices.Catalog
             if (latestValue == null || template == null)
                 return;
 
-            latestValue = Math.Round(latestValue.Value, 3);
+            int precision = 3; //default
+            if (template.Parameters != null && template.Parameters.ContainsKey("precision"))
+                precision = int.Parse(template.Parameters["precision"]);
+
+            latestValue = Math.Round(latestValue.Value, precision);
 
             SendReport(this, new Report()
             {
@@ -50,7 +54,7 @@ namespace RIoT2.Net.Devices.Catalog
             var deviceConfiguration = new DeviceConfiguration();
             deviceConfiguration.Id = Guid.NewGuid().ToString();
             deviceConfiguration.Name = "Water Consumption Provider";
-            deviceConfiguration.RefreshSchedule = "0 * * * *";
+            deviceConfiguration.RefreshSchedule = "0 */15 * ? * *"; //every 15min
             deviceConfiguration.DeviceParameters = new Dictionary<string, string>();
             deviceConfiguration.DeviceParameters.Add("securityToken", Guid.NewGuid().ToString());
             deviceConfiguration.DeviceParameters.Add("endpoint", "https://wmd.wrm-systems.fi/api/watermeter");
@@ -63,7 +67,8 @@ namespace RIoT2.Net.Devices.Catalog
                 Id = Guid.NewGuid().ToString(),
                 Address = "watermeter",
                 Name = "Water consumption",
-                Type = Core.ValueType.Number
+                Type = Core.ValueType.Number,
+                Parameters = new Dictionary<string, string>() { { "unit", "m3" }, {"precision", "3" } }
             });
 
             deviceConfiguration.CommandTemplates = null;

@@ -38,7 +38,7 @@ namespace RIoT2.Net.Devices.Catalog
             {
                 Id = template.Id,
                 TimeStamp = DateTime.UtcNow.ToEpoch(),
-                Value = new ValueModel(getCurrentPrice()),
+                Value = new ValueModel(getCurrentPrice(template)),
                 Filter = ""
             });
         }
@@ -59,7 +59,7 @@ namespace RIoT2.Net.Devices.Catalog
             {
                 Id = template.Id,
                 TimeStamp = DateTime.UtcNow.ToEpoch(),
-                Value = new ValueModel(getCurrentPrice()),
+                Value = new ValueModel(getCurrentPrice(report)),
                 Filter = ""
             });
         }
@@ -69,7 +69,7 @@ namespace RIoT2.Net.Devices.Catalog
             var deviceConfiguration = new DeviceConfiguration();
             deviceConfiguration.Id = Guid.NewGuid().ToString();
             deviceConfiguration.Name = "Electricity Price Provider";
-            deviceConfiguration.RefreshSchedule = "*/15 * * * *"; //0 * * * *
+            deviceConfiguration.RefreshSchedule = "0 */15 * ? * *"; //every 15min
             deviceConfiguration.DeviceParameters = new Dictionary<string, string>();
             deviceConfiguration.DeviceParameters.Add("securityToken", Guid.NewGuid().ToString());
             deviceConfiguration.DeviceParameters.Add("domain", "10YFI-1--------U");
@@ -84,7 +84,8 @@ namespace RIoT2.Net.Devices.Catalog
                 Id = Guid.NewGuid().ToString(),
                 Address = "price",
                 Name = "Price",
-                Type = ValueType.Number
+                Type = ValueType.Number,
+                Parameters = new Dictionary<string, string>() { { "unit", "c/kWh" }, { "precision", "2" } }
             });
 
             deviceConfiguration.ReportTemplates = reportConfigurations;
@@ -97,7 +98,7 @@ namespace RIoT2.Net.Devices.Catalog
             return ReportTemplates.FirstOrDefault(x => x.Address == "price");
         }
 
-        private decimal getCurrentPrice() 
+        private decimal getCurrentPrice(ReportTemplate reportTemplate) 
         {
             if (!isPriceDataValid(_priceData))
                 load();
@@ -129,8 +130,14 @@ namespace RIoT2.Net.Devices.Catalog
             if (rawPrice != 0m)
                 rawPrice = decimal.Divide(rawPrice, 10);
 
-            //return value rounded to two digits
-            return Math.Round(rawPrice, 2);
+            int precision = 2; //default
+            if (reportTemplate != null && reportTemplate.Parameters != null && reportTemplate.Parameters.ContainsKey("precision"))
+                precision = int.Parse(reportTemplate.Parameters["precision"]);
+
+            if (precision > -1)
+                return Math.Round(rawPrice, precision);
+
+            return rawPrice;
         }
 
         private Dictionary<int, decimal> getCurrentDayPrices()
