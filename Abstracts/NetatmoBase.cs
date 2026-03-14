@@ -30,7 +30,7 @@ namespace RIoT2.Net.Devices.Abstracts
             if (value == null || parameter == null)
                 return;
 
-            var template = ReportTemplates.FirstOrDefault(x => x.Address.ToLower() == parameter);
+            var template = ReportTemplates?.FirstOrDefault(x => x.Address?.ToLower() == parameter);
             if (template == null)
                 return;
 
