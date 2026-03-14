@@ -27,7 +27,7 @@ namespace RIoT2.Net.Devices.Abstracts
 
         internal void SendNetatmoReport(IDevice device, string parameter, dynamic value)
         {
-            if (value == null)
+            if (value == null || parameter == null)
                 return;
 
             var template = ReportTemplates.FirstOrDefault(x => x.Address.ToLower() == parameter);
