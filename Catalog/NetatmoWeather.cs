@@ -77,7 +77,8 @@ namespace RIoT2.Net.Devices.Catalog
                         Id = Guid.NewGuid().ToString(),
                         Address = $"{d._id}|{prop.Name}",
                         Name = prop.Name,
-                        Type = GetObjectValueType(prop.GetValue(mainModuleData))
+                        Type = GetObjectValueType(prop.GetValue(mainModuleData)),
+                        Model = prop.GetValue(mainModuleData)
                     });
                 }
 
@@ -91,7 +92,8 @@ namespace RIoT2.Net.Devices.Catalog
                             Id = Guid.NewGuid().ToString(),
                             Address = $"{subModule._id}|{prop.Name}",
                             Name = prop.Name,
-                            Type = GetObjectValueType(prop.GetValue(subModuleData))
+                            Type = GetObjectValueType(prop.GetValue(subModuleData)),
+                            Model = prop.GetValue(subModuleData)
                         });
                     }
                 }
@@ -112,13 +114,13 @@ namespace RIoT2.Net.Devices.Catalog
             {
                 var mainModuleData = d.dashboard_data;
                 foreach (PropertyInfo prop in mainModuleData.GetType().GetProperties())
-                    SendNetatmoReport(this, $"{d._id}|{prop.Name}", prop.GetValue(mainModuleData));
+                    SendNetatmoReport(this, $"{d._id}|{prop.Name}".ToLower(), prop.GetValue(mainModuleData));
 
                 foreach (var subModule in d.modules)
                 {
                     var subModuleData = subModule.dashboard_data;
                     foreach (PropertyInfo prop in subModuleData.GetType().GetProperties())
-                        SendNetatmoReport(this, $"{subModule._id}|{prop.Name}", prop.GetValue(subModuleData));
+                        SendNetatmoReport(this, $"{subModule._id}|{prop.Name}".ToLower(), prop.GetValue(subModuleData));
                 }
             }
         }
