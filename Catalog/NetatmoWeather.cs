@@ -72,13 +72,14 @@ namespace RIoT2.Net.Devices.Catalog
                 var mainModuleData = d.dashboard_data;
                 foreach (PropertyInfo prop in mainModuleData.GetType().GetProperties()) 
                 {
+                    var value = prop.GetValue(mainModuleData);
                     reportConfigurations.Add(new ReportTemplate()
                     {
                         Id = Guid.NewGuid().ToString(),
                         Address = $"{d._id}|{prop.Name}",
                         Name = prop.Name,
-                        Type = GetObjectValueType(prop.GetValue(mainModuleData)),
-                        Model = prop.GetValue(mainModuleData)
+                        Type = GetObjectValueType(value),
+                        Model = value
                     });
                 }
 
@@ -87,13 +88,14 @@ namespace RIoT2.Net.Devices.Catalog
                     var subModuleData = subModule.dashboard_data;
                     foreach (PropertyInfo prop in subModuleData.GetType().GetProperties()) 
                     {
+                        var value = prop.GetValue(subModuleData);
                         reportConfigurations.Add(new ReportTemplate()
                         {
                             Id = Guid.NewGuid().ToString(),
                             Address = $"{subModule._id}|{prop.Name}",
                             Name = prop.Name,
-                            Type = GetObjectValueType(prop.GetValue(subModuleData)),
-                            Model = prop.GetValue(subModuleData)
+                            Type = GetObjectValueType(value),
+                            Model = value
                         });
                     }
                 }
