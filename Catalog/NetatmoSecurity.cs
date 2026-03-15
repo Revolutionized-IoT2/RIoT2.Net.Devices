@@ -123,7 +123,7 @@ namespace RIoT2.Net.Devices.Catalog
 
         private async Task generateSecurityReports()
         {
-            if (_home == null)
+            if (_home == null || ReportTemplates == null || ReportTemplates?.Count() == 0)
                 return;
 
             var data = await GetNetatmoHomeStatus(_home.body.homes[0].id);
