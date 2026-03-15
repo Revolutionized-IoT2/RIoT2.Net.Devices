@@ -33,7 +33,7 @@ namespace RIoT2.Net.Devices.Catalog
 
         public void ExecuteCommand(string commandId, string value)
         {
-            Logger.LogInformation("Executed command: {commandId}", commandId);
+            Logger.LogInformation("Executing command: {commandId}", commandId);
 
             var command = CommandTemplates?.FirstOrDefault(x => x.Id == commandId);
             if (command == null)
@@ -64,6 +64,9 @@ namespace RIoT2.Net.Devices.Catalog
 
         private void sendReport(HueData data) 
         {
+            if(ReportTemplates == null || ReportTemplates?.Count() == 0)
+                return;
+
             var report = ReportTemplates?.FirstOrDefault(x => x.Address.ToLower() == data.id.ToLower());
             if (report == null)
                 return;
@@ -79,6 +82,8 @@ namespace RIoT2.Net.Devices.Catalog
 
         private void Hue_HueEventReceived(string eventLine)
         {
+            Logger.LogInformation("Hue event received: {eventLine}", eventLine);
+
             if (String.IsNullOrEmpty(eventLine) || !eventLine.StartsWith("data: ")) //we're only interested on data rows...
                 return;
             eventLine = eventLine.Remove(0, 7);
