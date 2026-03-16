@@ -68,7 +68,7 @@ namespace RIoT2.Net.Devices.Catalog
         {
             var deviceConfiguration = new DeviceConfiguration();
             deviceConfiguration.Id = Guid.NewGuid().ToString();
-            deviceConfiguration.Name = "Electricity Price Provider";
+            deviceConfiguration.Name = "Electricity Price";
             deviceConfiguration.RefreshSchedule = "0 */15 * ? * *"; //every 15min
             deviceConfiguration.DeviceParameters = new Dictionary<string, string>();
             deviceConfiguration.DeviceParameters.Add("securityToken", Guid.NewGuid().ToString());

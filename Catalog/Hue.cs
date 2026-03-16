@@ -110,7 +110,7 @@ namespace RIoT2.Net.Devices.Catalog
         {
             var deviceConfiguration = new DeviceConfiguration();
             deviceConfiguration.Id = Guid.NewGuid().ToString();
-            deviceConfiguration.Name = "Hue device";
+            deviceConfiguration.Name = "Hue";
             deviceConfiguration.DeviceParameters = new Dictionary<string, string>();
             deviceConfiguration.DeviceParameters.Add("bridgeIpAddress", "192.168.0.4");
             deviceConfiguration.DeviceParameters.Add("apiKey", "xxxx");

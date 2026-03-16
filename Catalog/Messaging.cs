@@ -83,7 +83,7 @@ namespace RIoT2.Net.Devices.Catalog
         {
             var deviceConfiguration = new DeviceConfiguration();
             deviceConfiguration.Id = Guid.NewGuid().ToString();
-            deviceConfiguration.Name = "Messaging device";
+            deviceConfiguration.Name = "Messaging";
             deviceConfiguration.DeviceParameters = new Dictionary<string, string>();
             deviceConfiguration.DeviceParameters.Add("firebaseProjectName", "riot-184512");
             deviceConfiguration.DeviceParameters.Add("smtp_Server", "riot-184512");

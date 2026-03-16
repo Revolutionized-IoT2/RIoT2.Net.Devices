@@ -29,7 +29,7 @@ namespace RIoT2.Net.Devices.Catalog
         {
             var deviceConfiguration = new DeviceConfiguration();
             deviceConfiguration.Id = Guid.NewGuid().ToString();
-            deviceConfiguration.Name = "Netatmo security device";
+            deviceConfiguration.Name = "Netatmo Security";
             deviceConfiguration.DeviceParameters = new Dictionary<string, string>
             {
                 { "token", "123ecasc" },
