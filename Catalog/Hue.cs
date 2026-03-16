@@ -79,7 +79,7 @@ namespace RIoT2.Net.Devices.Catalog
 
         private void Hue_HueEventReceived(string eventLine)
         {
-            Logger.LogInformation("Hue event received: {eventLine}", eventLine);
+            //Logger.LogInformation("Hue event received: {eventLine}", eventLine);
 
             if (String.IsNullOrEmpty(eventLine) || !eventLine.StartsWith("data: ")) //we're only interested on data rows...
                 return;
