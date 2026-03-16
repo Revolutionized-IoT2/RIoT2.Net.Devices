@@ -32,7 +32,7 @@ namespace RIoT2.Net.Devices.Catalog
         {
             Logger.LogInformation("Executed command: {commandId}", commandId);
 
-            var command = CommandTemplates.FirstOrDefault(x => x.Id == commandId);
+            var command = CommandTemplates?.FirstOrDefault(x => x.Id == commandId);
             if (command == null)
                 return;
 
@@ -121,7 +121,7 @@ namespace RIoT2.Net.Devices.Catalog
                 }
             });
 
-            deviceConfiguration.ReportTemplates = new List<ReportTemplate>();
+            deviceConfiguration.ReportTemplates = null;
             deviceConfiguration.CommandTemplates = commandConfigurations;
 
             return deviceConfiguration;

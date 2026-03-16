@@ -39,9 +39,6 @@ namespace RIoT2.Net.Devices.Catalog
             if (command == null)
                 return;
 
-            //TODO Mapping to model? or to schema?
-            //MAP HUE Model to custom model?
-
             setLight(command.Address, value).Wait();
         }
 
@@ -75,7 +72,7 @@ namespace RIoT2.Net.Devices.Catalog
             {
                 Id = report.Id,
                 TimeStamp = DateTime.UtcNow.ToEpoch(),
-                Value = new ValueModel(data),
+                Value = new ValueModel(new HueLightCommand(data)),
                 Filter = "light"
             });
         }
@@ -86,15 +83,21 @@ namespace RIoT2.Net.Devices.Catalog
 
             if (String.IsNullOrEmpty(eventLine) || !eventLine.StartsWith("data: ")) //we're only interested on data rows...
                 return;
-            eventLine = eventLine.Remove(0, 7);
-            eventLine = eventLine.Remove(eventLine.Length - 1);
 
-            var hueEvent = eventLine.ToObj<HueEvent>();
-            if (hueEvent == null || hueEvent.data[0].type != "light" || hueEvent.type != "update") //type = ‘update’, ‘add’, ‘delete’, ‘error’
+            eventLine = eventLine.Remove(0, 6); //remove "data: " from the beginning of the line to get the json payload
+
+            var hueEvent = eventLine.ToObj<HueEvent[]>();
+            if (hueEvent == null || hueEvent.Length == 0 || hueEvent[0].data == null) //ensure that we've received at least one event with data
                 return;
 
-            foreach(var light in hueEvent.data)
-                sendReport(light);
+            foreach (var e in hueEvent) 
+            {
+                if (e.type != "update" || e.data == null || e.data[0].type != "light")
+                    continue;
+
+                foreach (var light in e.data)
+                    sendReport(light);
+            }
         }
 
         public override void StopDevice()
