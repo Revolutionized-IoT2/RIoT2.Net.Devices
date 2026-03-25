@@ -42,7 +42,8 @@ namespace RIoT2.Net.Devices
                ActivatorUtilities.CreateInstance<NetatmoWeather>(serviceProvider),
                ActivatorUtilities.CreateInstance<NetatmoSecurity>(serviceProvider), //memorystorage
                ActivatorUtilities.CreateInstance<Hue>(serviceProvider),
-               ActivatorUtilities.CreateInstance<AzureRelay>(serviceProvider)
+               ActivatorUtilities.CreateInstance<AzureRelay>(serviceProvider),
+               ActivatorUtilities.CreateInstance<ApSystems>(serviceProvider)
           ];
         }
     }
