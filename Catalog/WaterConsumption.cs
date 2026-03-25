@@ -54,7 +54,7 @@ namespace RIoT2.Net.Devices.Catalog
             var deviceConfiguration = new DeviceConfiguration();
             deviceConfiguration.Id = Guid.NewGuid().ToString();
             deviceConfiguration.Name = "Water Consumption";
-            deviceConfiguration.RefreshSchedule = "0 */15 * ? * *"; //every 15min
+            deviceConfiguration.RefreshSchedule = "0 * * ? * *"; //every hour
             deviceConfiguration.DeviceParameters = new Dictionary<string, string>();
             deviceConfiguration.DeviceParameters.Add("securityToken", Guid.NewGuid().ToString());
             deviceConfiguration.DeviceParameters.Add("endpoint", "https://wmd.wrm-systems.fi/api/watermeter");

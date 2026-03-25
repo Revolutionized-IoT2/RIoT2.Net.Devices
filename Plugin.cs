@@ -25,6 +25,7 @@ namespace RIoT2.Net.Devices
             services.AddSingleton<IDownloadService, DownloadService>();
             services.AddSingleton<IAzureRelayService, AzureRelayService>();
             services.AddSingleton<IMemoryStorageService, MemoryStorageService>();
+            services.AddSingleton<IApSystemsClientService, ApSystemsClientService>();
 
             //Initialize devices and add them to list
             var serviceProvider = services.BuildServiceProvider();
