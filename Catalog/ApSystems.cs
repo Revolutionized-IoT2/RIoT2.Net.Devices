@@ -31,10 +31,10 @@ namespace RIoT2.Net.Devices.Catalog
             deviceConfiguration.Name = "AP Systems Meter";
             deviceConfiguration.RefreshSchedule = "0 * * ? * *"; //every hour
             deviceConfiguration.DeviceParameters = new Dictionary<string, string>();
-            deviceConfiguration.DeviceParameters.Add("appId", "2c9f934a9cf77cfe019cf7cdbe303bb4");
-            deviceConfiguration.DeviceParameters.Add("appSecret", "fa459a70c412");
-            deviceConfiguration.DeviceParameters.Add("sid", "D22G478118368468");
-            deviceConfiguration.DeviceParameters.Add("ecuId", "215000032760");
+            deviceConfiguration.DeviceParameters.Add("appId", "j8dl50dk60kg04jd83kdd4f");
+            deviceConfiguration.DeviceParameters.Add("appSecret", "985038560184");
+            deviceConfiguration.DeviceParameters.Add("sid", "A5609878118987094");
+            deviceConfiguration.DeviceParameters.Add("ecuId", "254000099887");
 
             deviceConfiguration.ClassFullName = this.GetType().FullName;
             var reportConfigurations = new List<ReportTemplate>();
