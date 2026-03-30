@@ -6,6 +6,9 @@ using RIoT2.Core.Models;
 using RIoT2.Net.Devices.Models;
 using RIoT2.Net.Devices.Services.Interfaces;
 
+/// This device connects to eufy-security-ws -websocket service
+/// Please see https://bropat.github.io/eufy-security-ws/
+
 namespace RIoT2.Net.Devices.Catalog
 {
     public class EufySecurity : DeviceBase, IDeviceWithConfiguration, ICommandDevice
@@ -164,11 +167,13 @@ namespace RIoT2.Net.Devices.Catalog
 
         public override void StartDevice()
         {
+            Logger.LogInformation("Starting Eufy Security device...");
             _eufySecurityService.Start();
             _eufySecurityService.EufyEvent += _eufySecurityService_EufyEvent;
             //wait a bit to get initial properties, otherwise we won't have templates to send reports with
             Task.Delay(2000).Wait();
             sendInitialReports();
+
         }
 
         private void sendInitialReports() 
