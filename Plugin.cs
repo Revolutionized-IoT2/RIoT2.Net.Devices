@@ -26,6 +26,7 @@ namespace RIoT2.Net.Devices
             services.AddSingleton<IAzureRelayService, AzureRelayService>();
             services.AddSingleton<IMemoryStorageService, MemoryStorageService>();
             services.AddSingleton<IApSystemsClientService, ApSystemsClientService>();
+            services.AddSingleton<IEufySecurityService, EufySecurityService>();
 
             //Initialize devices and add them to list
             var serviceProvider = services.BuildServiceProvider();
@@ -43,7 +44,8 @@ namespace RIoT2.Net.Devices
                ActivatorUtilities.CreateInstance<NetatmoSecurity>(serviceProvider), //memorystorage
                ActivatorUtilities.CreateInstance<Hue>(serviceProvider),
                ActivatorUtilities.CreateInstance<AzureRelay>(serviceProvider),
-               ActivatorUtilities.CreateInstance<ApSystems>(serviceProvider)
+               ActivatorUtilities.CreateInstance<ApSystems>(serviceProvider),
+               ActivatorUtilities.CreateInstance<EufySecurity>(serviceProvider)
           ];
         }
     }

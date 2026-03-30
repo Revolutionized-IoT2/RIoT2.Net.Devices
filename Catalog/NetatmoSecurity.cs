@@ -59,6 +59,13 @@ namespace RIoT2.Net.Devices.Catalog
                         Address = module.id,
                         Name = "Indoor camera",
                         Type = Core.ValueType.Entity,
+                        Model = new ValueModel(new SecurityReport() {
+                            ImageUrl = "http://url-to-image",
+                            SecurityEvent = SecurityEventType.Movement,
+                            Message = "msg",
+                            Source = "source",
+                            Subject = "subject"
+                        }),
                         Filters = new List<string>() 
                         {
                             "image", "no-image"
@@ -74,6 +81,14 @@ namespace RIoT2.Net.Devices.Catalog
                         Address = module.id,
                         Name = "Outdoor camera",
                         Type = Core.ValueType.Entity,
+                        Model = new ValueModel(new SecurityReport()
+                        {
+                            ImageUrl = "http://url-to-image",
+                            SecurityEvent = SecurityEventType.Movement,
+                            Message = "msg",
+                            Source = "source",
+                            Subject = "subject"
+                        }),
                         Filters = new List<string>()
                         {
                             "image", "no-image"
