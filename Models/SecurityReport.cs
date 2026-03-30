@@ -48,17 +48,17 @@ namespace RIoT2.Net.Devices.Models
             switch (e.type.ToLower()) 
             {
                 case "alarm_started":
-                    return SecurityEventType.Alarm;
+                    return SecurityEventType.soundDetected;
                 case "person":
                     if(String.IsNullOrEmpty(e.person_id))
-                        return SecurityEventType.UnknownPersonSeen;
+                        return SecurityEventType.personDetected;
                     else
-                        return SecurityEventType.KnownPersonSeen;
+                        return SecurityEventType.personName;
                 case "person_away":
-                    return SecurityEventType.KnownPersonAway;
+                    return SecurityEventType.personNameAway;
                 case "movement":
                 default:
-                    return SecurityEventType.Movement;
+                    return SecurityEventType.motionDetected;
             }
         }
 
@@ -67,24 +67,28 @@ namespace RIoT2.Net.Devices.Models
             switch (e.type.ToLower())
             {
                 case "human":
-                    return SecurityEventType.UnknownPersonSeen;
+                    return SecurityEventType.personDetected;
                 case "animal":
-                    return SecurityEventType.AnimalSeen;
+                    return SecurityEventType.petDetected;
                 case "vehicle":
+                    return SecurityEventType.vehicleDetected;
                 default:
-                    return SecurityEventType.Movement;
+                    return SecurityEventType.motionDetected;
             }
         }
     }
 
     public enum SecurityEventType 
     {
-        UnknownPersonSeen = 0,
-        KnownPersonSeen = 1,
-        Movement = 2,
-        AnimalSeen = 3,
-        Alarm = 4,
-        KnownPersonAway = 5,
-        KnownPersonHome = 6
+        personDetected = 0,
+        personName = 1,
+        motionDetected = 2,
+        petDetected = 3,
+        soundDetected = 4,
+        personNameAway = 5,
+        knownPersonHome = 6,
+        strangerPersonDetected=7,
+        vehicleDetected = 8,
+        picture = 9,
     }
 }
