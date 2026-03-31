@@ -14,6 +14,8 @@ namespace RIoT2.Net.Devices.Catalog
     public class EufySecurity : DeviceBase, IDeviceWithConfiguration, ICommandDevice
     {
         private readonly IEufySecurityService _eufySecurityService;
+        private readonly List<string> _supportedEvents = ["motionDetected", "personName", "petDetected", "soundDetected", "strangerPersonDetected", "vehicleDetected"];
+        
         public EufySecurity(ILogger logger, IEufySecurityService eufySecurityService) : base(logger)
         {
             _eufySecurityService = eufySecurityService;
@@ -43,85 +45,24 @@ namespace RIoT2.Net.Devices.Catalog
             var reportConfigurations = new List<ReportTemplate>();
             var commandConfigurations = new List<CommandTemplate>();
 
-            var filters = _eufySecurityService.DeviceProperties.Select(x =>  x.Value.Name).ToArray();
-
-            reportConfigurations.Add(new ReportTemplate()
+            foreach (var device in _eufySecurityService.DeviceProperties)
             {
-                Id = Guid.NewGuid().ToString(),
-                Address = "personDetected",
-                Name = "Person Detected",
-                Type = Core.ValueType.Boolean,
-                Filters = filters
-            });
-
-            reportConfigurations.Add(new ReportTemplate()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Address = "motionDetected",
-                Name = "Motion Detected",
-                Type = Core.ValueType.Boolean,
-                Filters = filters
-            });
-
-            reportConfigurations.Add(new ReportTemplate()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Address = "personName",
-                Name = "Person Name",
-                Type = Core.ValueType.Text,
-                Filters = filters
-            });
-
-            reportConfigurations.Add(new ReportTemplate()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Address = "petDetected",
-                Name = "Pet Detected",
-                Type = Core.ValueType.Boolean,
-                Filters = filters
-            });
-
-            reportConfigurations.Add(new ReportTemplate()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Address = "soundDetected",
-                Name = "Sound Detected",
-                Type = Core.ValueType.Boolean,
-                Filters = filters
-            });
-
-            reportConfigurations.Add(new ReportTemplate()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Address = "strangerPersonDetected",
-                Name ="Stranger Person Detected",
-                Type = Core.ValueType.Boolean,
-                Filters = filters
-            });
-
-            reportConfigurations.Add(new ReportTemplate()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Address = "vehicleDetected",
-                Name = "Vehicle Detected",
-                Type = Core.ValueType.Boolean,
-                Filters = filters
-            });
-
-            //TODO Tsekkaan netatmo toteutus ja tee yhdenmukainen...
-            reportConfigurations.Add(new ReportTemplate()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Address = "picture",
-                Name = "Picture",
-                Type = Core.ValueType.Entity,
-                Model = new ValueModel(new SecurityReport()
+                reportConfigurations.Add(new ReportTemplate()
                 {
-                    ImageUrl = "http://url-to-image",
-                    Source = "Camera name"
-                }),
-                Filters = filters
-            });
+                    Id = Guid.NewGuid().ToString(),
+                    Address = device.Key,
+                    Name = device.Value.Name,
+                    Type = Core.ValueType.Entity,
+                    Model = new ValueModel(new SecurityReport()
+                    {
+                        ImageUrl = "http://image-url",
+                        Source = "eufy",
+                        EventValue = "event value",
+                        SecurityEvent = SecurityEventType.motionDetected
+                    })
+                });
+
+            }
 
             reportConfigurations.Add(new ReportTemplate()
             {
@@ -180,38 +121,56 @@ namespace RIoT2.Net.Devices.Catalog
         {
             foreach (var device in _eufySecurityService.DeviceProperties) //Only send pictures as initial reports.
             {
-                sendReport("picture", device.Value.Picture, device.Value.Name);
+                sendReport(device.Key, device.Value.Picture, device.Value.Name);
             }
 
-            sendReport(_eufySecurityService.StationProperties.SerialNumber + "|guardMode", _eufySecurityService.StationProperties.GuardMode, null);
+            sendReport(_eufySecurityService.StationProperties.SerialNumber + "|guardMode", _eufySecurityService.StationProperties.GuardMode, "guardMode");
         }
 
         private void _eufySecurityService_EufyEvent(EufyEventMessage data)
         {
-            string camName = null;
-            string address = data.Event.Name;
-            if (data.Event.Source != "station")
-                camName = _eufySecurityService.DeviceProperties.FirstOrDefault(x => x.Value.SerialNumber == data.Event.SerialNumber).Value.Name;
-
-            if (camName == null) //if we don't have camera name, we are sending station level event
-                address = _eufySecurityService.StationProperties.SerialNumber + "|" + address;
-
-            sendReport(address, data.Event.Value, camName);
+            if (data.Event.Source == "station") 
+            {
+                sendReport(data.Event.SerialNumber + $"|{data.Event.Event}", data.Event.Value, data.Event.Event);
+            }
+            else
+                sendReport(data.Event.SerialNumber, data.Event.Value, data.Event.Event);
         }
 
-        private void sendReport(string address, object value, string camName) 
+        private void sendReport(string address, object propertyValue, string propertyName) 
         {
             var template = ReportTemplates.FirstOrDefault(x => x.Address == address);
             if (template == null) 
                 return;
 
-            SendReport(this, new Report()
+            if (propertyName == "guardMode")
             {
-                Id = template.Id,
-                Value = new ValueModel(value),
-                TimeStamp = DateTime.UtcNow.ToEpoch(),
-                Filter = camName
-            });
+                int modeValue = 0;
+                if (Int32.TryParse(propertyValue.ToString(), out modeValue))
+                {
+                    SendReport(this, new Report()
+                    {
+                        Id = template.Id,
+                        Value = new ValueModel(modeValue),
+                        TimeStamp = DateTime.UtcNow.ToEpoch()
+                    });
+                }
+            }
+            else 
+            {
+                SendReport(this, new Report()
+                {
+                    Id = template.Id,
+                    Value = new ValueModel(new SecurityReport()
+                    {
+                        ImageUrl = propertyName == "picture" ? propertyValue.ToString() : null,
+                        Source = "eufy",
+                        EventValue = propertyName == "personName" ? propertyValue.ToString() : "true",
+                        SecurityEvent = _supportedEvents.Contains(propertyName) ? Enum.Parse<SecurityEventType>(propertyName) : SecurityEventType.motionDetected
+                    }),
+                    TimeStamp = DateTime.UtcNow.ToEpoch()
+                });
+            }
         }
 
         public override void StopDevice()
