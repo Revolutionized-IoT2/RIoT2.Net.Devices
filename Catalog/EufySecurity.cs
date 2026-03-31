@@ -4,6 +4,7 @@ using RIoT2.Core.Abstracts;
 using RIoT2.Core.Interfaces;
 using RIoT2.Core.Models;
 using RIoT2.Net.Devices.Models;
+using RIoT2.Net.Devices.Services;
 using RIoT2.Net.Devices.Services.Interfaces;
 
 /// This device connects to eufy-security-ws -websocket service
@@ -14,11 +15,15 @@ namespace RIoT2.Net.Devices.Catalog
     public class EufySecurity : DeviceBase, IDeviceWithConfiguration, ICommandDevice
     {
         private readonly IEufySecurityService _eufySecurityService;
+        private readonly IMemoryStorageService _memoryStorageService;
         private readonly List<string> _supportedEvents = ["motionDetected", "personName", "petDetected", "soundDetected", "strangerPersonDetected", "vehicleDetected"];
+        private readonly IDownloadService _downloadService;
         
-        public EufySecurity(ILogger logger, IEufySecurityService eufySecurityService) : base(logger)
+        public EufySecurity(ILogger logger, IEufySecurityService eufySecurityService, IMemoryStorageService memoryStorageService, IDownloadService downloadService) : base(logger)
         {
+            _memoryStorageService = memoryStorageService;
             _eufySecurityService = eufySecurityService;
+            _downloadService = downloadService; 
         }
 
         public override void ConfigureDevice()
@@ -131,10 +136,10 @@ namespace RIoT2.Net.Devices.Catalog
         {
             if (data.Event.Source == "station") 
             {
-                sendReport(data.Event.SerialNumber + $"|{data.Event.Event}", data.Event.Value, data.Event.Event);
+                sendReport(data.Event.SerialNumber + $"|{data.Event.Name}", data.Event.Value, data.Event.Name);
             }
             else
-                sendReport(data.Event.SerialNumber, data.Event.Value, data.Event.Event);
+                sendReport(data.Event.SerialNumber, data.Event.Value, data.Event.Name);
         }
 
         private void sendReport(string address, object propertyValue, string propertyName) 
@@ -158,14 +163,34 @@ namespace RIoT2.Net.Devices.Catalog
             }
             else 
             {
+                string imgUrl = null;
+                if (propertyName == "picture") 
+                {
+                    var fileGuid = Guid.NewGuid().ToString();
+                    EufyImage img = propertyValue as EufyImage;
+                    Document d = new Document()
+                    {
+                        Data = img.Data.Data,
+                        Epochmt = DateTime.UtcNow.ToEpoch(),
+                        Filename = fileGuid,
+                        Isfolder = FileOrFolder.File,
+                        Filetype = DocumentType.Photo,
+                        Filesize = img.Data.Data.Length.ToString(),
+                        Properties = new Dictionary<string, string>()
+                    };
+
+                    _memoryStorageService.Save(d, template.Id);
+                    imgUrl = _downloadService.GetDownloadUrl(fileGuid);
+                }
+
                 SendReport(this, new Report()
                 {
                     Id = template.Id,
                     Value = new ValueModel(new SecurityReport()
                     {
-                        ImageUrl = propertyName == "picture" ? propertyValue.ToString() : null,
+                        ImageUrl = imgUrl,
                         Source = "eufy",
-                        EventValue = propertyName == "personName" ? propertyValue.ToString() : "true",
+                        EventValue = propertyName != "picture" ? propertyValue.ToString() : "true",
                         SecurityEvent = _supportedEvents.Contains(propertyName) ? Enum.Parse<SecurityEventType>(propertyName) : SecurityEventType.motionDetected
                     }),
                     TimeStamp = DateTime.UtcNow.ToEpoch()
