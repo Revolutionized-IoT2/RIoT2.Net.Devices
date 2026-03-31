@@ -29,7 +29,7 @@ namespace RIoT2.Net.Devices.Models
         public string ImageUrl { get; set; }
         public string Message { get; set; }
         public SecurityEventType SecurityEvent { get; set; }
-        public string EventValue { get; set; }
+        public object EventValue { get; set; }
 
         private string getPersonName(string personId, List<Person> knownPersons)
         {

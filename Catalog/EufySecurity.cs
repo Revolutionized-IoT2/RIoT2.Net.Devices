@@ -192,7 +192,7 @@ namespace RIoT2.Net.Devices.Catalog
                     {
                         ImageUrl = imgUrl,
                         Source = "eufy",
-                        EventValue = propertyName != "picture" ? propertyValue?.ToString() : "true",
+                        EventValue = propertyName != "picture" ? propertyValue : true,
                         SecurityEvent = _supportedEvents.Contains(propertyName) ? Enum.Parse<SecurityEventType>(propertyName) : SecurityEventType.motionDetected
                     }),
                     TimeStamp = DateTime.UtcNow.ToEpoch()
