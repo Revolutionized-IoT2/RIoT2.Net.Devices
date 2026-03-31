@@ -48,17 +48,17 @@ namespace RIoT2.Net.Devices.Models
             switch (e.type.ToLower()) 
             {
                 case "alarm_started":
-                    return SecurityEventType.soundDetected;
+                    return SecurityEventType.Alarm;
                 case "person":
                     if(String.IsNullOrEmpty(e.person_id))
-                        return SecurityEventType.personDetected;
+                        return SecurityEventType.UnknownPersonSeen;
                     else
-                        return SecurityEventType.personName;
+                        return SecurityEventType.KnownPersonSeen;
                 case "person_away":
-                    return SecurityEventType.personNameAway;
+                    return SecurityEventType.KnownPersonAway;
                 case "movement":
                 default:
-                    return SecurityEventType.motionDetected;
+                    return SecurityEventType.Movement;
             }
         }
 
@@ -67,28 +67,24 @@ namespace RIoT2.Net.Devices.Models
             switch (e.type.ToLower())
             {
                 case "human":
-                    return SecurityEventType.personDetected;
+                    return SecurityEventType.UnknownPersonSeen;
                 case "animal":
-                    return SecurityEventType.petDetected;
+                    return SecurityEventType.AnimalSeen;
                 case "vehicle":
-                    return SecurityEventType.vehicleDetected;
                 default:
-                    return SecurityEventType.motionDetected;
+                    return SecurityEventType.Movement;
             }
         }
     }
 
     public enum SecurityEventType 
     {
-        personDetected = 0,
-        personName = 1,
-        motionDetected = 2,
-        petDetected = 3,
-        soundDetected = 4,
-        personNameAway = 5,
-        knownPersonHome = 6,
-        strangerPersonDetected=7,
-        vehicleDetected = 8,
-        picture = 9,
+        UnknownPersonSeen = 0,
+        KnownPersonSeen = 1,
+        Movement = 2,
+        AnimalSeen = 3,
+        Alarm = 4,
+        KnownPersonAway = 5,
+        KnownPersonHome = 6
     }
 }

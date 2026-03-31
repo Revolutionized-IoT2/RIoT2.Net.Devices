@@ -5,7 +5,6 @@ using RIoT2.Core.Models;
 using RIoT2.Net.Devices.Abstracts;
 using RIoT2.Net.Devices.Models;
 using RIoT2.Net.Devices.Services.Interfaces;
-using System;
 
 
 namespace RIoT2.Net.Devices.Catalog
@@ -49,64 +48,53 @@ namespace RIoT2.Net.Devices.Catalog
             var data = GetNetatmoHomeStatus(_home.body.homes[0].id).Result;
             if (data == null)
                 return deviceConfiguration;
-            
-            var cameraTypes = data.body.home.modules.Select(m => m.type).Distinct().ToArray();
-
-            reportConfigurations.Add(new ReportTemplate()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Address = "motionDetected",
-                Name = "Motion detected",
-                Type = Core.ValueType.Boolean,
-                Model = true,
-                Filters = cameraTypes
-            });
-
-            reportConfigurations.Add(new ReportTemplate()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Address = "soundDetected",
-                Name = "Sound detected",
-                Type = Core.ValueType.Boolean,
-                Model = true,
-                Filters = cameraTypes
-            });
-
-            reportConfigurations.Add(new ReportTemplate()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Address = "personDetected",
-                Name = "Person detected",
-                Type = Core.ValueType.Boolean,
-                Model = true,
-                Filters = cameraTypes
-            });
-
-            reportConfigurations.Add(new ReportTemplate()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Address = "personName",
-                Name = "Person",
-                Type = Core.ValueType.Text,
-                Model = "personName",
-                Filters = cameraTypes
-            });
 
             foreach (var module in data.body.home.modules)
             {
-                reportConfigurations.Add(new ReportTemplate()
+                if (module.type == "NACamera")
                 {
-                    Id = Guid.NewGuid().ToString(),
-                    Address = module.id +"|picture",
-                    Name = $"Picture ({module.type})",
-                    Type = Core.ValueType.Entity,
-                    Model = new ValueModel(new SecurityReport()
+                    reportConfigurations.Add(new ReportTemplate()
                     {
-                        ImageUrl = "http://url-to-image",
-                        Message = "msg",
-                        Source = "netatmo",
-                    })
-                });
+                        Id = Guid.NewGuid().ToString(),
+                        Address = module.id,
+                        Name = "Indoor camera",
+                        Type = Core.ValueType.Entity,
+                        Model = new ValueModel(new SecurityReport() {
+                            ImageUrl = "http://url-to-image",
+                            SecurityEvent = SecurityEventType.Movement,
+                            Message = "msg",
+                            Source = "source",
+                            Subject = "subject"
+                        }),
+                        Filters = new List<string>() 
+                        {
+                            "image", "no-image"
+                        }
+                    });
+                }
+
+                if (module.type == "NOC")
+                {
+                    reportConfigurations.Add(new ReportTemplate()
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Address = module.id,
+                        Name = "Outdoor camera",
+                        Type = Core.ValueType.Entity,
+                        Model = new ValueModel(new SecurityReport()
+                        {
+                            ImageUrl = "http://url-to-image",
+                            SecurityEvent = SecurityEventType.Movement,
+                            Message = "msg",
+                            Source = "source",
+                            Subject = "subject"
+                        }),
+                        Filters = new List<string>()
+                        {
+                            "image", "no-image"
+                        }
+                    });
+                }
             }
 
             deviceConfiguration.ReportTemplates = reportConfigurations;
@@ -168,99 +156,32 @@ namespace RIoT2.Net.Devices.Catalog
                 {
                     foreach (var se in e.subevents)
                     {
-                        var s = new SecurityReport(se);
-                        if (se.snapshot != null) 
-                        {
-                            var picturetemplate = ReportTemplates.FirstOrDefault(x => x.Address.ToLower() == $"{e.module_id}|picture");
-                            if (picturetemplate != null) 
-                            {
-                                reports.Add(new Report()
-                                {
-                                    Id = picturetemplate.Id,
-                                    Value = new ValueModel(new {
-                                        s.ImageUrl,
-                                        Source = "netatmo",
-                                        s.Message
-                                    }),
-                                    TimeStamp = DateTime.UtcNow.ToEpoch(),
-                                    Filter = e.type
-                                });
-                            }    
-                        }
-
-                        var template = ReportTemplates.FirstOrDefault(x => x.Address.ToLower() == $"{nameof(s.SecurityEvent)}");
+                        var template = ReportTemplates.FirstOrDefault(x => x.Address.ToLower() == $"{e.module_id}");
                         if (template == null)
                             continue;
 
-                        if (!string.IsNullOrEmpty(s.Subject) && s.SecurityEvent == SecurityEventType.personDetected) 
+                        reports.Add(new Report()
                         {
-                            reports.Add(new Report()
-                            {
-                                Id = template.Id,
-                                Value = new ValueModel(s.Subject),
-                                TimeStamp = DateTime.UtcNow.ToEpoch(),
-                                Filter = e.type
-                            });
-                        }
-                        else 
-                        {
-                            reports.Add(new Report()
-                            {
-                                Id = template.Id,
-                                Value = new ValueModel(true),
-                                TimeStamp = DateTime.UtcNow.ToEpoch(),
-                                Filter = e.type
-                            });
-                        }
+                            Id = template.Id,
+                            Value = new ValueModel(new SecurityReport(se)),
+                            TimeStamp = DateTime.UtcNow.ToEpoch(),
+                            Filter = se.snapshot != null ? "image" : "no-image"
+                        });
                     }
                 }
                 else
                 {
-                    var es = new SecurityReport(e, _home.body.homes[0].persons);
-                    if (e.snapshot != null) 
-                    {
-                        var picturetemplate = ReportTemplates.FirstOrDefault(x => x.Address.ToLower() == $"{e.module_id}|picture");
-                        if (picturetemplate != null) 
-                        {
-                            reports.Add(new Report()
-                            {
-                                Id = picturetemplate.Id,
-                                Value = new ValueModel(new
-                                {
-                                    es.ImageUrl,
-                                    Source = "netatmo",
-                                    es.Message
-                                }),
-                                TimeStamp = DateTime.UtcNow.ToEpoch(),
-                                Filter = e.type
-                            });
-                        }
-                    }
-
-                    var template = ReportTemplates.FirstOrDefault(x => x.Address.ToLower() == $"{nameof(es.SecurityEvent)}");
+                    var template = ReportTemplates.FirstOrDefault(x => x.Address.ToLower() == $"{e.module_id}");
                     if (template == null)
                         continue;
 
-                    if (!string.IsNullOrEmpty(es.Subject) && es.SecurityEvent == SecurityEventType.personDetected)
+                    reports.Add(new Report()
                     {
-                        reports.Add(new Report()
-                        {
-                            Id = template.Id,
-                            Value = new ValueModel(es.Subject),
-                            TimeStamp = DateTime.UtcNow.ToEpoch(),
-                            Filter = e.type
-                        });
-                    }
-                    else
-                    {
-                        reports.Add(new Report()
-                        {
-                            Id = template.Id,
-                            Value = new ValueModel(true),
-                            TimeStamp = DateTime.UtcNow.ToEpoch(),
-                            Filter = e.type
-                        });
-                    }
+                        Id = template.Id,
+                        Value = new ValueModel(new SecurityReport(e, _home.body.homes[0].persons)),
+                        TimeStamp = DateTime.UtcNow.ToEpoch(),
+                        Filter = e.snapshot != null ? "image" : "no-image"
+                    });
 
                 }
 
@@ -270,13 +191,8 @@ namespace RIoT2.Net.Devices.Catalog
                 //Load file for each report
                 foreach (var r in reports) 
                 {
-                    var val = r.Value.GetAsObject();
-                    if (val == null || !(val is SecurityReport))
-                        continue;
-
-                    var securityReport = val as SecurityReport;
-
-                    if(securityReport.ImageUrl == null)
+                    var securityReport = r.Value.GetAsObject() as SecurityReport;
+                    if (securityReport == null)
                         continue;
 
                     var response = await Core.Utils.Web.GetAsync(securityReport.ImageUrl);

@@ -118,7 +118,7 @@ namespace RIoT2.Net.Devices.Catalog
                 Model = new ValueModel(new SecurityReport()
                 {
                     ImageUrl = "http://url-to-image",
-                    Source = "eufy"
+                    Source = "Camera name"
                 }),
                 Filters = filters
             });
