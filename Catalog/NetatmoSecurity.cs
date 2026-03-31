@@ -1,10 +1,12 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.Logging;
 using RIoT2.Core;
 using RIoT2.Core.Interfaces;
 using RIoT2.Core.Models;
 using RIoT2.Net.Devices.Abstracts;
 using RIoT2.Net.Devices.Models;
 using RIoT2.Net.Devices.Services.Interfaces;
+using System.Threading.Tasks;
 
 
 namespace RIoT2.Net.Devices.Catalog
@@ -41,8 +43,9 @@ namespace RIoT2.Net.Devices.Catalog
             deviceConfiguration.RefreshSchedule = "0 0/5 0 ? * * *";
 
             var reportConfigurations = new List<ReportTemplate>();
-            
-            if(State != DeviceState.Running)
+            var commandConfigurations = new List<CommandTemplate>();
+
+            if (State != DeviceState.Running)
                 return deviceConfiguration;
 
             //var data = GetNetatmoHomeStatus(_home.body.homes[0].id).Result;
@@ -71,6 +74,26 @@ namespace RIoT2.Net.Devices.Catalog
                 });
             }
 
+            //Add commands
+            commandConfigurations.Add(new CommandTemplate()
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Refresh",
+                Address = "refresh",
+                Type = Core.ValueType.Boolean,
+                Model = new ValueModel(true)
+            });
+
+            commandConfigurations.Add(new CommandTemplate()
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "SetHome",
+                Address = "set_home",
+                Type = Core.ValueType.Boolean,
+                Model = new ValueModel(true)
+            });
+
+            deviceConfiguration.CommandTemplates = commandConfigurations;
             deviceConfiguration.ReportTemplates = reportConfigurations;
             return deviceConfiguration;
         }
@@ -223,6 +246,26 @@ namespace RIoT2.Net.Devices.Catalog
                 var task = generateSecurityReports();
                 return;
             }
+            else if (command.Address == "set_home")
+            {
+                bool toState = value.Equals("true", StringComparison.CurrentCultureIgnoreCase);
+                if(toState)
+                {
+                    var response = SetPersonsHome(_home.body.homes[0].id, [_home.body.homes[0].persons[0].id]).Result;
+                    if (response.status.ToLower() != "ok")
+                        _logger.LogWarning($"Could not set person home.");
+                    
+                }
+                else
+                {
+                    var response = SetPersonsAway(_home.body.homes[0].id).Result;
+                    if (response.status.ToLower() != "ok")
+                        _logger.LogWarning($"Could not set person away.");
+                }
+                return;
+            }
+            return;
         }
+
     }
 }

@@ -168,36 +168,41 @@ namespace RIoT2.Net.Devices.Abstracts
 
         internal async Task<NetatmoStationsData> GetNetatmoStationsData(string deviceId) 
         {
-            return await executeNetatmoGET<NetatmoStationsData>($"https://api.netatmo.com/api/getstationsdata?device_id={ System.Web.HttpUtility.UrlEncode(deviceId) }");
+            return await executeNetatmo<NetatmoStationsData>($"https://api.netatmo.com/api/getstationsdata?device_id={ System.Web.HttpUtility.UrlEncode(deviceId) }");
         }
 
         internal async Task<NetatmoHomesData> GetNetatmoHomesData()
         {
-            return await executeNetatmoGET<NetatmoHomesData>("https://api.netatmo.com/api/homesdata");
+            return await executeNetatmo<NetatmoHomesData>("https://api.netatmo.com/api/homesdata");
         }
 
         internal async Task<NetatmoHomeStatus> GetNetatmoHomeStatus(string homeId) 
         {
-            return await executeNetatmoGET<NetatmoHomeStatus>($"https://api.netatmo.com/api/homestatus?home_id={ System.Web.HttpUtility.UrlEncode(homeId) }");
+            return await executeNetatmo<NetatmoHomeStatus>($"https://api.netatmo.com/api/homestatus?home_id={ System.Web.HttpUtility.UrlEncode(homeId) }");
         }
 
         internal async Task<NetatmoEvent> GetNetatmoEvents(string homeId)
         {
-            return await executeNetatmoGET<NetatmoEvent>($"https://api.netatmo.com/api/getevents?home_id={ System.Web.HttpUtility.UrlEncode(homeId) }");
+            return await executeNetatmo<NetatmoEvent>($"https://api.netatmo.com/api/getevents?home_id={ System.Web.HttpUtility.UrlEncode(homeId) }");
         }
 
-        internal async Task<NetatmoEvent> SetPersonsAway(string homeId)
+        internal async Task<NetatmoCmd> SetPersonsAway(string homeId)
         {
-           //TODO
-           return await Task.FromResult<NetatmoEvent>(null);
+            return await executeNetatmo<NetatmoCmd>($"https://api.netatmo.com/api/setpersonsaway?home_id={System.Web.HttpUtility.UrlEncode(homeId)}", "POST");
         }
-        internal async Task<NetatmoEvent> SetPersonsHome(string homeId, string[] personIds)
+        internal async Task<NetatmoCmd> SetPersonsHome(string homeId, string[] personIds)
         {
-            //TODO
-            return await Task.FromResult<NetatmoEvent>(null);
+            if (personIds == null || personIds.Length == 0) 
+            {
+                _logger.LogWarning("No person IDs provided. Cannot set persons home.");
+                return await Task.FromResult<NetatmoCmd>(null);
+            }
+
+            var personIdsParam = string.Join("&", personIds.Select(x => $"person_id[]={System.Web.HttpUtility.UrlEncode(x)}"));
+            return await executeNetatmo<NetatmoCmd>($"https://api.netatmo.com/api/setpersonshome?home_id={System.Web.HttpUtility.UrlEncode(homeId)}&{personIdsParam}", "POST");
         }
 
-        private async Task<T> executeNetatmoGET<T>(string url)
+        private async Task<T> executeNetatmo<T>(string url, string method = "GET")
         {
             if (String.IsNullOrEmpty(_accessToken)) 
             {
@@ -207,11 +212,21 @@ namespace RIoT2.Net.Devices.Abstracts
 
             try 
             {
-                var response = await Web.GetResponseAsync(url, _accessToken);
+                HttpResponseMessage response = null;
+                if (method.Equals("get", StringComparison.CurrentCultureIgnoreCase))
+                    response = await Web.GetResponseAsync(url, _accessToken);
+                else
+                    response = await Web.PostWithBearerTokenAsync(url, null, _accessToken);               
+
                 if (response.StatusCode == HttpStatusCode.Forbidden)
                 {
-                    if (await refreshAuthentication())
-                        response = await Web.GetResponseAsync(url, _accessToken);
+                    if (await refreshAuthentication()) 
+                    {
+                        if (method.Equals("get", StringComparison.CurrentCultureIgnoreCase))
+                            response = await Web.GetResponseAsync(url, _accessToken);
+                        else
+                            response = await Web.PostWithBearerTokenAsync(url, null, _accessToken);
+                    }
                     else
                     {
                         _logger.LogWarning("Could not refresh Netatmo authentication token");
