@@ -4,7 +4,6 @@ using RIoT2.Core.Abstracts;
 using RIoT2.Core.Interfaces;
 using RIoT2.Core.Models;
 using RIoT2.Net.Devices.Models;
-using RIoT2.Net.Devices.Services;
 using RIoT2.Net.Devices.Services.Interfaces;
 
 /// This device connects to eufy-security-ws -websocket service
@@ -134,6 +133,9 @@ namespace RIoT2.Net.Devices.Catalog
 
         private void _eufySecurityService_EufyEvent(EufyEventMessage data)
         {
+            if (data.Event.Value is bool e && !e)
+                return;
+
             if (data.Event.Source == "station") 
             {
                 sendReport(data.Event.SerialNumber + $"|{data.Event.Name}", data.Event.Value, data.Event.Name);
@@ -190,7 +192,7 @@ namespace RIoT2.Net.Devices.Catalog
                     {
                         ImageUrl = imgUrl,
                         Source = "eufy",
-                        EventValue = propertyName != "picture" ? propertyValue.ToString() : "true",
+                        EventValue = propertyName != "picture" ? propertyValue?.ToString() : "true",
                         SecurityEvent = _supportedEvents.Contains(propertyName) ? Enum.Parse<SecurityEventType>(propertyName) : SecurityEventType.motionDetected
                     }),
                     TimeStamp = DateTime.UtcNow.ToEpoch()
