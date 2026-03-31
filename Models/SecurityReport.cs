@@ -11,8 +11,8 @@ namespace RIoT2.Net.Devices.Models
         {
             ImageUrl = netatmoSubEvent.snapshot.url;
             Message = netatmoSubEvent.message;
-            SecurityEvent = getSecurityEventType(netatmoSubEvent);
-            Subject = netatmoSubEvent.type;
+            SecurityEvent = getSecurityEventType(netatmoSubEvent.type);
+            EventValue = "";
             Source = "netatmo";
         }
 
@@ -20,8 +20,8 @@ namespace RIoT2.Net.Devices.Models
         {
             ImageUrl = netatmoEvent.snapshot.url;
             Message = netatmoEvent.message;
-            SecurityEvent = getSecurityEventType(netatmoEvent);
-            Subject = getSubject(netatmoEvent, knownPersons);
+            SecurityEvent = getSecurityEventType(netatmoEvent.type, netatmoEvent.person_id);
+            EventValue = getPersonName(netatmoEvent.person_id, knownPersons);
             Source = "netatmo";
         }
 
@@ -29,62 +29,50 @@ namespace RIoT2.Net.Devices.Models
         public string ImageUrl { get; set; }
         public string Message { get; set; }
         public SecurityEventType SecurityEvent { get; set; }
-        public string Subject { get; set; }
+        public string EventValue { get; set; }
 
-        private string getSubject(Event e, List<Person> knownPersons)
+        private string getPersonName(string personId, List<Person> knownPersons)
         {
-            if (String.IsNullOrEmpty(e.person_id) || knownPersons == null)
+            if (String.IsNullOrEmpty(personId) || knownPersons == null)
                 return null;
 
-            var homePerson = knownPersons.FirstOrDefault(x => x.id == e.person_id);
+            var homePerson = knownPersons.FirstOrDefault(x => x.id == personId);
             if (homePerson == null)
                 return null;
 
             return homePerson.pseudo;
         }
 
-        private SecurityEventType getSecurityEventType(Event e)
+        private SecurityEventType getSecurityEventType(string eventType, string personId = null)
         {
-            switch (e.type.ToLower()) 
+            switch (eventType.ToLower()) 
             {
                 case "alarm_started":
-                    return SecurityEventType.Alarm;
+                    return SecurityEventType.soundDetected;
                 case "person":
-                    if(String.IsNullOrEmpty(e.person_id))
-                        return SecurityEventType.UnknownPersonSeen;
-                    else
-                        return SecurityEventType.KnownPersonSeen;
+                case "human":
                 case "person_away":
-                    return SecurityEventType.KnownPersonAway;
+                    if (String.IsNullOrEmpty(personId))
+                        return SecurityEventType.personDetected;
+                    else
+                        return SecurityEventType.personName;
+                case "animal":
+                    return SecurityEventType.animalDetected;
                 case "movement":
                 default:
-                    return SecurityEventType.Movement;
-            }
-        }
-
-        private SecurityEventType getSecurityEventType(Subevent e)
-        {
-            switch (e.type.ToLower())
-            {
-                case "human":
-                    return SecurityEventType.UnknownPersonSeen;
-                case "animal":
-                    return SecurityEventType.AnimalSeen;
-                case "vehicle":
-                default:
-                    return SecurityEventType.Movement;
+                    return SecurityEventType.motionDetected;
             }
         }
     }
 
     public enum SecurityEventType 
     {
-        UnknownPersonSeen = 0,
-        KnownPersonSeen = 1,
-        Movement = 2,
-        AnimalSeen = 3,
-        Alarm = 4,
-        KnownPersonAway = 5,
-        KnownPersonHome = 6
+        personDetected = 0,
+        personName = 1,
+        motionDetected = 2,
+        animalDetected = 3,
+        soundDetected = 4,
+        strangerPersonDetected = 5,
+        vehicleDetected = 6
     }
 }

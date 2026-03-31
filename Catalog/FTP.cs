@@ -109,8 +109,8 @@ namespace RIoT2.Net.Devices.Catalog
             {
                 Source = "ftp",
                 ImageUrl = _downloadService.GetDownloadUrl(fileGuid),
-                SecurityEvent = SecurityEventType.Movement,
-                Subject = inMemoryStream.Filename,
+                SecurityEvent = SecurityEventType.motionDetected,
+                EventValue = inMemoryStream.Filename,
                 Message = ""
             };
 

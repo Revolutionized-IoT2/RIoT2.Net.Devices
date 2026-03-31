@@ -45,56 +45,30 @@ namespace RIoT2.Net.Devices.Catalog
             if(State != DeviceState.Running)
                 return deviceConfiguration;
 
-            var data = GetNetatmoHomeStatus(_home.body.homes[0].id).Result;
-            if (data == null)
+            //var data = GetNetatmoHomeStatus(_home.body.homes[0].id).Result;
+            if (_home == null)
                 return deviceConfiguration;
 
-            foreach (var module in data.body.home.modules)
+            foreach (var module in _home.body.homes[0].modules)
             {
-                if (module.type == "NACamera")
+                reportConfigurations.Add(new ReportTemplate()
                 {
-                    reportConfigurations.Add(new ReportTemplate()
+                    Id = Guid.NewGuid().ToString(),
+                    Address = module.id,
+                    Name = $"{module.name} ({module.type})",
+                    Type = Core.ValueType.Entity,
+                    Model = new ValueModel(new SecurityReport() {
+                        ImageUrl = "http://url-to-image",
+                        SecurityEvent = SecurityEventType.motionDetected,
+                        Message = "msg",
+                        Source = "source",
+                        EventValue = ""
+                    }),
+                    Filters = new List<string>() 
                     {
-                        Id = Guid.NewGuid().ToString(),
-                        Address = module.id,
-                        Name = "Indoor camera",
-                        Type = Core.ValueType.Entity,
-                        Model = new ValueModel(new SecurityReport() {
-                            ImageUrl = "http://url-to-image",
-                            SecurityEvent = SecurityEventType.Movement,
-                            Message = "msg",
-                            Source = "source",
-                            Subject = "subject"
-                        }),
-                        Filters = new List<string>() 
-                        {
-                            "image", "no-image"
-                        }
-                    });
-                }
-
-                if (module.type == "NOC")
-                {
-                    reportConfigurations.Add(new ReportTemplate()
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        Address = module.id,
-                        Name = "Outdoor camera",
-                        Type = Core.ValueType.Entity,
-                        Model = new ValueModel(new SecurityReport()
-                        {
-                            ImageUrl = "http://url-to-image",
-                            SecurityEvent = SecurityEventType.Movement,
-                            Message = "msg",
-                            Source = "source",
-                            Subject = "subject"
-                        }),
-                        Filters = new List<string>()
-                        {
-                            "image", "no-image"
-                        }
-                    });
-                }
+                        "image", "no-image"
+                    }
+                });
             }
 
             deviceConfiguration.ReportTemplates = reportConfigurations;
@@ -150,13 +124,13 @@ namespace RIoT2.Net.Devices.Catalog
 
             foreach (var e in newEvents)
             {
-                List<Report> reports = new List<Report>();
+                List<Report> reports = [];
 
                 if (e.subevents != null)
                 {
                     foreach (var se in e.subevents)
                     {
-                        var template = ReportTemplates.FirstOrDefault(x => x.Address.ToLower() == $"{e.module_id}");
+                        var template = ReportTemplates.FirstOrDefault(x => x.Address.Equals(e.module_id, StringComparison.CurrentCultureIgnoreCase));
                         if (template == null)
                             continue;
 
@@ -171,7 +145,7 @@ namespace RIoT2.Net.Devices.Catalog
                 }
                 else
                 {
-                    var template = ReportTemplates.FirstOrDefault(x => x.Address.ToLower() == $"{e.module_id}");
+                    var template = ReportTemplates.FirstOrDefault(x => x.Address.Equals(e.module_id, StringComparison.CurrentCultureIgnoreCase));
                     if (template == null)
                         continue;
 
@@ -182,7 +156,6 @@ namespace RIoT2.Net.Devices.Catalog
                         TimeStamp = DateTime.UtcNow.ToEpoch(),
                         Filter = e.snapshot != null ? "image" : "no-image"
                     });
-
                 }
 
                 if (reports.Count == 0)
@@ -193,6 +166,9 @@ namespace RIoT2.Net.Devices.Catalog
                 {
                     var securityReport = r.Value.GetAsObject() as SecurityReport;
                     if (securityReport == null)
+                        continue;
+
+                    if(String.IsNullOrEmpty(securityReport.ImageUrl))
                         continue;
 
                     var response = await Core.Utils.Web.GetAsync(securityReport.ImageUrl);

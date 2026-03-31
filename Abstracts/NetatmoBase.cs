@@ -186,6 +186,17 @@ namespace RIoT2.Net.Devices.Abstracts
             return await executeNetatmoGET<NetatmoEvent>($"https://api.netatmo.com/api/getevents?home_id={ System.Web.HttpUtility.UrlEncode(homeId) }");
         }
 
+        internal async Task<NetatmoEvent> SetPersonsAway(string homeId)
+        {
+           //TODO
+           return await Task.FromResult<NetatmoEvent>(null);
+        }
+        internal async Task<NetatmoEvent> SetPersonsHome(string homeId, string[] personIds)
+        {
+            //TODO
+            return await Task.FromResult<NetatmoEvent>(null);
+        }
+
         private async Task<T> executeNetatmoGET<T>(string url)
         {
             if (String.IsNullOrEmpty(_accessToken)) 

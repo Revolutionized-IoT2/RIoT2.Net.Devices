@@ -77,32 +77,12 @@ namespace RIoT2.Net.Devices.Models
         public List<Event> events { get; set; }
     }
 
-    public class Event
+    public class Event : Subevent
     {
-        public string id { get; set; }
-        public string type { get; set; }
-        public int time { get; set; }
         public string module_id { get; set; }
-        public string video_id { get; set; }
-        public string video_status { get; set; }
         public List<Subevent> subevents { get; set; }
-        public Snapshot snapshot { get; set; }
-        public Vignette vignette { get; set; }
-        public string message { get; set; }
         public string sub_message { get; set; }
         public string person_id { get; set; }
-        public bool out_of_sight { get; set; }
-        public bool? is_arrival { get; set; }
-    }
-
-    public class Snapshot
-    {
-        public string url { get; set; }
-    }
-
-    public class Vignette
-    {
-        public string url { get; set; }
     }
 
     public class Subevent
@@ -110,20 +90,11 @@ namespace RIoT2.Net.Devices.Models
         public string id { get; set; }
         public string type { get; set; }
         public int time { get; set; }
-        public bool verified { get; set; }
-        public int offset { get; set; }
-        public SnapshotSubEvent snapshot { get; set; }
-        public VignetteSubEvent vignette { get; set; }
+        public NetatmoDocument snapshot { get; set; }
         public string message { get; set; }
     }
 
-    public class SnapshotSubEvent
-    {
-        public string url { get; set; }
-        public string filename { get; set; }
-    }
-
-    public class VignetteSubEvent
+    public class NetatmoDocument
     {
         public string url { get; set; }
         public string filename { get; set; }
