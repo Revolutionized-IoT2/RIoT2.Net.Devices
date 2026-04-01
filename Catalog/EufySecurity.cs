@@ -125,7 +125,7 @@ namespace RIoT2.Net.Devices.Catalog
         {
             foreach (var device in _eufySecurityService.DeviceProperties) //Only send pictures as initial reports.
             {
-                sendReport(device.Key, device.Value.Picture, device.Value.Name);
+                sendReport(device.Key, device.Value.Picture, "picture");
             }
 
             sendReport(_eufySecurityService.StationProperties.SerialNumber + "|guardMode", _eufySecurityService.StationProperties.GuardMode, "guardMode");
