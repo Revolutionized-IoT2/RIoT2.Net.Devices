@@ -29,7 +29,7 @@ namespace RIoT2.Net.Devices.Catalog
             var deviceConfiguration = new DeviceConfiguration();
             deviceConfiguration.Id = Guid.NewGuid().ToString();
             deviceConfiguration.Name = "AP Systems Meter";
-            deviceConfiguration.RefreshSchedule = "0 * * ? * *"; //every hour
+            deviceConfiguration.RefreshSchedule = "0 0 * ? * * *"; //every hour, every day
             deviceConfiguration.DeviceParameters = new Dictionary<string, string>();
             deviceConfiguration.DeviceParameters.Add("appId", "j8dl50dk60kg04jd83kdd4f");
             deviceConfiguration.DeviceParameters.Add("appSecret", "985038560184");
@@ -142,19 +142,38 @@ namespace RIoT2.Net.Devices.Catalog
             if (_meterSummary == null)
                 return null;
 
-            switch (template.Address) 
+            int precision = -1; //default
+            if (template != null && template.Parameters != null && template.Parameters.ContainsKey("precision"))
+                _ = int.TryParse(template.Parameters["precision"], out precision);
+
+            return template.Address switch
             {
-                case "today":
-                    return _meterSummary.Data.Today;
-                case "month":
-                    return _meterSummary.Data.Month;
-                case "year":
-                    return _meterSummary.Data.Year;
-                case "lifetime":
-                    return _meterSummary.Data.Lifetime;
-                default:
-                    return null;
+                "today" => round(_meterSummary.Data.Today, precision),
+                "month" => round(_meterSummary.Data.Month, precision),
+                "year" => round(_meterSummary.Data.Year, precision),
+                "lifetime" => round(_meterSummary.Data.Lifetime, precision),
+                _ => null
+            };
+        }
+
+        private EnergyMeter round(EnergyMeter meter, int precision = -1) 
+        {
+            if (meter == null)
+                return null;
+
+            _ = decimal.TryParse(meter.Consumed, out decimal consumed);
+            _ = decimal.TryParse(meter.Exported, out decimal exported);
+            _ = decimal.TryParse(meter.Imported, out decimal imported);
+            _ = decimal.TryParse(meter.Produced, out decimal produced);
+
+            if (precision > -1) 
+            {
+                meter.Consumed = Math.Round(consumed, precision).ToString();
+                meter.Exported = Math.Round(exported, precision).ToString();
+                meter.Imported = Math.Round(imported, precision).ToString();
+                meter.Produced = Math.Round(produced, precision).ToString();
             }
+            return meter;
         }
 
         private void sendReports() 
