@@ -54,6 +54,9 @@ namespace RIoT2.Net.Devices.Catalog
 
             foreach (var module in _home.body.homes[0].modules)
             {
+                if(module.type.ToLower() != "noc" && module.type.ToLower() != "nacamera")
+                    continue;
+
                 reportConfigurations.Add(new ReportTemplate()
                 {
                     Id = Guid.NewGuid().ToString(),
@@ -81,16 +84,16 @@ namespace RIoT2.Net.Devices.Catalog
                 Name = "Refresh",
                 Address = "refresh",
                 Type = Core.ValueType.Boolean,
-                Model = new ValueModel(true)
+                Model = true
             });
 
             commandConfigurations.Add(new CommandTemplate()
             {
                 Id = Guid.NewGuid().ToString(),
-                Name = "SetHome",
+                Name = "Set Home",
                 Address = "set_home",
                 Type = Core.ValueType.Boolean,
-                Model = new ValueModel(true)
+                Model = true
             });
 
             deviceConfiguration.CommandTemplates = commandConfigurations;
