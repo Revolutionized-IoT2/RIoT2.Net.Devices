@@ -34,6 +34,9 @@ namespace RIoT2.Net.Devices.Catalog
             load();
 
             var template = getPriceReportTemplate();
+            if (template == null)
+                return;
+
             SendReport(this, new Report()
             {
                 Id = template.Id,
@@ -55,6 +58,9 @@ namespace RIoT2.Net.Devices.Catalog
                 return;
 
             var template = getPriceReportTemplate();
+            if (template == null) 
+                return;
+
             SendReport(this, new Report()
             {
                 Id = template.Id,
@@ -95,7 +101,7 @@ namespace RIoT2.Net.Devices.Catalog
 
         private ReportTemplate getPriceReportTemplate() 
         {
-            return ReportTemplates.FirstOrDefault(x => x.Address == "price");
+            return ReportTemplates?.FirstOrDefault(x => x.Address == "price");
         }
 
         private decimal getCurrentPrice(ReportTemplate reportTemplate) 

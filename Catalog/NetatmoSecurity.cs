@@ -240,7 +240,7 @@ namespace RIoT2.Net.Devices.Catalog
         public void ExecuteCommand(string commandId, string value)
         {
             //ínstead of timer, device can be refreshed by command -> webhook
-            var command = CommandTemplates.FirstOrDefault(x => x.Id == commandId);
+            var command = CommandTemplates?.FirstOrDefault(x => x.Id == commandId);
             if (command == null)
                 return;
 

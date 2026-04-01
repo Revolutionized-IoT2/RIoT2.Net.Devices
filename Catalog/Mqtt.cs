@@ -21,7 +21,7 @@ namespace RIoT2.Net.Devices.Catalog
         {
             Logger.LogInformation("Executed command: {commandId}", commandId);
 
-            var command = CommandTemplates.FirstOrDefault(x => x.Id == commandId);
+            var command = CommandTemplates?.FirstOrDefault(x => x.Id == commandId);
             if (command == null)
                 return;
 
@@ -52,7 +52,7 @@ namespace RIoT2.Net.Devices.Catalog
 
         private void mqttClient_MessageReceived(MqttEventArgs mqttEventArgs)
         {
-            var report = ReportTemplates.FirstOrDefault(x => x.Address.ToLower() == mqttEventArgs.Topic.ToLower());
+            var report = ReportTemplates?.FirstOrDefault(x => x.Address.ToLower() == mqttEventArgs.Topic.ToLower());
             if (report == null)
                 return;
 

@@ -29,7 +29,7 @@ namespace RIoT2.Net.Devices.Catalog
                 return;
 
             var template = getReportTemplate();
-            var latestValue = getLatestValue().Result;
+            var latestValue = getLatestValue()?.Result;
 
             if (latestValue == null || template == null)
                 return;
@@ -79,7 +79,7 @@ namespace RIoT2.Net.Devices.Catalog
         public override void StartDevice()
         {
             var template = getReportTemplate();
-            var value = getLatestValue().Result;
+            var value = getLatestValue()?.Result;
 
             if (value == null || template == null)
                 return;
@@ -100,7 +100,7 @@ namespace RIoT2.Net.Devices.Catalog
 
         private ReportTemplate getReportTemplate()
         {
-            return ReportTemplates.FirstOrDefault(x => x.Address == "watermeter");
+            return ReportTemplates?.FirstOrDefault(x => x.Address == "watermeter");
         }
 
         private async Task<decimal?> getLatestValue()

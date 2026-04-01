@@ -78,7 +78,7 @@ namespace RIoT2.Net.Devices.Catalog
         private void _ftpService_FileReceived(InMemoryStream inMemoryStream)
         {
             //each camera has own username...
-            var report = ReportTemplates.FirstOrDefault(x => x.Address.ToLower() == inMemoryStream.Username.ToLower());
+            var report = ReportTemplates?.FirstOrDefault(x => x.Address.ToLower() == inMemoryStream.Username.ToLower());
             if (report == null)
                 return;
 

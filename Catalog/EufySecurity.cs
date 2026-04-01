@@ -97,7 +97,7 @@ namespace RIoT2.Net.Devices.Catalog
 
         public void ExecuteCommand(string commandId, string value)
         {
-            var command = CommandTemplates.FirstOrDefault(x => x.Id == commandId);
+            var command = CommandTemplates?.FirstOrDefault(x => x.Id == commandId);
             if (command == null)
                 return;
 

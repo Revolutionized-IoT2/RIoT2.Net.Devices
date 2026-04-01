@@ -16,7 +16,7 @@ namespace RIoT2.Net.Devices.Catalog
         {
             Logger.LogInformation("Executed command: {commandId}", commandId);
 
-            var command = CommandTemplates.FirstOrDefault(x => x.Id == commandId);
+            var command = CommandTemplates?.FirstOrDefault(x => x.Id == commandId);
             if (command == null)
                 return;
 
@@ -33,7 +33,7 @@ namespace RIoT2.Net.Devices.Catalog
             else
                 _virtualData[address] = data;
 
-            var report = ReportTemplates.FirstOrDefault(x => x.Address == address);
+            var report = ReportTemplates?.FirstOrDefault(x => x.Address == address);
             if (report == null)
                 return;
 
