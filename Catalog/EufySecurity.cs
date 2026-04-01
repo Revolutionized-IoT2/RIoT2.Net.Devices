@@ -146,7 +146,7 @@ namespace RIoT2.Net.Devices.Catalog
 
         private void sendReport(string address, object propertyValue, string propertyName) 
         {
-            var template = ReportTemplates.FirstOrDefault(x => x.Address == address);
+            var template = ReportTemplates?.FirstOrDefault(x => x.Address == address);
             if (template == null) 
                 return;
 
