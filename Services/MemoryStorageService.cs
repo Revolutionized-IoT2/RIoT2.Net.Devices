@@ -7,18 +7,17 @@ namespace RIoT2.Net.Devices.Services
 {
     public class MemoryStorageService : IMemoryStorageService
     {
-        private List<MemoryStorageAddess> _memoryStorageAddresses;
-        private INodeConfigurationService _nodeConfiguration;
+        private readonly List<MemoryStorageAddess> _memoryStorageAddresses = [];
         private readonly int _maxDocumentCount = 10;
-        private string _baseUrl = "";
+        private readonly string _baseUrl = "";
         private readonly ILogger<MemoryStorageService> _logger;
 
         public MemoryStorageService(ILogger<MemoryStorageService> logger, INodeConfigurationService nodeConfigurationService) 
         {
             _logger = logger;
-            _nodeConfiguration = nodeConfigurationService;
-             setBaseUrl(_nodeConfiguration.Configuration.Url);
-            _memoryStorageAddresses = [];
+            _baseUrl = nodeConfigurationService.Configuration.Url;
+            if (_baseUrl.EndsWith("/"))
+                _baseUrl = _baseUrl.TrimEnd('/');
         }
 
         public Document Get(string filename, string address = "")
@@ -78,6 +77,7 @@ namespace RIoT2.Net.Devices.Services
                     Address = address,
                     Documents = [document]
                 });
+                _logger.LogInformation("New Address {Address} created in memory storage. With initial document {Filename}", address, document.Filename);
             }
             else 
             {
@@ -85,11 +85,12 @@ namespace RIoT2.Net.Devices.Services
                     existingAddress.Documents.RemoveAt(0);
 
                 existingAddress.Documents.Add(document);
+                _logger.LogInformation("Document with filename {Filename} saved to memory storage under address {Address}.", document.Filename, address);
             }
             return downloadUrl;
         }
 
-        public void Format(string address)
+        public void DeleteAddress(string address)
         {
             var existingAddress = _memoryStorageAddresses.FirstOrDefault(x => x.Address == address);
             if (existingAddress != default)
@@ -100,13 +101,6 @@ namespace RIoT2.Net.Devices.Services
             {
                 _memoryStorageAddresses.Remove(existingAddress);
             }
-        }
-
-        private void setBaseUrl(string url)
-        {
-            _baseUrl = url;
-            if (_baseUrl.EndsWith("/"))
-                _baseUrl = _baseUrl.TrimEnd('/');
         }
 
         public List<MemoryStorageAddess> GetAllDocuments()

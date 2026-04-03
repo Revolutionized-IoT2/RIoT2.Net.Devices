@@ -27,27 +27,27 @@ namespace RIoT2.Net.Devices
             services.AddSingleton<IApSystemsClientService, ApSystemsClientService>();
             services.AddSingleton<IEufySecurityService, EufySecurityService>();
 
-            //Initialize devices and add them to list
-            var serviceProvider = services.BuildServiceProvider();
-            _devices = [
-               ActivatorUtilities.CreateInstance<Web>(serviceProvider),
-               ActivatorUtilities.CreateInstance<Catalog.Timer>(serviceProvider),
-               ActivatorUtilities.CreateInstance<Virtual>(serviceProvider),
-               ActivatorUtilities.CreateInstance<Mqtt>(serviceProvider),
-               ActivatorUtilities.CreateInstance<WaterConsumption>(serviceProvider),
-               ActivatorUtilities.CreateInstance<Messaging>(serviceProvider),
-               ActivatorUtilities.CreateInstance<FTP>(serviceProvider), //memorystorage
-               ActivatorUtilities.CreateInstance<ElectricityPrice>(serviceProvider),
-               ActivatorUtilities.CreateInstance<EasyPLC>(serviceProvider),
-               ActivatorUtilities.CreateInstance<NetatmoWeather>(serviceProvider),
-               ActivatorUtilities.CreateInstance<NetatmoSecurity>(serviceProvider), //memorystorage
-               ActivatorUtilities.CreateInstance<Hue>(serviceProvider),
-               ActivatorUtilities.CreateInstance<AzureRelay>(serviceProvider),
-               ActivatorUtilities.CreateInstance<ApSystems>(serviceProvider),
-               ActivatorUtilities.CreateInstance<EufySecurity>(serviceProvider)
-          ];
+            //Register devices as singletons
+            services.AddSingleton<Core.Interfaces.IDevice, Web>();
+            services.AddSingleton<Core.Interfaces.IDevice, Catalog.Timer>();
+            services.AddSingleton<Core.Interfaces.IDevice, Virtual>();
+            services.AddSingleton<Core.Interfaces.IDevice, Mqtt>();
+            services.AddSingleton<Core.Interfaces.IDevice, WaterConsumption>();
+            services.AddSingleton<Core.Interfaces.IDevice, Messaging>();
+            services.AddSingleton<Core.Interfaces.IDevice, FTP>();
+            services.AddSingleton<Core.Interfaces.IDevice, ElectricityPrice>();
+            services.AddSingleton<Core.Interfaces.IDevice, EasyPLC>();
+            services.AddSingleton<Core.Interfaces.IDevice, NetatmoWeather>();
+            services.AddSingleton<Core.Interfaces.IDevice, NetatmoSecurity>();
+            services.AddSingleton<Core.Interfaces.IDevice, Hue>();
+            services.AddSingleton<Core.Interfaces.IDevice, AzureRelay>();
+            services.AddSingleton<Core.Interfaces.IDevice, ApSystems>();
+            services.AddSingleton<Core.Interfaces.IDevice, EufySecurity>();
 
+            //AddControllers
             services.AddControllers();
+            //Try this...
+            _devices.AddRange(services.BuildServiceProvider().GetServices<Core.Interfaces.IDevice>());
         }
     }
 }
