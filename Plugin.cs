@@ -46,8 +46,6 @@ namespace RIoT2.Net.Devices
 
             //AddControllers
             services.AddControllers();
-            //Try this...
-            _devices.AddRange(services.BuildServiceProvider().GetServices<Core.Interfaces.IDevice>());
         }
     }
 }
