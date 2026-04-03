@@ -33,5 +33,12 @@ namespace RIoT2.Net.Devices.Controllers
 
             return Results.File(img.Data, "image/jpeg");
         }
+
+        [HttpGet]
+        [Route("list/files")]
+        public IResult ListFiles()
+        {
+            return Results.Ok(_memoryStorageService.GetAllDocuments());
+        }
     }
 }

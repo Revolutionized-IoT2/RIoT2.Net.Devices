@@ -76,7 +76,7 @@ namespace RIoT2.Net.Devices.Services
                 _memoryStorageAddresses.Add(new MemoryStorageAddess() 
                 {
                     Address = address,
-                    Documents = new List<Document>() { document }
+                    Documents = [document]
                 });
             }
             else 
@@ -107,6 +107,11 @@ namespace RIoT2.Net.Devices.Services
             _baseUrl = url;
             if (_baseUrl.EndsWith("/"))
                 _baseUrl = _baseUrl.TrimEnd('/');
+        }
+
+        public List<MemoryStorageAddess> GetAllDocuments()
+        {
+            return _memoryStorageAddresses;
         }
     }
 

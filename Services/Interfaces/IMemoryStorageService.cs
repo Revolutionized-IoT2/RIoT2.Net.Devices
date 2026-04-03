@@ -9,6 +9,6 @@ namespace RIoT2.Net.Devices.Services.Interfaces
         Document GetLatest(string address);
         List<DocumentMetadata> List(string address);
         void Format(string address);
-
+        List<MemoryStorageAddess> GetAllDocuments();
     }
 }
