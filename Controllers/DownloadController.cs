@@ -19,12 +19,12 @@ namespace RIoT2.Net.Devices.Controllers
 
         [HttpGet]
         [Route("{filename}")]
-        public IResult SaveAsync(string filename)
+        public async Task<IResult> GetFileAsync(string filename)
         {
             var img = _memoryStorageService.Get(filename);
 
             if (img == null && _fileService.IsConfigured())
-                img = _fileService.Get(filename).Result;
+                img = await _fileService.Get(filename);
 
             if (img == null)
                 return Results.NotFound();

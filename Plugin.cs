@@ -22,7 +22,6 @@ namespace RIoT2.Net.Devices
             services.AddSingleton<IWebhookService, WebhookService>();
             services.AddSingleton<IFtpService, FtpService>();
             services.AddSingleton<IStorageService, FTPStorageService>();
-            services.AddSingleton<IDownloadService, DownloadService>();
             services.AddSingleton<IAzureRelayService, AzureRelayService>();
             services.AddSingleton<IMemoryStorageService, MemoryStorageService>();
             services.AddSingleton<IApSystemsClientService, ApSystemsClientService>();

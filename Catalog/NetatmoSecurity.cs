@@ -6,7 +6,6 @@ using RIoT2.Core.Models;
 using RIoT2.Net.Devices.Abstracts;
 using RIoT2.Net.Devices.Models;
 using RIoT2.Net.Devices.Services.Interfaces;
-using System.Threading.Tasks;
 
 
 namespace RIoT2.Net.Devices.Catalog
@@ -15,15 +14,13 @@ namespace RIoT2.Net.Devices.Catalog
     {
         private NetatmoHomesData _home;
         private NetatmoSecurityEvents _securityEvents;
-        private IDownloadService _downloadService;
         private IMemoryStorageService _memoryStorageService;
         private ILogger _logger;
 
-        public NetatmoSecurity(ILogger logger, IDownloadService downloadService, IMemoryStorageService memoryStorageService) : base(logger)
+        public NetatmoSecurity(ILogger logger, IMemoryStorageService memoryStorageService) : base(logger)
         {
             _logger = logger;
             _securityEvents = new NetatmoSecurityEvents();
-            _downloadService = downloadService;
             _memoryStorageService = memoryStorageService;
         }
 
@@ -218,12 +215,9 @@ namespace RIoT2.Net.Devices.Catalog
                         Filesize = content.Length.ToString(),
                         Properties = new Dictionary<string, string>()
                     };
-           
-                    //Save file to template store
-                    _memoryStorageService.Save(d, r.Id);
 
                     //update image url
-                    securityReport.ImageUrl = _downloadService.GetDownloadUrl(fileGuid);
+                    securityReport.ImageUrl = _memoryStorageService.Save(d, r.Id);
 
                     //update value model
                     r.Value = new ValueModel(securityReport);

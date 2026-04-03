@@ -1,4 +1,5 @@
-﻿using RIoT2.Core.Models;
+﻿using RIoT2.Core.Interfaces.Services;
+using RIoT2.Core.Models;
 using RIoT2.Net.Devices.Services.Interfaces;
 
 namespace RIoT2.Net.Devices.Services
@@ -6,11 +7,15 @@ namespace RIoT2.Net.Devices.Services
     public class MemoryStorageService : IMemoryStorageService
     {
         private List<MemoryStorageAddess> _memoryStorageAddresses;
+        private INodeConfigurationService _nodeConfiguration;
         private readonly int _maxDocumentCount = 10;
+        private string _baseUrl = "";
 
-        public MemoryStorageService() 
+        public MemoryStorageService(INodeConfigurationService nodeConfigurationService) 
         {
-            _memoryStorageAddresses = new List<MemoryStorageAddess>();
+            _nodeConfiguration = nodeConfigurationService;
+             setBaseUrl(_nodeConfiguration.Configuration.Url);
+            _memoryStorageAddresses = [];
         }
 
         public Document Get(string filename, string address = "")
@@ -58,8 +63,9 @@ namespace RIoT2.Net.Devices.Services
             return null;
         }
 
-        public void Save(Document document, string address)
+        public string Save(Document document, string address)
         {
+            var downloadUrl = _baseUrl + document.Filename;
             var existingAddress = _memoryStorageAddresses.FirstOrDefault(x => x.Address == address);
             if (existingAddress == default)
             {
@@ -76,6 +82,7 @@ namespace RIoT2.Net.Devices.Services
 
                 existingAddress.Documents.Add(document);
             }
+            return downloadUrl;
         }
 
         public void Format(string address)
@@ -89,6 +96,13 @@ namespace RIoT2.Net.Devices.Services
             {
                 _memoryStorageAddresses.Remove(existingAddress);
             }
+        }
+
+        private void setBaseUrl(string url)
+        {
+            _baseUrl = url;
+            if (!_baseUrl.EndsWith("/"))
+                _baseUrl += "/";
         }
     }
 

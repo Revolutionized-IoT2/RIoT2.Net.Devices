@@ -16,13 +16,11 @@ namespace RIoT2.Net.Devices.Catalog
         private readonly IEufySecurityService _eufySecurityService;
         private readonly IMemoryStorageService _memoryStorageService;
         private readonly List<string> _supportedEvents = ["motionDetected", "personName", "petDetected", "soundDetected", "strangerPersonDetected", "vehicleDetected"];
-        private readonly IDownloadService _downloadService;
         
-        public EufySecurity(ILogger logger, IEufySecurityService eufySecurityService, IMemoryStorageService memoryStorageService, IDownloadService downloadService) : base(logger)
+        public EufySecurity(ILogger logger, IEufySecurityService eufySecurityService, IMemoryStorageService memoryStorageService) : base(logger)
         {
             _memoryStorageService = memoryStorageService;
             _eufySecurityService = eufySecurityService;
-            _downloadService = downloadService; 
         }
 
         public override void ConfigureDevice()
@@ -181,8 +179,7 @@ namespace RIoT2.Net.Devices.Catalog
                         Properties = new Dictionary<string, string>()
                     };
 
-                    _memoryStorageService.Save(d, template.Id);
-                    imgUrl = _downloadService.GetDownloadUrl(fileGuid);
+                    imgUrl = _memoryStorageService.Save(d, template.Id);
                 }
 
                 SendReport(this, new Report()

@@ -19,13 +19,11 @@ namespace RIoT2.Net.Devices.Catalog
         private List<FtpUser> _ftpUsers;
         private int _ftpPort = 0;
         private IFtpService _ftpService;
-        private IDownloadService _downloadService;
         private IMemoryStorageService _memoryStorageService;
 
-        public FTP(ILogger logger, IFtpService ftpService, IDownloadService downloadService, IMemoryStorageService memoryStorageService) : base(logger) 
+        public FTP(ILogger logger, IFtpService ftpService, IMemoryStorageService memoryStorageService) : base(logger) 
         {
             _ftpService = ftpService;
-            _downloadService = downloadService;
             _memoryStorageService = memoryStorageService;
         }
         public override void ConfigureDevice()
@@ -101,14 +99,14 @@ namespace RIoT2.Net.Devices.Catalog
                 }
             };
 
-            _memoryStorageService.Save(d, inMemoryStream.Username.ToLower());
+            var url = _memoryStorageService.Save(d, inMemoryStream.Username.ToLower());
 
             //Image Url -> full url for d
 
             var securityReport = new SecurityReport()
             {
                 Source = "ftp",
-                ImageUrl = _downloadService.GetDownloadUrl(fileGuid),
+                ImageUrl = url,
                 SecurityEvent = SecurityEventType.motionDetected,
                 EventValue = inMemoryStream.Filename,
                 Message = ""
