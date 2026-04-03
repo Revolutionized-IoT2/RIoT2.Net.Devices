@@ -46,6 +46,8 @@ namespace RIoT2.Net.Devices
                ActivatorUtilities.CreateInstance<ApSystems>(serviceProvider),
                ActivatorUtilities.CreateInstance<EufySecurity>(serviceProvider)
           ];
+
+            services.AddControllers();
         }
     }
 }

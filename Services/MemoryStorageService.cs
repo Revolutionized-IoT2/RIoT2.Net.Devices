@@ -65,7 +65,7 @@ namespace RIoT2.Net.Devices.Services
 
         public string Save(Document document, string address)
         {
-            var downloadUrl = _baseUrl + document.Filename;
+            var downloadUrl = $"{_baseUrl}/api/download/{document.Filename}";
             var existingAddress = _memoryStorageAddresses.FirstOrDefault(x => x.Address == address);
             if (existingAddress == default)
             {
@@ -101,8 +101,8 @@ namespace RIoT2.Net.Devices.Services
         private void setBaseUrl(string url)
         {
             _baseUrl = url;
-            if (!_baseUrl.EndsWith("/"))
-                _baseUrl += "/";
+            if (_baseUrl.EndsWith("/"))
+                _baseUrl = _baseUrl.TrimEnd('/');
         }
     }
 
