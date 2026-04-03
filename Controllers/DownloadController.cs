@@ -26,8 +26,10 @@ namespace RIoT2.Net.Devices.Controllers
             if (img == null && _fileService.IsConfigured())
                 img = await _fileService.Get(filename);
 
-            if (img == null)
+            if (img == null) 
+            {
                 return Results.NotFound();
+            }
 
             return Results.File(img.Data, "image/jpeg");
         }

@@ -1,4 +1,5 @@
-﻿using RIoT2.Core.Interfaces.Services;
+﻿using Microsoft.Extensions.Logging;
+using RIoT2.Core.Interfaces.Services;
 using RIoT2.Core.Models;
 using RIoT2.Net.Devices.Services.Interfaces;
 
@@ -10,9 +11,11 @@ namespace RIoT2.Net.Devices.Services
         private INodeConfigurationService _nodeConfiguration;
         private readonly int _maxDocumentCount = 10;
         private string _baseUrl = "";
+        private readonly ILogger<MemoryStorageService> _logger;
 
-        public MemoryStorageService(INodeConfigurationService nodeConfigurationService) 
+        public MemoryStorageService(ILogger<MemoryStorageService> logger, INodeConfigurationService nodeConfigurationService) 
         {
+            _logger = logger;
             _nodeConfiguration = nodeConfigurationService;
              setBaseUrl(_nodeConfiguration.Configuration.Url);
             _memoryStorageAddresses = [];
@@ -40,6 +43,7 @@ namespace RIoT2.Net.Devices.Services
 
                 }
             }
+            _logger.LogWarning("Document with filename {Filename} not found in memory storage.", filename);
             return null;
         }
 
