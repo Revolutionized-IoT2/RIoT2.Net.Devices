@@ -71,74 +71,87 @@ namespace RIoT2.Net.Devices.Services
             _logger.LogWarning("Received binary message from Eufy Security WebSocket service. -> No handler currently");
         }
 
-        private void client_MessageReceived(object sender, string e)
+        private async void client_MessageReceived(object sender, string e)
         {
-            var msg = e.ToObj<EufyMessage>();
-
-            switch (msg.Type) 
+            try
             {
-                case "event":
-                    var eventMsg = e.ToObj<EufyEventMessage>();
-                    if (eventMsg == null)
-                        break;
+                var msg = e.ToObj<EufyMessage>();
+                if (msg == null)
+                    return;
 
-                    if (eventMsg.Event.Event.ToLower() == "property changed") //We only listen property changed events for now
-                    {
-                        if(updateProperties(eventMsg))
-                            EufyEvent?.Invoke(eventMsg);
-                    }
-                    break;
-                case "version":
-                    var versionMsg = e.ToObj<EufyVersionInfo>();
-                    //This should be received only once at startup, so we can log it but don't need to raise an event for it
-                    SendCommand(EufyCommand.GetCommand_SetApiSchema("1", versionMsg.MaxSchemaVersion)).Wait(); 
-                    break;
-                case "result":
-                    var resultMsg = e.ToObj<EufyResult>();
-                    if (!resultMsg.Success) 
-                    {
-                        _logger.LogError("Eufy Security WebSocket command failed: {messageId}", resultMsg.MessageId);
-                        break;
-                    }
-                    
-                    if (msg.MessageId.StartsWith("set_api_schema"))
-                    {
-                        SendCommand(EufyCommand.GetCommand_StartListening("2")).Wait();
-                    }
-                    else if (msg.MessageId.StartsWith("start_listening"))
-                    {
-                        _state = resultMsg.Result.State;
-                        SendCommand(EufyCommand.GetCommand_StationGetProperties("3", _state.Stations[0])).Wait(); //we only support 1 station for now, so just get properties for the first one
+                switch (msg.Type)
+                {
+                    case "event":
+                        var eventMsg = e.ToObj<EufyEventMessage>();
+                        if (eventMsg == null)
+                            break;
 
-                        if (_state.Devices != null && _state.Devices.Length > 0) 
+                        if (eventMsg.Event.Event.ToLower() == "property changed") //We only listen property changed events for now
                         {
-                            foreach(var device in _state.Devices)
-                                SendCommand(EufyCommand.GetCommand_DeviceGetProperties(device, device)).Wait();
+                            if (updateProperties(eventMsg))
+                                EufyEvent?.Invoke(eventMsg);
                         }
-                    }
-                    else if (msg.MessageId.StartsWith("station.get_properties")) 
-                    {
-                        _stationProperties = resultMsg.Result.Properties;
-                        //Get latest info from station, if needed
-                        //SendCommand(EufyCommand.GetCommand_StationDatabaseQueryLatestInfo("4", _state.Stations[0])).Wait();
-                    }
-                    else if (msg.MessageId.StartsWith("device.get_properties"))
-                    {
-                        if (_deviceProperties.ContainsKey(resultMsg.Result.SerialNumber))
-                            _deviceProperties.Remove(resultMsg.Result.SerialNumber);
+                        break;
+                    case "version":
+                        var versionMsg = e.ToObj<EufyVersionInfo>();
+                        //This should be received only once at startup, so we can log it but don't need to raise an event for it
+                        await SendCommand(EufyCommand.GetCommand_SetApiSchema("1", versionMsg.MaxSchemaVersion));
+                        break;
+                    case "result":
+                        var resultMsg = e.ToObj<EufyResult>();
+                        if (!resultMsg.Success)
+                        {
+                            _logger.LogError("Eufy Security WebSocket command failed: {messageId}", resultMsg.MessageId);
+                            break;
+                        }
 
-                        _deviceProperties.Add(resultMsg.Result.SerialNumber, resultMsg.Result.Properties);
-                    }
-                    break;
-                default:
-                    _logger.LogWarning("Received unknown message type from Eufy Security WebSocket service: {messageType}", msg.Type);
-                    break;
+                        if (string.IsNullOrEmpty(msg.MessageId))
+                            break;
+
+                        if (msg.MessageId.StartsWith("set_api_schema"))
+                        {
+                            await SendCommand(EufyCommand.GetCommand_StartListening("2"));
+                        }
+                        else if (msg.MessageId.StartsWith("start_listening"))
+                        {
+                            _state = resultMsg.Result.State;
+                            await SendCommand(EufyCommand.GetCommand_StationGetProperties("3", _state.Stations[0])); //we only support 1 station for now, so just get properties for the first one
+
+                            if (_state.Devices != null && _state.Devices.Length > 0)
+                            {
+                                foreach (var device in _state.Devices)
+                                    await SendCommand(EufyCommand.GetCommand_DeviceGetProperties(device, device));
+                            }
+                        }
+                        else if (msg.MessageId.StartsWith("station.get_properties"))
+                        {
+                            _stationProperties = resultMsg.Result.Properties;
+                            //Get latest info from station, if needed
+                            //await SendCommand(EufyCommand.GetCommand_StationDatabaseQueryLatestInfo("4", _state.Stations[0]));
+                        }
+                        else if (msg.MessageId.StartsWith("device.get_properties"))
+                        {
+                            if (_deviceProperties.ContainsKey(resultMsg.Result.SerialNumber))
+                                _deviceProperties.Remove(resultMsg.Result.SerialNumber);
+
+                            _deviceProperties.Add(resultMsg.Result.SerialNumber, resultMsg.Result.Properties);
+                        }
+                        break;
+                    default:
+                        _logger.LogWarning("Received unknown message type from Eufy Security WebSocket service: {messageType}", msg.Type);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                // async void: exceptions must be caught here or they crash the process
+                _logger.LogError(ex, "Error handling Eufy Security WebSocket message.");
             }
         }
 
-        private bool updateProperties(EufyEventMessage eventMsg) 
+        private bool updateProperties(EufyEventMessage eventMsg)
         {
-            if (eventMsg.Event.Source == "station") 
+            if (eventMsg.Event.Source == "station")
             {
                 //update station properties
                 var propInfo = typeof(EufyPropertiesData).GetProperty(eventMsg.Event.Name, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
@@ -148,17 +161,22 @@ namespace RIoT2.Net.Devices.Services
                     return true;
                 }
                 return false;
-                
+
             }
-            else 
+            else
             {
                 //update device properties
-                var deviceProps = _deviceProperties[eventMsg.Event.SerialNumber];
+                if (!_deviceProperties.TryGetValue(eventMsg.Event.SerialNumber, out var deviceProps))
+                {
+                    _logger.LogWarning("Received property changed event for unknown device: {serialNumber}", eventMsg.Event.SerialNumber);
+                    return false;
+                }
+
                 var propInfo = typeof(EufyPropertiesData).GetProperty(eventMsg.Event.Name, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
                 if (propInfo != null)
                 {
                     //TODO create a more robust way to handle complex properties like the picture, maybe with a custom attribute on the property or something, to avoid hardcoding this in the service
-                    if (eventMsg.Event.Name.ToLower() == "picture" && eventMsg.Event.Value != null) 
+                    if (eventMsg.Event.Name.ToLower() == "picture" && eventMsg.Event.Value != null)
                     {
                         var eufyImage = RIoT2.Core.Utils.Json.Deserialize<EufyImage>(eventMsg.Event.Value.ToString());
                         propInfo.SetValue(deviceProps, eufyImage);

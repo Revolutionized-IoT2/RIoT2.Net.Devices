@@ -109,6 +109,9 @@ namespace RIoT2.Net.Devices.Catalog
             if (!isPriceDataValid(_priceData))
                 load();
 
+            if (_priceData == null)
+                return 0m;
+
             //check resolution
             var resStr = _priceData.TimeSeries.Period.resolution.Remove(0, 2);
             resStr = resStr.Remove(resStr.Length - 1);
@@ -123,7 +126,11 @@ namespace RIoT2.Net.Devices.Catalog
             
             int pos = (int)Math.Ceiling((double)minutesFromMidnight / res);
 
-            var rawPrice = _priceData.TimeSeries.Period.Point.FirstOrDefault(x => x.position == pos).priceamount;
+            var point = _priceData.TimeSeries.Period.Point.FirstOrDefault(x => x.position == pos);
+            if (point == null)
+                return 0m;
+
+            var rawPrice = point.priceamount;
 
             if (_vat != 0.0d) //Add VAT
             {
@@ -162,7 +169,7 @@ namespace RIoT2.Net.Devices.Catalog
             {
                 if (!File.Exists(_priceDataFile)) 
                 {
-                    getPriceDataForCurrentDay().Wait();
+                    getPriceDataForCurrentDay().GetAwaiter().GetResult();
                     return;
                 }
                     
@@ -175,7 +182,7 @@ namespace RIoT2.Net.Devices.Catalog
                     if (isPriceDataValid(filePriceData))
                         _priceData = filePriceData;
                     else
-                        getPriceDataForCurrentDay().Wait();
+                        getPriceDataForCurrentDay().GetAwaiter().GetResult();
                 }
             }
             catch(Exception x)
@@ -222,7 +229,7 @@ namespace RIoT2.Net.Devices.Catalog
             {
                 var now = DateTime.Now.ToString("yyyyMMdd"); //yyyyMMddHHmm
                 var url = _endpoint + $"?securityToken={_securityToken}&documentType=A44&in_Domain={_domain}&out_Domain={_domain}&periodStart={now + "0000"}&periodEnd={now + "2300"}";
-                var response = await RIoT2.Core.Utils.Web.GetAsync(url);
+                using var response = await RIoT2.Core.Utils.Web.GetAsync(url);
                 var xml = await response.Content.ReadAsStringAsync();
 
                 XmlSerializer serializer = new XmlSerializer(typeof(Publication_MarketDocument));
@@ -234,7 +241,8 @@ namespace RIoT2.Net.Devices.Catalog
             }
             catch (Exception x) 
             {
-                Logger.LogError(x, $"Could not load Electricity Prices from WebAPI");
+                Logger.LogError(x, "Could not load Electricity Prices from WebAPI");
+                throw new Exception("Could not load Electricity Prices from WebAPI", x);
             }
         }
     }

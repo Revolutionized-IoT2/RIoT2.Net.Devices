@@ -449,10 +449,10 @@ namespace RIoT2.Net.Devices.Services
                         _ws = newWs;
                         ConnectedUri = _cachedUri;
 
-                        // Restart the listener (the current ListenLoop continues)
-                        _listenCts?.Cancel();
-                        _listenCts = new CancellationTokenSource();
-                        _listenTask = Task.Run(() => ListenLoopAsync(_listenCts.Token));
+                        // Do NOT restart the listener here: TryReconnectLoopAsync is invoked
+                        // from within the existing ListenLoopAsync, which resumes using the
+                        // newly assigned _ws once this returns true. Starting a second loop
+                        // would cause concurrent ReceiveAsync calls on the same socket.
 
                         if (AutoReconnect.OnAfterReconnectAsync != null)
                             await AutoReconnect.OnAfterReconnectAsync(this).ConfigureAwait(false);

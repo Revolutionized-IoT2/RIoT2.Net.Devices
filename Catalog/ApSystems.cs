@@ -190,14 +190,14 @@ namespace RIoT2.Net.Devices.Catalog
             }
         }
 
-        private void load() 
+        private void load()
         {
-            var summary = _client.GetMeterSummaryAsync(_ecuId).Result;
-            if (summary == null || summary.Code == ApCode.Success)
+            var summary = _client.GetMeterSummaryAsync(_ecuId).GetAwaiter().GetResult();
+            if (summary != null && summary.Code == ApCode.Success)
             {
                 _meterSummary = summary;
             }
-            else 
+            else
             {
                 throw new Exception($"Failed to get meter summary with code {summary?.Code}");
             }

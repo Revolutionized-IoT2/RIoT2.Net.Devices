@@ -29,22 +29,24 @@ namespace RIoT2.Net.Devices.Catalog
                 return;
 
             var template = getReportTemplate();
-            var latestValue = getLatestValue()?.Result;
+            if (template == null)
+                return;
 
-            if (latestValue == null || template == null)
+            var latestValue = getLatestValue().GetAwaiter().GetResult();
+            if (latestValue == null)
                 return;
 
             int precision = 3; //default
             if (template.Parameters != null && template.Parameters.ContainsKey("precision"))
                 precision = int.Parse(template.Parameters["precision"]);
 
-            latestValue = Math.Round(latestValue.Value, precision);
+            var rounded = Math.Round(latestValue.Value, precision);
 
             SendReport(this, new Report()
             {
                 Id = template.Id,
                 TimeStamp = DateTime.UtcNow.ToEpoch(),
-                Value = new ValueModel(latestValue.Value),
+                Value = new ValueModel(rounded),
                 Filter = ""
             });
         }
@@ -79,16 +81,24 @@ namespace RIoT2.Net.Devices.Catalog
         public override void StartDevice()
         {
             var template = getReportTemplate();
-            var value = getLatestValue()?.Result;
-
-            if (value == null || template == null)
+            if (template == null)
                 return;
+
+            var latestValue = getLatestValue().GetAwaiter().GetResult();
+            if (latestValue == null)
+                return;
+
+            int precision = 3; //default
+            if (template.Parameters != null && template.Parameters.ContainsKey("precision"))
+                precision = int.Parse(template.Parameters["precision"]);
+
+            var rounded = Math.Round(latestValue.Value, precision);
 
             SendReport(this, new Report()
             {
                 Id = template.Id,
                 TimeStamp = DateTime.UtcNow.ToEpoch(),
-                Value = new ValueModel(value),
+                Value = new ValueModel(rounded),
                 Filter = ""
             });
         }
@@ -113,15 +123,15 @@ namespace RIoT2.Net.Devices.Catalog
                 var url = _endpoint + $"?startDate={DateTime.Now.ToString("yyyy-MM-dd")}";
                 var auth = new AuthenticationHeaderValue("Bearer", _securityToken);
 
-                var response = await Core.Utils.Web.GetAsync(url, auth);
+                using var response = await Core.Utils.Web.GetAsync(url, auth);
                 var json = await response.Content.ReadAsStringAsync();
                 var values = Json.Deserialize<WaterConsumtionJson>(json);
                 var newValues = new List<WaterConsumptionValue>();
-                foreach (var reading in values.readings) 
+                foreach (var reading in values.readings)
                 {
                     newValues.Add(new WaterConsumptionValue()
                     {
-                        Timestamp = (DateTime)reading[0],
+                        Timestamp = Convert.ToDateTime(reading[0]),
                         Value = Convert.ToDecimal(reading[1])
                     });
                 }
@@ -130,7 +140,7 @@ namespace RIoT2.Net.Devices.Catalog
                     return null;
 
                 newValues = newValues.OrderByDescending(x => x.Timestamp).ToList(); //latest is on top
-                if (_consumption.Count == 0 || newValues[0].Value != _consumption[0].Value) 
+                if (_consumption.Count == 0 || newValues[0].Value != _consumption[0].Value)
                 {
                     _consumption = newValues;
                     return newValues[0].Value;
@@ -138,8 +148,8 @@ namespace RIoT2.Net.Devices.Catalog
             }
             catch (Exception x)
             {
-                Logger.LogError(x, $"Could not load water consumption from WebAPI");
-                throw new Exception("Error loading Consumption from API");
+                Logger.LogError(x, "Could not load water consumption from WebAPI");
+                throw new Exception("Error loading Consumption from API", x);
             }
             return null;
         }
@@ -151,7 +161,7 @@ namespace RIoT2.Net.Devices.Catalog
         public decimal Value { get; set; }
     }
 
-    public class WaterConsumtionJson 
+    public class WaterConsumtionJson
     {
         public string model { get; set; }
         public string serialNumber { get; set; }

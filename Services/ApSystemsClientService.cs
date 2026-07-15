@@ -8,7 +8,7 @@ namespace RIoT2.Net.Devices.Services
 {
     public class ApSystemsClientService : IApSystemsClientService
     {
-        private HttpClient _httpClient;
+        private static readonly HttpClient _httpClient = new HttpClient();
         private string _appId;
         private string _appSecret;
         private string _sid; // Your System ID
@@ -20,13 +20,11 @@ namespace RIoT2.Net.Devices.Services
         /// <param name="appId">Provided by APsystems after API access approval.</param>
         /// <param name="appSecret">Provided by APsystems.</param>
         /// <param name="sid">System ID found in your EMA portal.</param>
-        /// <param name="httpClient">Optional injected HttpClient instance.</param>
         public void Configure(string appId, string appSecret, string sid)
         {
             _appId = appId ?? throw new ArgumentNullException(nameof(appId));
             _appSecret = appSecret ?? throw new ArgumentNullException(nameof(appSecret));
             _sid = sid ?? throw new ArgumentNullException(nameof(sid));
-            _httpClient = new HttpClient();
         }
 
         /// <summary>
