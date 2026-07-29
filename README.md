@@ -25,6 +25,16 @@
 
 ## Default Net Node plugins
 
+### AP Systems
+Get inverter/meter data from an AP Systems ECU
+
+```
+TODO configuration exable
+```
+
+> [!NOTE]
+> Requires AP Systems app ID, app secret, SID and ECU ID
+
 ### Azure Relay
 Receive webhooks or other messages from the internet into privete web through Azure Relay service
 
@@ -51,6 +61,16 @@ TODO configuration exable
 
 > [!NOTE]
 > Requires registering to entsoe.eu
+
+### Eufy Security
+Connects to the eufy-security-ws websocket service to receive events from Eufy security devices (motion, person, pet, sound, stranger, vehicle detected)
+
+```
+TODO configuration exable
+```
+
+> [!NOTE]
+> Requires running the eufy-security-ws service, see https://bropat.github.io/eufy-security-ws/
 
 ### FTP
 Trigger events from received files (e.g. Web cam sending images via FTP)
