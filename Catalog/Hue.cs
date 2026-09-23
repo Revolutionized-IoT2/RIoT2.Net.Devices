@@ -15,6 +15,8 @@ namespace RIoT2.Net.Devices.Catalog
         private event HueEventHandler HueEventReceived;
         private string _bridgeIpAddress = "192.168.0.4";
         private string _apikey = "";
+        private readonly object _lightStateLock = new();
+        private readonly Dictionary<string, HueData> _lightStates = new(StringComparer.OrdinalIgnoreCase);
 
         CancellationTokenSource _cancellationTokenSource;
 
@@ -47,13 +49,15 @@ namespace RIoT2.Net.Devices.Catalog
         {
             _bridgeIpAddress = GetConfiguration<string>("bridgeIpAddress");
             _apikey = GetConfiguration<string>("apiKey");
+            lock (_lightStateLock)
+                _lightStates.Clear();
         }
 
         public override void StartDevice()
         {
             _cancellationTokenSource = new CancellationTokenSource();
-            startEventsListener(_cancellationTokenSource.Token);
             HueEventReceived += Hue_HueEventReceived;
+            startEventsListener(_cancellationTokenSource.Token);
 
             //send initial values
             foreach (var light in getLight().Result?.data) 
@@ -62,23 +66,41 @@ namespace RIoT2.Net.Devices.Catalog
 
         private void sendReport(HueData data) 
         {
-            if(ReportTemplates == null || ReportTemplates?.Count() == 0)
-                return;
-
-            var report = ReportTemplates?.FirstOrDefault(x => x.Address.ToLower() == data.id.ToLower());
-            if (report == null)
-                return;
-
-            SendReport(this, new Report()
+            if (string.IsNullOrEmpty(data?.id))
             {
-                Id = report.Id,
-                TimeStamp = DateTime.UtcNow.ToEpoch(),
-                Value = new ValueModel(new HueLightCommand(data)),
-                Filter = "light"
-            });
+                Logger.LogWarning("Ignoring Hue light update without a light id.");
+                return;
+            }
+
+            lock (_lightStateLock)
+            {
+                _lightStates.TryGetValue(data.id, out var previous);
+                var snapshot = new HueData
+                {
+                    id = data.id,
+                    on = data.on ?? previous?.on,
+                    dimming = data.dimming ?? previous?.dimming,
+                    color = data.color?.xy != null ? data.color : previous?.color,
+                    color_temperature = data.color_temperature ?? previous?.color_temperature
+                };
+                _lightStates[data.id] = snapshot;
+
+                var report = ReportTemplates?.FirstOrDefault(x =>
+                    string.Equals(x.Address, data.id, StringComparison.OrdinalIgnoreCase));
+                if (report == null)
+                    return;
+
+                SendReport(this, new Report()
+                {
+                    Id = report.Id,
+                    TimeStamp = DateTime.UtcNow.ToEpoch(),
+                    Value = new ValueModel(new HueLightCommand(snapshot)),
+                    Filter = "light"
+                });
+            }
         }
 
-        private void Hue_HueEventReceived(string eventLine)
+        internal void Hue_HueEventReceived(string eventLine)
         {
             //Logger.LogInformation("Hue event received: {eventLine}", eventLine);
 
@@ -88,21 +110,23 @@ namespace RIoT2.Net.Devices.Catalog
             eventLine = eventLine.Remove(0, 6); //remove "data: " from the beginning of the line to get the json payload
 
             var hueEvent = eventLine.ToObj<HueEvent[]>();
-            if (hueEvent == null || hueEvent.Length == 0 || hueEvent[0].data == null) //ensure that we've received at least one event with data
+            if (hueEvent == null)
                 return;
 
             foreach (var e in hueEvent) 
             {
-                if (e.type != "update" || e.data == null || e.data[0].type != "light")
+                if (e?.type != "update" || e.data == null)
                     continue;
 
                 foreach (var light in e.data)
-                    sendReport(light);
+                    if (light?.type == "light")
+                        sendReport(light);
             }
         }
 
         public override void StopDevice()
         {
+            HueEventReceived -= Hue_HueEventReceived;
             if(_cancellationTokenSource != null)
                 _cancellationTokenSource.Cancel();
         }
@@ -326,7 +350,7 @@ namespace RIoT2.Net.Devices.Catalog
                             {
                                 while (!streamReader.EndOfStream)
                                 {
-                                    HueEventReceived(await streamReader.ReadLineAsync());
+                                    HueEventReceived?.Invoke(await streamReader.ReadLineAsync());
                                 }
                             }
                         }

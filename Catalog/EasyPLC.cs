@@ -1,4 +1,4 @@
-﻿using System.Net.Sockets;
+﻿using RIoT2.Net.Devices.Services;
 using RIoT2.Core.Abstracts;
 using RIoT2.Core.Interfaces;
 using RIoT2.Core.Models;
@@ -10,16 +10,19 @@ namespace RIoT2.Net.Devices.Catalog
 {
     public class EasyPLC : DeviceBase, IRefreshableReportDevice, ICommandDevice
     {
-        private TcpClient _client;
+        private IEasyPlcConnection _client;
+        private readonly Func<IEasyPlcConnection> _connectionFactory;
         private string _plcIp;
         private int _plcPort = 10001;
         private bool _connected;
         private Dictionary<string, bool> _states = new Dictionary<string, bool>();
         private readonly object plcLock = new object();
-        private readonly object connectLock = new object();
 
-        public EasyPLC(ILogger logger) : base(logger) 
+        public EasyPLC(ILogger logger) : this(logger, () => new EasyPlcConnection()) { }
+
+        internal EasyPLC(ILogger logger, Func<IEasyPlcConnection> connectionFactory) : base(logger)
         {
+            _connectionFactory = connectionFactory;
             _connected = false;
         } 
 
@@ -63,7 +66,8 @@ namespace RIoT2.Net.Devices.Catalog
 
         public override void StartDevice()
         {
-            connect().Wait();
+            lock (plcLock)
+                connect().GetAwaiter().GetResult();
         }
 
         public override void StopDevice()
@@ -87,53 +91,49 @@ namespace RIoT2.Net.Devices.Catalog
         {
             try
             {
-                if (_client == null)
-                    _client = new TcpClient();
+                if (_connected && _client?.Connected == true)
+                    return;
 
-                if (!_client.Connected)
-                {
-                    _connected = false;
-                    byte[] testConnection = new byte[] { 0x45, 0x07, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x5f }; //test PLC?
-                    byte[] initConnection = new byte[] { 0x45, 0x07, 0x01, 0x00, 0x80, 0x00, 0x00, 0x3d, 0x9f }; //init baud rate?
-                    _client.Connect(_plcIp, _plcPort);
+                resetConnection();
+                _client = _connectionFactory();
+                byte[] testConnection = new byte[] { 0x45, 0x07, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x5f }; //test PLC?
+                byte[] initConnection = new byte[] { 0x45, 0x07, 0x01, 0x00, 0x80, 0x00, 0x00, 0x3d, 0x9f }; //init baud rate?
+                await _client.ConnectAsync(_plcIp, _plcPort);
 
-                    var tcpStream = _client.GetStream();
-                    byte[] receiveBufferTest = new byte[8];
-                    byte[] receiveBufferInit = new byte[8];
+                var tcpStream = _client.GetStream();
+                byte[] receiveBufferTest = new byte[8];
+                byte[] receiveBufferInit = new byte[8];
 
-                    await tcpStream.WriteAsync(testConnection, 0, testConnection.Length);
-                    await tcpStream.ReadAsync(receiveBufferTest, 0, receiveBufferTest.Length);
+                await tcpStream.WriteAsync(testConnection, 0, testConnection.Length);
+                await tcpStream.ReadExactlyAsync(receiveBufferTest);
 
-                    await tcpStream.WriteAsync(initConnection, 0, initConnection.Length);
-                    await tcpStream.ReadAsync(receiveBufferInit, 0, receiveBufferInit.Length);
+                await tcpStream.WriteAsync(initConnection, 0, initConnection.Length);
+                await tcpStream.ReadExactlyAsync(receiveBufferInit);
 
-                    if (okResponse(receiveBufferTest) && okResponse(receiveBufferInit))
-                    {
-                        Logger.LogInformation("Connected to Easy PLC");
-                        _connected = true;
-                    }
-                    else
-                    {
-                        Logger.LogWarning("Could not connect to Easy PLC");
-                    }
-                }
+                if (!okResponse(receiveBufferTest) || !okResponse(receiveBufferInit))
+                    throw new IOException("Easy PLC rejected connection initialization.");
+
+                Logger.LogInformation("Connected to Easy PLC");
+                _connected = true;
             }
             catch (Exception x) 
             {
-                _connected = false;
+                resetConnection();
                 throw new Exception("Error connecting Easy PLC", x);
             }
         }
         private void disconnect() 
         {
-            if (_client != null) 
-            {
-                if (_client.Connected)
-                    _client.Close();
+            lock (plcLock)
+                resetConnection();
+        }
 
-                _client.Dispose();
-            }
+        private void resetConnection()
+        {
+            var previous = _client;
+            _client = null;
             _connected = false;
+            previous?.Dispose();
         }
         private byte[] sendAndReceive(byte[] message)
         {
@@ -174,6 +174,7 @@ namespace RIoT2.Net.Devices.Catalog
                 }
                 catch (Exception x)
                 {
+                    resetConnection();
                     Logger.LogError(x, "Error connecting Easy PLC");
                     return null;
                 }

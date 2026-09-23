@@ -97,7 +97,7 @@
     {
         public int? mirek { get; set; }
         public HueMirekSchema mirek_schema { get; set; }
-        public bool mirek_valid { get; set; }
+        public bool? mirek_valid { get; set; }
     }
 
     public class HueDimming
@@ -171,11 +171,11 @@
             if (data == null)
                 return;
 
-            State = data.on.on;
+            State = data.on?.on;
             if(data.dimming != null)
                 Dimming = data.dimming.brightness;
 
-            if (data.color != null)
+            if (data.color?.xy != null && data.dimming != null)
             {
                 Color = data.color.ConvertToRGB(data.dimming.brightness);
                 Color.ToHueSaturation(out double hue, out double saturation);
@@ -183,7 +183,7 @@
                 Saturation = saturation;
             }
 
-            if (data.color_temperature != null && data.color_temperature.mirek_valid)
+            if (data.color_temperature != null && data.color_temperature.mirek_valid != false)
                 ColorTemperature = data.color_temperature.mirek;
         }
 

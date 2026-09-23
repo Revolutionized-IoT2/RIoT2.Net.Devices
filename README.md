@@ -1,5 +1,12 @@
 # RIoT2.Net.Devices
 
+## Shared package release prerequisite
+
+These plugins, including Netatmo, require `RIoT2.Core` **0.1.41**. Publish that
+package to the configured trusted feed before releasing the plugins. Local
+validation uses the final package in `C:\Src\RIoT2\.localfeed` plus cached
+dependencies; no external publication is performed by the regression tests.
+
 ## Regression tests
 
 ```powershell
@@ -10,6 +17,20 @@ The Netatmo authentication tests use synthetic tokens in an isolated test-output
 directory and never contact Netatmo. On restart, a valid `Data/netatmoAuth.json`
 takes precedence over configured tokens so refreshed credentials are preserved.
 Keep that data directory persistent across node restarts.
+
+The same suite replays Hue event JSON and EasyPLC connection streams entirely
+in memory; it does not contact a Hue bridge or PLC.
+
+### Driver lifecycle and partial updates
+
+- Hue event updates are merged with the last known state for each light. Missing
+  fields do not reset on/off or brightness. A color received before brightness is
+  cached until brightness becomes known rather than inventing a brightness value.
+  Reconfiguration clears the per-light cache.
+- EasyPLC shutdown and connection failures dispose and clear the old connection.
+  Restart/reconfiguration establishes a fresh connection using the current
+  endpoint. Initialization reads complete eight-byte responses, including when
+  TCP splits them into smaller reads; rejected/incomplete handshakes fail startup.
 
 ## Quick note on creating custom net core plugin
 
