@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    public class EasyPLC : DeviceBase, IRefreshableReportDevice, ICommandDevice
+    public class EasyPLC : AsyncDeviceBase, IAsyncCommandDevice
     {
         private IEasyPlcConnection _client;
         private readonly Func<IEasyPlcConnection> _connectionFactory;
@@ -16,7 +16,9 @@ namespace RIoT2.Net.Devices.Catalog
         private int _plcPort = 10001;
         private bool _connected;
         private Dictionary<string, bool> _states = new Dictionary<string, bool>();
-        private readonly object plcLock = new object();
+        private readonly SemaphoreSlim _io = new(1, 1);
+        private readonly object _sessionGate = new();
+        private CancellationTokenSource _session = new();
 
         public EasyPLC(ILogger logger) : this(logger, () => new EasyPlcConnection()) { }
 
@@ -26,33 +28,31 @@ namespace RIoT2.Net.Devices.Catalog
             _connected = false;
         } 
 
-        public void ExecuteCommand(string commandId, string value)
+        public void ExecuteCommand(string commandId, string value) =>
+            ExecuteCommandAsync(commandId, value, CancellationToken.None).GetAwaiter().GetResult();
+
+        public async Task ExecuteCommandAsync(string commandId, string value, CancellationToken cancellationToken)
         {
             var command = CommandTemplates?.FirstOrDefault(x => x.Id == commandId);
             if (command == null)
-                return;
+                throw new ArgumentException("Unknown Easy PLC command.", nameof(commandId));
 
             if (command.Address == "refresh") 
             {
-                readMarkers();
-                //readMarkers(3); //TODO make better system to refresh net id 3 
+                await ReadMarkersAsync(cancellationToken).ConfigureAwait(false);
                 return;
             }
 
-            var name = command.Address.Split('-');
-            if (name.Length != 4)
-                return;
-
-            int netId = int.Parse(name[1]);
-            int expansion = int.Parse(name[2]);
-            int marker = int.Parse(name[3]);
-
-            bool valueBool = false;
-
-            if (bool.TryParse(value, out valueBool)) 
-            {
-                writeMarker(marker, valueBool, netId, expansion);
-            }
+            var name = command.Address?.Split('-');
+            if (name?.Length != 4 || name[0] != "M" ||
+                !int.TryParse(name[1], out var netId) || netId < 0 || netId > 223 ||
+                !int.TryParse(name[2], out var expansion) || expansion < 0 ||
+                !int.TryParse(name[3], out var marker) || marker < 1 || marker > 256 ||
+                !bool.TryParse(value, out var requested))
+                throw new ArgumentException("Invalid Easy PLC marker address or Boolean value.");
+            if (expansion != 0)
+                throw new NotSupportedException("Easy PLC marker writes currently support expansion zero only.");
+            await WriteMarkerAsync(marker, requested, netId, cancellationToken).ConfigureAwait(false);
         }
 
         public override void ConfigureDevice()
@@ -62,32 +62,48 @@ namespace RIoT2.Net.Devices.Catalog
             
             if (String.IsNullOrEmpty(_plcIp))
                 throw new Exception("Configuration not valid. Missing IP Adress");
+            _states.Clear();
         }
 
-        public override void StartDevice()
+        protected override async Task StartDeviceAsync(CancellationToken cancellationToken)
         {
-            lock (plcLock)
-                connect().GetAwaiter().GetResult();
+            await _io.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                lock (_sessionGate)
+                {
+                    if (_session.IsCancellationRequested)
+                    {
+                        _session.Dispose();
+                        _session = new CancellationTokenSource();
+                    }
+                }
+                using var timeout = OperationTimeout(cancellationToken);
+                try { await ConnectCoreAsync(timeout.Token).ConfigureAwait(false); }
+                catch (OperationCanceledException error) when (!cancellationToken.IsCancellationRequested && !_session.IsCancellationRequested)
+                {
+                    throw new TimeoutException("Easy PLC initialization exceeded five seconds.", error);
+                }
+            }
+            finally { _io.Release(); }
         }
 
-        public override void StopDevice()
+        protected override async Task StopDeviceAsync(CancellationToken cancellationToken)
         {
-            disconnect();
+            lock (_sessionGate) _session.Cancel();
+            await _io.WaitAsync().ConfigureAwait(false);
+            try { resetConnection(); }
+            finally { _io.Release(); }
         }
 
-        public override void Refresh(ReportTemplate report)
+        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken)
         {
-            if (report != null) //report should be null because in this case, refresh is defined on device level
-                return;
-
-            //this will read markers from PLC and Send report if anyone with template has changed
-            readMarkers();
-            //readMarkers(3); //TODO Cu
+            return report == null ? ReadMarkersAsync(cancellationToken) : Task.CompletedTask;
         }
 
         #region Easy PLC methods 
 
-        private async Task connect() 
+        private async Task ConnectCoreAsync(CancellationToken cancellationToken)
         {
             try
             {
@@ -98,17 +114,17 @@ namespace RIoT2.Net.Devices.Catalog
                 _client = _connectionFactory();
                 byte[] testConnection = new byte[] { 0x45, 0x07, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x5f }; //test PLC?
                 byte[] initConnection = new byte[] { 0x45, 0x07, 0x01, 0x00, 0x80, 0x00, 0x00, 0x3d, 0x9f }; //init baud rate?
-                await _client.ConnectAsync(_plcIp, _plcPort);
+                await _client.ConnectAsync(_plcIp, _plcPort, cancellationToken).ConfigureAwait(false);
 
                 var tcpStream = _client.GetStream();
                 byte[] receiveBufferTest = new byte[8];
                 byte[] receiveBufferInit = new byte[8];
 
-                await tcpStream.WriteAsync(testConnection, 0, testConnection.Length);
-                await tcpStream.ReadExactlyAsync(receiveBufferTest);
+                await tcpStream.WriteAsync(testConnection, cancellationToken).ConfigureAwait(false);
+                await tcpStream.ReadExactlyAsync(receiveBufferTest, cancellationToken).ConfigureAwait(false);
 
-                await tcpStream.WriteAsync(initConnection, 0, initConnection.Length);
-                await tcpStream.ReadExactlyAsync(receiveBufferInit);
+                await tcpStream.WriteAsync(initConnection, cancellationToken).ConfigureAwait(false);
+                await tcpStream.ReadExactlyAsync(receiveBufferInit, cancellationToken).ConfigureAwait(false);
 
                 if (!okResponse(receiveBufferTest) || !okResponse(receiveBufferInit))
                     throw new IOException("Easy PLC rejected connection initialization.");
@@ -116,16 +132,21 @@ namespace RIoT2.Net.Devices.Catalog
                 Logger.LogInformation("Connected to Easy PLC");
                 _connected = true;
             }
-            catch (Exception x) 
+            catch
             {
                 resetConnection();
-                throw new Exception("Error connecting Easy PLC", x);
+                throw;
             }
         }
-        private void disconnect() 
+
+        private CancellationTokenSource OperationTimeout(CancellationToken cancellationToken)
         {
-            lock (plcLock)
-                resetConnection();
+            lock (_sessionGate)
+            {
+                var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _session.Token);
+                timeout.CancelAfter(TimeSpan.FromSeconds(5));
+                return timeout;
+            }
         }
 
         private void resetConnection()
@@ -135,50 +156,40 @@ namespace RIoT2.Net.Devices.Catalog
             _connected = false;
             previous?.Dispose();
         }
-        private byte[] sendAndReceive(byte[] message)
+        private async Task<byte[]> SendAndReceiveAsync(byte[] message, CancellationToken cancellationToken)
         {
-            lock (plcLock) //ensure that only one operation is performed at a time
+            using var timeout = OperationTimeout(cancellationToken);
+            await _io.WaitAsync(timeout.Token).ConfigureAwait(false);
+            try
             {
-                if (!_connected)
-                    connect().Wait();
-
+                await ConnectCoreAsync(timeout.Token).ConfigureAwait(false);
                 try
                 {
                     var tcpStream = _client.GetStream();
-
-                    byte[] receiveBuffer = new byte[256];
-
-                    var writeTask = tcpStream.WriteAsync(message, 0, message.Length);
-                    var readTask = tcpStream.ReadAsync(receiveBuffer, 0, receiveBuffer.Length);
-
-                    Task.WaitAll(writeTask, readTask);
-
-                    //first is always 0x65
-                    if (receiveBuffer[0] != 0x65)
-                    {
-                        Logger.LogWarning("Received unidentified message from Easy PLC");
-                        return null;
-                    }
-
-                    int contentLength = receiveBuffer[1]; //Second byte is content length
-                    var contentForCrc = receiveBuffer.SubArray(1, contentLength - 1);
-
-                    var crc = calculateCrc(contentForCrc);
-                    if (crc[0] == receiveBuffer[contentLength] && crc[1] == receiveBuffer[contentLength + 1])
-                    {
-                        return receiveBuffer.SubArray(2, contentLength - 2);
-                    }
-
-                    Logger.LogWarning("CRC for PLC message was incorrect");
-                    return null;
+                    await tcpStream.WriteAsync(message, timeout.Token).ConfigureAwait(false);
+                    var header = new byte[2];
+                    await tcpStream.ReadExactlyAsync(header, timeout.Token).ConfigureAwait(false);
+                    if (header[0] != 0x65 || header[1] < 2)
+                        throw new InvalidDataException("Invalid Easy PLC response header.");
+                    var frame = new byte[header[1] + 2];
+                    header.CopyTo(frame, 0);
+                    await tcpStream.ReadExactlyAsync(frame.AsMemory(2), timeout.Token).ConfigureAwait(false);
+                    var crc = calculateCrc(frame.AsSpan(1, header[1] - 1).ToArray());
+                    if (crc[0] != frame[^2] || crc[1] != frame[^1])
+                        throw new InvalidDataException("Incorrect Easy PLC response CRC.");
+                    return frame;
                 }
-                catch (Exception x)
+                catch
                 {
                     resetConnection();
-                    Logger.LogError(x, "Error connecting Easy PLC");
-                    return null;
+                    throw;
                 }
             }
+            catch (OperationCanceledException error) when (!cancellationToken.IsCancellationRequested && !_session.IsCancellationRequested)
+            {
+                throw new TimeoutException("Easy PLC operation exceeded five seconds.", error);
+            }
+            finally { _io.Release(); }
         }
         private bool okResponse(byte[] reponse) 
         {
@@ -245,28 +256,14 @@ namespace RIoT2.Net.Devices.Catalog
 
             return BitConverter.GetBytes(crc);
         }
-        private void readOutputs(int netId = 1, int expansion = 0) 
+        private async Task ReadMarkersAsync(CancellationToken cancellationToken)
         {
-            //TODO inject netid to cmd
-            var cmd = new byte[] { 0x45, 0x07, 0x01, 0x00, 0x01, 0x00, 0x00, 0x6d, 0xb7 };
-            var outputStates = sendAndReceive(cmd);
-            updateStates(IOType.Output, outputStates, netId, expansion);
-           
-        }
-        private void readInputs(int netId = 1, int expansion = 0) 
-        {
-            //TODO inject netid to cmd
-            var cmd = new byte[] { 0x45, 0x07, 0x01, 0x00, 0x00, 0x00, 0x00, 0x3c, 0x77 };
-            var inputStates = sendAndReceive(cmd);
-            updateStates(IOType.Input, inputStates, netId, expansion);
-        }
-        private void readMarkers(int netId = 1, int expansion = 0)
-        {
-            //TODO inject netid to cmd
             var cmd = new byte[] { 0x45, 0x07, 0x01, 0x00, 0x0a, 0x00, 0x06, 0x9c, 0x77 };
-            var markerStates = sendAndReceive(cmd);
-            markerStates = markerStates.SubArray(2); //skip first two
-            updateStates(IOType.Marker, markerStates, netId, expansion);
+            var frame = await SendAndReceiveAsync(cmd, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (frame.Length < 6)
+                throw new InvalidDataException("Easy PLC marker response has no status header.");
+            updateStates(IOType.Marker, frame.AsSpan(4, frame.Length - 6).ToArray(), 1, 0);
         }
         private void updateStates(IOType type, byte[] states, int netId, int expansion) 
         {
@@ -322,7 +319,7 @@ namespace RIoT2.Net.Devices.Catalog
 
             return $"{name}-{netId}-{expansion}-{idx}";
         }
-        private bool writeMarker(int marker, bool value, int netId = 1, int expansion = 0) 
+        private async Task WriteMarkerAsync(int marker, bool value, int netId, CancellationToken cancellationToken)
         {
             byte markerByte = (byte)(marker - 1);
             byte netIdByte = (byte)(netId + 32);
@@ -335,8 +332,9 @@ namespace RIoT2.Net.Devices.Catalog
             cmd.Add(crc[0]);
             cmd.Add(crc[1]);
 
-            var result = sendAndReceive(cmd.ToArray());
-            return okWriteResponse(result);
+            var result = await SendAndReceiveAsync(cmd.ToArray(), cancellationToken).ConfigureAwait(false);
+            if (!okWriteResponse(result))
+                throw new InvalidDataException("Easy PLC rejected the marker write.");
         }
 
         #endregion

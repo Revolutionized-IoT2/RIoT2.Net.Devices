@@ -2,7 +2,7 @@
 
 ## Shared package release prerequisite
 
-These plugins, including Netatmo, require `RIoT2.Core` **0.1.41**. Publish that
+These plugins, including Netatmo, require `RIoT2.Core` **0.1.42**. Publish that
 package to the configured trusted feed before releasing the plugins. Local
 validation uses the final package in `C:\Src\RIoT2\.localfeed` plus cached
 dependencies; no external publication is performed by the regression tests.
@@ -31,6 +31,11 @@ in memory; it does not contact a Hue bridge or PLC.
   Restart/reconfiguration establishes a fresh connection using the current
   endpoint. Initialization reads complete eight-byte responses, including when
   TCP splits them into smaller reads; rejected/incomplete handshakes fail startup.
+- EasyPLC now opts into `AsyncDeviceBase` and `IAsyncCommandDevice`. Connect, handshake, command,
+  and refresh I/O is awaited and cancellable, with a five-second transaction deadline. Responses
+  are read as complete length-delimited CRC-checked frames; transport failures reset the connection.
+  Stop cancels and awaits in-flight I/O. Non-zero marker-write expansions fail explicitly rather than
+  silently targeting expansion zero. Deploy the Core 0.1.42 node before deploying this plugin.
 
 ## Quick note on creating custom net core plugin
 
@@ -45,7 +50,7 @@ in memory; it does not contact a Hue bridge or PLC.
  - At minimum, a Device must implement IDevice interface
  - Implement abstract class DeviceBase for easier implementation
 	- Add configuration logic to: public override void ConfigureDevice()
-	- Add device start logic to: public override async void StartDevice()
+	- For synchronous devices, add start logic to: public override void StartDevice()
 	- Add device stop logic to: public override void StopDevice()
 	- If device is IRefresableReportDevice, add refresh logic to: public override void Refresh(ReportTemplate report)
 	- Throw error from overridden functions. This will change devices state to error. Error message is accessible from devices StateMessage
@@ -57,6 +62,11 @@ in memory; it does not contact a Hue bridge or PLC.
 	- Return one MatterEndpointTemplate per Matter endpoint from: public IEnumerable&lt;MatterEndpointTemplate&gt; GetMatterEndpoints(DeviceConfiguration configuration)
 	- Build the bindings against the configuration instance passed in, since template ids are generated per call
 	- Give each endpoint an Id that is stable across restarts, derived from the underlying device (see Catalog/Hue.cs for a worked example)
+
+For new asynchronous drivers, prefer `AsyncDeviceBase` and override `StartDeviceAsync`,
+`StopDeviceAsync`, and `RefreshAsync`, forwarding the cancellation token through all I/O. Implement
+`IAsyncCommandDevice.ExecuteCommandAsync` for commands. Keep synchronous compatibility entry points
+when implementing the legacy command interface; the updated node selects the async contract.
 
 
 ## Default Net Node plugins

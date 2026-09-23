@@ -15,7 +15,7 @@
     <PackageReference Include="FluentFTP" Version="55.0.0" />
     <PackageReference Include="Google.Apis.Auth" Version="1.76.0" />
     <PackageReference Include="Microsoft.Azure.Relay" Version="3.1.1" />
-    <PackageReference Include="RIoT2.Core" Version="0.1.41" />
+    <PackageReference Include="RIoT2.Core" Version="0.1.42" />
     <PackageReference Include="Zhaobang.FtpServer" Version="2.2.0" />
 	<FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
