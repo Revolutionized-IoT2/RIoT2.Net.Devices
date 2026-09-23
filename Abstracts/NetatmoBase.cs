@@ -113,14 +113,13 @@ namespace RIoT2.Net.Devices.Abstracts
                     return null;
                 }
                     
-                var json = File.ReadAllText(_authDataFile)?.ToObj<NetatmoAuth>();
+                return File.ReadAllText(_authDataFile)?.ToObj<NetatmoAuth>();
             }
             catch (Exception x)
             {
                 _logger.LogError(x, "Could not load Netatmo authentication file");
                 throw new Exception("Could not load Netatmo authentication file");
             }
-            return null;
         }
 
         private static void SaveNetatmoAuth(NetatmoAuth auth) 

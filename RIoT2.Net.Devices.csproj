@@ -7,10 +7,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Tests\**\*.cs" />
+    <InternalsVisibleTo Include="RIoT2.Net.Devices.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="FluentFTP" Version="55.0.0" />
     <PackageReference Include="Google.Apis.Auth" Version="1.76.0" />
     <PackageReference Include="Microsoft.Azure.Relay" Version="3.1.1" />
-    <PackageReference Include="RIoT2.Core" Version="0.1.38" />
+    <PackageReference Include="RIoT2.Core" Version="0.1.40" />
     <PackageReference Include="Zhaobang.FtpServer" Version="2.2.0" />
 	<FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

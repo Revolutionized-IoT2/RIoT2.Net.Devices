@@ -1,5 +1,16 @@
 # RIoT2.Net.Devices
 
+## Regression tests
+
+```powershell
+dotnet test .\Tests\RIoT2.Net.Devices.Tests.csproj
+```
+
+The Netatmo authentication tests use synthetic tokens in an isolated test-output
+directory and never contact Netatmo. On restart, a valid `Data/netatmoAuth.json`
+takes precedence over configured tokens so refreshed credentials are preserved.
+Keep that data directory persistent across node restarts.
+
 ## Quick note on creating custom net core plugin
 
 - Create new Class library project

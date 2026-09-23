@@ -1,0 +1,10 @@
+<Project Sdk="MSTest.Sdk/3.6.1">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseVSTest>true</UseVSTest>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RIoT2.Net.Devices.csproj" />
+  </ItemGroup>
+</Project>
