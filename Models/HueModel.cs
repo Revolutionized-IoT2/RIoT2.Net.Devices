@@ -176,19 +176,48 @@
                 Dimming = data.dimming.brightness;
 
             if (data.color != null)
+            {
                 Color = data.color.ConvertToRGB(data.dimming.brightness);
+                Color.ToHueSaturation(out double hue, out double saturation);
+                Hue = hue;
+                Saturation = saturation;
+            }
+
+            if (data.color_temperature != null && data.color_temperature.mirek_valid)
+                ColorTemperature = data.color_temperature.mirek;
         }
 
         public bool? State { get; set; }
         public RGB Color { get; set; }
         public double? Dimming { get; set; }
+
+        /// <summary>
+        /// Hue of the light in degrees (0-360). An alternative to <see cref="Color"/> for callers that
+        /// think in hue/saturation, such as the Matter Color Control cluster.
+        /// </summary>
+        public double? Hue { get; set; }
+
+        /// <summary>
+        /// Saturation of the light in percent (0-100). Used together with <see cref="Hue"/>.
+        /// </summary>
+        public double? Saturation { get; set; }
+
+        /// <summary>
+        /// Colour temperature in mireds, which is the unit the Hue bridge itself uses (mirek).
+        /// </summary>
+        public int? ColorTemperature { get; set; }
+
         public HueData GetCommand()
         {
+            var color = GetColorCommand();
+
             return new HueData()
             {
                 on = GetOnCommand(),
                 dimming = GetDimmingCommand(),
-                color = GetColorCommand()
+                color = color,
+                //Setting xy and mirek in the same request is ambiguous, so an explicit colour wins.
+                color_temperature = color == null ? GetColorTemperatureCommand() : null
             };
         }
 
@@ -217,12 +246,28 @@
 
         private HueColor GetColorCommand()
         {
-            if(Color == null)
+            var color = Color;
+
+            if (color == null && (Hue.HasValue || Saturation.HasValue))
+                color = RGB.FromHueSaturation(Hue ?? 0, Saturation ?? 100);
+
+            if (color == null)
                 return null;
 
             return new HueColor()
             {
-                xy = HueColor.ConvertRGBToHueColor(Color.Red, Color.Green, Color.Blue, out double bri)
+                xy = HueColor.ConvertRGBToHueColor(color.Red, color.Green, color.Blue, out double bri)
+            };
+        }
+
+        private HueColorTemperature GetColorTemperatureCommand()
+        {
+            if (!ColorTemperature.HasValue)
+                return null;
+
+            return new HueColorTemperature()
+            {
+                mirek = ColorTemperature.Value
             };
         }
     }
@@ -231,9 +276,66 @@
     {
         public double Red { get; set; }
         public double Green { get; set; }
-        public double Blue { get; set; }    
+        public double Blue { get; set; }
         public double Brightness { get; set; }
-    } 
+
+        /// <summary>
+        /// Builds a fully bright colour from hue in degrees (0-360) and saturation in percent (0-100).
+        /// </summary>
+        public static RGB FromHueSaturation(double hue, double saturation)
+        {
+            var h = ((hue % 360) + 360) % 360;
+            var s = Math.Min(Math.Max(saturation, 0), 100) / 100;
+
+            var c = s;
+            var x = c * (1 - Math.Abs((h / 60 % 2) - 1));
+            var m = 1 - c;
+
+            double r, g, b;
+            if (h < 60) { r = c; g = x; b = 0; }
+            else if (h < 120) { r = x; g = c; b = 0; }
+            else if (h < 180) { r = 0; g = c; b = x; }
+            else if (h < 240) { r = 0; g = x; b = c; }
+            else if (h < 300) { r = x; g = 0; b = c; }
+            else { r = c; g = 0; b = x; }
+
+            return new RGB()
+            {
+                Red = r + m,
+                Green = g + m,
+                Blue = b + m
+            };
+        }
+
+        /// <summary>
+        /// Converts this colour to hue in degrees (0-360) and saturation in percent (0-100).
+        /// </summary>
+        public void ToHueSaturation(out double hue, out double saturation)
+        {
+            var max = Math.Max(Red, Math.Max(Green, Blue));
+            var min = Math.Min(Red, Math.Min(Green, Blue));
+            var delta = max - min;
+
+            if (delta <= 0 || max <= 0)
+            {
+                hue = 0;
+                saturation = 0;
+                return;
+            }
+
+            if (max == Red)
+                hue = 60 * (((Green - Blue) / delta) % 6);
+            else if (max == Green)
+                hue = 60 * (((Blue - Red) / delta) + 2);
+            else
+                hue = 60 * (((Red - Green) / delta) + 4);
+
+            if (hue < 0)
+                hue += 360;
+
+            saturation = (delta / max) * 100;
+        }
+    }
 
     public class HueEvent
     {

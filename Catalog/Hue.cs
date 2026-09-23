@@ -3,13 +3,14 @@ using RIoT2.Core;
 using RIoT2.Core.Abstracts;
 using RIoT2.Core.Interfaces;
 using RIoT2.Core.Models;
+using RIoT2.Core.Models.Matter;
 using RIoT2.Core.Utils;
 using RIoT2.Net.Devices.Models;
 using ValueType = RIoT2.Core.ValueType;
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    public class Hue : DeviceBase, ICommandDevice, IDeviceWithConfiguration
+    public class Hue : DeviceBase, ICommandDevice, IDeviceWithConfiguration, IMatterDevice
     {
         private event HueEventHandler HueEventReceived;
         private string _bridgeIpAddress = "192.168.0.4";
@@ -147,6 +148,131 @@ namespace RIoT2.Net.Devices.Catalog
             deviceConfiguration.ReportTemplates = reportConfigurations;
             deviceConfiguration.CommandTemplates = commandConfigurations;
             return deviceConfiguration;
+        }
+
+        /// <summary>
+        /// Declares every Hue light as an extended colour light on the RIoT Control Bridge, so the lights
+        /// show up in a Matter ecosystem such as Google Home.
+        /// </summary>
+        /// <remarks>
+        /// The bindings are read against the configuration instance handed in, because
+        /// <see cref="GetConfigurationTemplate"/> mints new template ids on every call. The endpoint id is
+        /// derived from the Hue bridge's own light id so that it stays the same across restarts and
+        /// template re-imports, which is what keeps a light linked to the same Matter endpoint.
+        /// </remarks>
+        public IEnumerable<MatterEndpointTemplate> GetMatterEndpoints(DeviceConfiguration configuration)
+        {
+            if (configuration?.CommandTemplates == null || configuration.ReportTemplates == null)
+                yield break;
+
+            foreach (var command in configuration.CommandTemplates)
+            {
+                var report = configuration.ReportTemplates.FirstOrDefault(x => x.Address == command.Address);
+                if (report == null)
+                    continue;
+
+                yield return new MatterEndpointTemplate()
+                {
+                    Id = $"hue:light:{command.Address}",
+                    Name = command.Name,
+                    DeviceType = MatterDeviceType.ExtendedColorLight,
+                    VendorName = "Signify",
+                    ProductName = "Hue light",
+                    Attributes = getMatterAttributeBindings(report.Id).ToList(),
+                    Commands = getMatterCommandBindings(command.Id).ToList()
+                };
+            }
+        }
+
+        //RIoT -> Matter. Reports are sent from sendReport with the "light" filter and a HueLightCommand value.
+        private IEnumerable<MatterAttributeBinding> getMatterAttributeBindings(string reportTemplateId)
+        {
+            yield return new MatterAttributeBinding()
+            {
+                Attribute = MatterAttribute.OnOff,
+                ReportTemplateId = reportTemplateId,
+                ValuePath = "state",
+                Filter = "light"
+            };
+
+            yield return new MatterAttributeBinding()
+            {
+                Attribute = MatterAttribute.CurrentLevel,
+                ReportTemplateId = reportTemplateId,
+                ValuePath = "dimming",
+                Filter = "light",
+                Scale = MatterValueScale.Percent0To100ToLevel0To254
+            };
+
+            yield return new MatterAttributeBinding()
+            {
+                Attribute = MatterAttribute.CurrentHue,
+                ReportTemplateId = reportTemplateId,
+                ValuePath = "hue",
+                Filter = "light",
+                Scale = MatterValueScale.Degrees0To360ToHue0To254
+            };
+
+            yield return new MatterAttributeBinding()
+            {
+                Attribute = MatterAttribute.CurrentSaturation,
+                ReportTemplateId = reportTemplateId,
+                ValuePath = "saturation",
+                Filter = "light",
+                Scale = MatterValueScale.Percent0To100ToSaturation0To254
+            };
+
+            //The Hue bridge reports colour temperature in mirek, which is the Matter unit as well.
+            yield return new MatterAttributeBinding()
+            {
+                Attribute = MatterAttribute.ColorTemperatureMireds,
+                ReportTemplateId = reportTemplateId,
+                ValuePath = "colorTemperature",
+                Filter = "light"
+            };
+        }
+
+        //Matter -> RIoT. Each binding writes one HueLightCommand property; omitted properties leave the
+        //light untouched, so a hue change does not reset brightness.
+        private IEnumerable<MatterCommandBinding> getMatterCommandBindings(string commandTemplateId)
+        {
+            yield return new MatterCommandBinding()
+            {
+                Attribute = MatterAttribute.OnOff,
+                CommandTemplateId = commandTemplateId,
+                ValuePath = "state"
+            };
+
+            yield return new MatterCommandBinding()
+            {
+                Attribute = MatterAttribute.CurrentLevel,
+                CommandTemplateId = commandTemplateId,
+                ValuePath = "dimming",
+                Scale = MatterValueScale.Percent0To100ToLevel0To254
+            };
+
+            yield return new MatterCommandBinding()
+            {
+                Attribute = MatterAttribute.CurrentHue,
+                CommandTemplateId = commandTemplateId,
+                ValuePath = "hue",
+                Scale = MatterValueScale.Degrees0To360ToHue0To254
+            };
+
+            yield return new MatterCommandBinding()
+            {
+                Attribute = MatterAttribute.CurrentSaturation,
+                CommandTemplateId = commandTemplateId,
+                ValuePath = "saturation",
+                Scale = MatterValueScale.Percent0To100ToSaturation0To254
+            };
+
+            yield return new MatterCommandBinding()
+            {
+                Attribute = MatterAttribute.ColorTemperatureMireds,
+                CommandTemplateId = commandTemplateId,
+                ValuePath = "colorTemperature"
+            };
         }
 
         private delegate void HueEventHandler(string json);

@@ -21,6 +21,10 @@
  - Implement ICommandDevice -interface if device is capable of executing commands (switch, etc.)
  - Implement IRefreshableReportDevice if device data is refreshed periodically 
 	- The refresh logic is implemented by function (from DeviceBase): public override void Refresh(ReportTemplate report) 
+ - Implement IMatterDevice if the device should be exposed to a Matter ecosystem (Google Home, etc.) through the RIoT Control Bridge
+	- Return one MatterEndpointTemplate per Matter endpoint from: public IEnumerable&lt;MatterEndpointTemplate&gt; GetMatterEndpoints(DeviceConfiguration configuration)
+	- Build the bindings against the configuration instance passed in, since template ids are generated per call
+	- Give each endpoint an Id that is stable across restarts, derived from the underlying device (see Catalog/Hue.cs for a worked example)
 
 
 ## Default Net Node plugins
