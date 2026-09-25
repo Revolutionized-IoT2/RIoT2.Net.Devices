@@ -32,6 +32,7 @@ namespace RIoT2.Net.Devices.Services
         private CancellationTokenSource _cts;
 
         public event WebMessageHandler MessageReceived;
+        public string Status => _status;
 
         public AzureRelayService() 
         {

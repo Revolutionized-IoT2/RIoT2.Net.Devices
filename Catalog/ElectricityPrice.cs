@@ -65,7 +65,7 @@ namespace RIoT2.Net.Devices.Catalog
             {
                 Id = template.Id,
                 TimeStamp = DateTime.UtcNow.ToEpoch(),
-                Value = new ValueModel(getCurrentPrice(report)),
+                Value = new ValueModel(getCurrentPrice(template)),
                 Filter = ""
             });
         }

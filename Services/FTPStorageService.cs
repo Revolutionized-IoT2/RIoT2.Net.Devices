@@ -33,7 +33,7 @@ namespace RIoT2.Net.Devices.Services
                 {
                     _client.Connect();
 
-                    var file = $"_rootFolder/{filename}";
+                    var file = GetRemotePath(filename);
                     if (_client.FileExists(file))
                     {
                         _client.DeleteFile(file);
@@ -58,7 +58,7 @@ namespace RIoT2.Net.Devices.Services
                 {
                     _client.Connect();
 
-                    var file = $"_rootFolder/{filename}";
+                    var file = GetRemotePath(filename);
                     if (_client.FileExists(file))
                     {
 
@@ -95,6 +95,9 @@ namespace RIoT2.Net.Devices.Services
         {
             return _configured;
         }
+
+        private string GetRemotePath(string filename) =>
+            $"{_rootFolder?.TrimEnd('/')}/{filename}";
 
         public async Task<List<DocumentMetadata>> List()
         {
@@ -140,7 +143,7 @@ namespace RIoT2.Net.Devices.Services
             {
                 try
                 {
-                    var file = $"_rootFolder/{filename}";
+                    var file = GetRemotePath(filename);
                     _client.Connect();
                     _client.UploadBytes(data, file);
                    

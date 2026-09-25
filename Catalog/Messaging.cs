@@ -85,11 +85,11 @@ namespace RIoT2.Net.Devices.Catalog
             deviceConfiguration.Id = Guid.NewGuid().ToString();
             deviceConfiguration.Name = "Messaging";
             deviceConfiguration.DeviceParameters = new Dictionary<string, string>();
-            deviceConfiguration.DeviceParameters.Add("firebaseProjectName", "riot-184512");
-            deviceConfiguration.DeviceParameters.Add("smtp_Server", "riot-184512");
-            deviceConfiguration.DeviceParameters.Add("smtp_User", "riot-184512");
-            deviceConfiguration.DeviceParameters.Add("smtp_Password", "riot-184512");
-            deviceConfiguration.DeviceParameters.Add("smtp_Port", "riot-184512");
+            deviceConfiguration.DeviceParameters.Add("firebaseProjectName", "<firebase-project>");
+            deviceConfiguration.DeviceParameters.Add("smtp_Server", "<smtp-server>");
+            deviceConfiguration.DeviceParameters.Add("smtp_User", "<smtp-user>");
+            deviceConfiguration.DeviceParameters.Add("smtp_Password", "<smtp-password>");
+            deviceConfiguration.DeviceParameters.Add("smtp_Port", "587");
 
             deviceConfiguration.ClassFullName = this.GetType().FullName;
             var commandConfigurations = new List<CommandTemplate>();
@@ -194,7 +194,7 @@ namespace RIoT2.Net.Devices.Catalog
                 using (FileStream SourceStream = File.Open(_serviceAccountFile, FileMode.Open))
                 {
                     result = new byte[SourceStream.Length];
-                    await SourceStream.ReadAsync(result, 0, (int)SourceStream.Length);
+                    await SourceStream.ReadExactlyAsync(result);
                 }
 
                 return System.Text.Encoding.UTF8.GetString(result);

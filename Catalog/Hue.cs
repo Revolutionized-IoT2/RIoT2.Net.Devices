@@ -18,7 +18,8 @@ namespace RIoT2.Net.Devices.Catalog
         private readonly object _lightStateLock = new();
         private readonly Dictionary<string, HueData> _lightStates = new(StringComparer.OrdinalIgnoreCase);
 
-        CancellationTokenSource _cancellationTokenSource;
+        private CancellationTokenSource _cancellationTokenSource;
+        private Task _eventsListenerTask = Task.CompletedTask;
 
         private string getHueUrl() 
         {
@@ -42,7 +43,7 @@ namespace RIoT2.Net.Devices.Catalog
             if (command == null)
                 return;
 
-            setLight(command.Address, value).Wait();
+            setLight(command.Address, value).GetAwaiter().GetResult();
         }
 
         public override void ConfigureDevice()
@@ -57,10 +58,10 @@ namespace RIoT2.Net.Devices.Catalog
         {
             _cancellationTokenSource = new CancellationTokenSource();
             HueEventReceived += Hue_HueEventReceived;
-            startEventsListener(_cancellationTokenSource.Token);
+            _eventsListenerTask = startEventsListenerAsync(_cancellationTokenSource.Token);
 
             //send initial values
-            foreach (var light in getLight().Result?.data) 
+            foreach (var light in getLight().GetAwaiter().GetResult()?.data)
                 sendReport(light);
         }
 
@@ -127,8 +128,15 @@ namespace RIoT2.Net.Devices.Catalog
         public override void StopDevice()
         {
             HueEventReceived -= Hue_HueEventReceived;
-            if(_cancellationTokenSource != null)
+            if (_cancellationTokenSource != null)
+            {
                 _cancellationTokenSource.Cancel();
+                try { _eventsListenerTask?.GetAwaiter().GetResult(); }
+                catch (OperationCanceledException) { }
+                _cancellationTokenSource.Dispose();
+                _cancellationTokenSource = null;
+                _eventsListenerTask = Task.CompletedTask;
+            }
         }
 
         public DeviceConfiguration GetConfigurationTemplate()
@@ -148,7 +156,7 @@ namespace RIoT2.Net.Devices.Catalog
             if(State != DeviceState.Running)
                 return deviceConfiguration;
 
-            foreach (var light in getLight().Result.data)
+            foreach (var light in getLight().GetAwaiter().GetResult().data)
             {
                 var id = Guid.NewGuid().ToString();
                 commandConfigurations.Add(new CommandTemplate()
@@ -328,7 +336,7 @@ namespace RIoT2.Net.Devices.Catalog
             //TODO handle reponse?
         }
 
-        private async void startEventsListener(CancellationToken cancelToken) 
+        private async Task startEventsListenerAsync(CancellationToken cancelToken)
         {
             using (var httpClientHandler = new HttpClientHandler()) 
             {
@@ -341,8 +349,7 @@ namespace RIoT2.Net.Devices.Catalog
                     sseClient.Timeout = TimeSpan.FromSeconds(5);
                     while (true)
                     {
-                        if (cancelToken.IsCancellationRequested)
-                            return;
+                        cancelToken.ThrowIfCancellationRequested();
 
                         try
                         {
@@ -350,14 +357,18 @@ namespace RIoT2.Net.Devices.Catalog
                             {
                                 while (!streamReader.EndOfStream)
                                 {
-                                    HueEventReceived?.Invoke(await streamReader.ReadLineAsync());
+                                    HueEventReceived?.Invoke(await streamReader.ReadLineAsync(cancelToken));
                                 }
                             }
+                        }
+                        catch (OperationCanceledException) when (cancelToken.IsCancellationRequested)
+                        {
+                            return;
                         }
                         catch (Exception ex)
                         {
                             Logger.LogError(ex, "Error in hue event listener. Restarting in 5 seconds.");
-                            await Task.Delay(TimeSpan.FromSeconds(5));
+                            await Task.Delay(TimeSpan.FromSeconds(5), cancelToken);
                         }
                     }
                 }

@@ -8,7 +8,7 @@ namespace RIoT2.Net.Devices
 {
     public class Plugin : Core.Interfaces.IDevicePlugin
     {
-        private List<Core.Interfaces.IDevice> _devices;
+        private List<Core.Interfaces.IDevice> _devices = [];
         public Plugin(){ }
 
         public List<Core.Interfaces.IDevice> Devices

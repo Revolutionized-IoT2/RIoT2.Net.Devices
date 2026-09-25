@@ -1,5 +1,8 @@
 # .NET 9.0 Upgrade Plan
 
+Current status: the project targets `net9.0`, has `EnableDynamicLoading` enabled, and references
+`RIoT2.Core` 0.1.43 to match the .NET node host and Raspberry Pi plugin catalog.
+
 ## Execution Steps
 
 Execute steps below sequentially one by one in the order they are listed.

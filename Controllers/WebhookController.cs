@@ -16,8 +16,12 @@ namespace RIoT2.Net.Devices.Controllers
 
         [HttpPost]
         [Route("{address}")]
+        [RequestSizeLimit(65536)]
         public IResult SaveAsync(string address, [FromBody] object content)
         {
+            if (content == null)
+                return Results.BadRequest();
+
             _webhookService.SetWebhook(address, content.ToString());
             return Results.Ok();
         }

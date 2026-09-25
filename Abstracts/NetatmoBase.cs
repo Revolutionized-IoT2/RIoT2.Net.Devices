@@ -96,7 +96,7 @@ namespace RIoT2.Net.Devices.Abstracts
             }
             else 
             {
-                _logger.LogWarning($"Could not refresh Netatmo token: {_refreshToken}. Message: {await response?.Content.ReadAsStringAsync()}");
+                _logger.LogWarning("Could not refresh Netatmo token. Message: {Message}", response == null ? "" : await response.Content.ReadAsStringAsync());
             }
 
             SaveNetatmoAuth(null); //save null -> delete local authentication. Then tokens from configuration will be used
@@ -239,7 +239,7 @@ namespace RIoT2.Net.Devices.Abstracts
                 }
                 else
                 {
-                    _logger.LogWarning($"Netatmo responded with code: {response.StatusCode}. Message: {await response.Content.ReadAsStringAsync()}. Token: {_accessToken}");
+                    _logger.LogWarning("Netatmo responded with code: {StatusCode}. Message: {Message}", response.StatusCode, await response.Content.ReadAsStringAsync());
                 }
 
             }

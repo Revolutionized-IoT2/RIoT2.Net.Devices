@@ -2,7 +2,7 @@
 
 ## Shared package release prerequisite
 
-These plugins, including Netatmo, require `RIoT2.Core` **0.1.42**. Publish that
+These plugins, including Netatmo, require `RIoT2.Core` **0.1.43**. Publish that
 package to the configured trusted feed before releasing the plugins. Local
 validation uses the final package in `C:\Src\RIoT2\.localfeed` plus cached
 dependencies; no external publication is performed by the regression tests.
@@ -35,7 +35,7 @@ in memory; it does not contact a Hue bridge or PLC.
   and refresh I/O is awaited and cancellable, with a five-second transaction deadline. Responses
   are read as complete length-delimited CRC-checked frames; transport failures reset the connection.
   Stop cancels and awaits in-flight I/O. Non-zero marker-write expansions fail explicitly rather than
-  silently targeting expansion zero. Deploy the Core 0.1.42 node before deploying this plugin.
+  silently targeting expansion zero. Deploy the Core 0.1.43 node before deploying this plugin.
 
 ## Quick note on creating custom net core plugin
 
@@ -71,137 +71,27 @@ when implementing the legacy command interface; the updated node selects the asy
 
 ## Default Net Node plugins
 
-### AP Systems
-Get inverter/meter data from an AP Systems ECU
+`Plugin.Initialize` registers: `Web`, `Timer`, `Virtual`, `Mqtt`, `WaterConsumption`, `Messaging`, `FTP`, `ElectricityPrice`, `EasyPLC`, `NetatmoWeather`, `NetatmoSecurity`, `Hue`, `AzureRelay`, `ApSystems`, and `EufySecurity`. Keep credentials in orchestrator-managed configuration or mounted files; do not bake them into images or package manifests.
 
-```
-TODO configuration exable
-```
+| Device | Configuration parameters from current code | Reports / commands |
+| --- | --- | --- |
+| AP Systems | `appId`, `appSecret`, `sid`, `ecuId` | Hourly energy summaries: `today`, `month`, `year`, `lifetime` (`unit`, `precision`). |
+| Azure Relay | No template is emitted; manually configure `relayNamespace`, `connectionName`, `keyName`, `key`. | Starts/stops relay listener; message handling is still TODO in code. |
+| EasyPLC | `ipAddress`, `port` | Async/cancellable marker read/write driver; marker command addresses are `M-{netId}-{expansion}-{marker}` and `refresh`. |
+| Electricity Price | `securityToken`, `domain`, `endpoint`, `vat`; report parameter `precision` | Scheduled current price report in `c/kWh`; cached XML stored at `Data/priceData.xml`. |
+| Eufy Security | `serviceIp`, `port` for the external eufy-security-ws service | Dynamic camera/security reports and guard-mode command templates after the service is connected. |
+| FTP | No custom template is emitted; manually configure `ftpUsers` (`user:password|...`) and `ftpPort`. | File uploads become in-memory photo `SecurityReport` values keyed by FTP username. |
+| Hue | `bridgeIpAddress`, `apiKey` | Dynamic light command/report templates when running; event stream updates merge partial light state and include Matter endpoint metadata. |
+| Messaging | `firebaseProjectName`, `smtp_Server`, `smtp_User`, `smtp_Password`, `smtp_Port`; Firebase service account read from `Data/<project>.json` | Commands `fb` (Firebase topic message) and `mail` (SMTP email). |
+| MQTT | No custom template is emitted; manually configure `clientId`, `serverUrl`, `userName`, `password`, `subscribeTopics`. | Publishes command payloads and reports subscribed topic payloads as text. |
+| Netatmo Security | `token`, `refresh_token`, `clientId`, `clientSecret` | Dynamic security camera reports plus `set-person-home` / `set-person-away` commands; rotated tokens are persisted in `Data/netatmoAuth.json`. |
+| Netatmo Weather | `token`, `refresh_token`, `clientId`, `clientSecret`, `stationId` | Weather station and module measurements; rotated tokens are persisted in `Data/netatmoAuth.json`. |
+| Timer | Uses report-level schedules, not device-level parameters | Emits the report address whenever the scheduler refreshes that report. |
+| Virtual | No device parameters | Stores command values by address and republishes matching report values. |
+| Water Consumption | `securityToken`, `endpoint`; report parameters `unit`, `precision` | Scheduled latest water meter reading; unchanged readings are suppressed. |
+| Web Device | No device parameters | Commands perform HTTP GET/POST to command addresses; `POST /api/webhook/{address}` publishes matching reports. |
 
-> [!NOTE]
-> Requires AP Systems app ID, app secret, SID and ECU ID
-
-### Azure Relay
-Receive webhooks or other messages from the internet into privete web through Azure Relay service
-
-```
-TODO configuration exable
-```
-
-> [!NOTE]
-> Requires settings up Azure!
-
-### Easy PLC
-Control Easy PLC from Eaton / Moeller
-
-```
-TODO configuration exable
-```
-
-### Electricity Price
-Receive current electricity price from entsoe.eu
-
-```
-TODO configuration exable
-```
-
-> [!NOTE]
-> Requires registering to entsoe.eu
-
-### Eufy Security
-Connects to the eufy-security-ws websocket service to receive events from Eufy security devices (motion, person, pet, sound, stranger, vehicle detected)
-
-```
-TODO configuration exable
-```
-
-> [!NOTE]
-> Requires running the eufy-security-ws service, see https://bropat.github.io/eufy-security-ws/
-
-### FTP
-Trigger events from received files (e.g. Web cam sending images via FTP)
-
-```
-TODO configuration exable
-```
-
-### Philips HUE
-Control HUE lamps and other devices connected to bridge
-
-```
-TODO configuration exable
-```
-
-### Messaging
-Send / Receive firebase messages or email
-
-```
-TODO configuration exable
-```
-
-> [!NOTE]
-> Requires email address and setting up firabase.
-> Todo details on setting up firebase and storing auth key
-
-### MQTT
-Send / Receive mqtt messages
-
-```
-TODO configuration exable
-```
-
-### Netatmo Security
-Receive events from Netatmo security
-
-```
-TODO configuration exable
-```
-
-> [!NOTE]
-> Requires activating API in netatmo.
-> TODO details 
-
-### Netatmo Weather
-Access Netatmo weather information
-
-```
-TODO configuration exable
-```
-
-> [!NOTE]
-> Requires activating API in netatmo.
-> TODO details
-
-### Timer
-Create timed triggers to the system
-
-```
-TODO configuration exable
-```
-
-### Virtual Device
-Generic memory based device which is used to trigger other events
-
-```
-TODO configuration exable
-```
-
-### Water Consumption
-Get your water consumption data from wrm-systems
-
-```
-TODO configuration exable
-```
-
-> [!NOTE]
-> Requires API -key from wrm-systems
-
-### Web Device
-Call generic service on web or trigger actions based on received webhooks
-
-```
-TODO configuration exable
-```
+Plugin controllers currently add `POST /api/webhook/{address}` (body forwarded to the Web device) and download endpoints from `DownloadController`. The webhook endpoint is not authenticated in this plugin; put the node behind a trusted network, reverse proxy, or API gateway if exposed. Webhook request bodies are capped at 64 KiB. Download filenames are normalized and rejected if they contain traversal, absolute paths, encoded slashes, or encoded backslashes.
 
 ## TODO
 - Instructions and an example for creating a pluging and a device 

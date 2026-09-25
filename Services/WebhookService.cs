@@ -23,7 +23,7 @@ namespace RIoT2.Net.Devices.Services
 
         public void SetWebhook(string address, string content)
         {
-            WebhookReceived(address, content);
+            WebhookReceived?.Invoke(address, content);
         }
     }
 }

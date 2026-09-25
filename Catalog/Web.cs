@@ -7,11 +7,14 @@ using RIoT2.Net.Devices.Services.Interfaces;
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    public class Web : DeviceBase, ICommandDevice
+    public class Web : DeviceBase, ICommandDevice, IAsyncCommandDevice
     {
         private readonly IWebhookService _webhookService;
 
-        public void ExecuteCommand(string commandId, string value)
+        public void ExecuteCommand(string commandId, string value) =>
+            ExecuteCommandAsync(commandId, value, CancellationToken.None).GetAwaiter().GetResult();
+
+        public async Task ExecuteCommandAsync(string commandId, string value, CancellationToken cancellationToken)
         {
             Logger.LogInformation("Executed command: {commandId}", commandId);
 
@@ -20,7 +23,7 @@ namespace RIoT2.Net.Devices.Catalog
                 return;
 
             //TODO do we need to map incoming value to command model?
-            var result = _webhookService.SendMessageAsync(command.Address, value).Result;
+            var result = await _webhookService.SendMessageAsync(command.Address, value);
 
             //check if there is report with command id address. If there is forward results there...
             var report = ReportTemplates.FirstOrDefault(x => x.Address == commandId);
