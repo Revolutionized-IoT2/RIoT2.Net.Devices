@@ -1,12 +1,12 @@
 # RIoT2.Net.Devices
 
 Default device plugin catalog for the [RIoT2](https://github.com/Revolutionized-IoT2) platform.
-The assembly is a .NET 9 class library with dynamic loading enabled so `RIoT2.Net.Node` can load it
+The assembly is a .NET 10 class library with dynamic loading enabled so `RIoT2.Net.Node` can load it
 from a plugin package at startup.
 
 - Type: device plugin library
-- Target framework: `net9.0`
-- Core package: `RIoT2.Core` 0.1.43
+- Target framework: `net10.0`
+- Core package: `RIoT2.Core` 0.1.45
 - Plugin entry point: `Plugin.cs`
 
 How plugins fit into the platform: [configuration contract](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/contracts/configuration.md).
@@ -34,7 +34,7 @@ dotnet test .\RIoT2.Net.Devices\Tests\RIoT2.Net.Devices.Tests.csproj -c Release
 The tests use synthetic tokens, in-memory Hue and EasyPLC streams, and isolated test-output files.
 They do not contact Netatmo, Hue bridges, PLCs or cloud services.
 
-If `RIoT2.Core` 0.1.43 is not available from the trusted feed, use the local feed at
+If `RIoT2.Core` 0.1.45 is not available from the trusted feed, use the local feed at
 `C:\Src\RIoT2\.localfeed` while validating. A local package is not a published release.
 
 ## Packaging and deployment
@@ -43,6 +43,8 @@ This library is not run directly. Build or release a plugin zip and let `RIoT2.N
 from the Node's `Plugins/` directory. The release workflow writes `PluginManifest.json`, zips the
 Release output and uploads the zip as a GitHub release asset.
 
+Install this plugin only after the Node image has been updated to `net10.0`. A `net10.0` plugin
+cannot load into a `net9.0` node, while a `net9.0` plugin can load into the `net10.0` node.
 Release this plugin with the Node image that hosts it. Plugin assemblies share the host
 `RIoT2.Core` assembly, so package/runtime version drift can show up as missing members or changed
 runtime behaviour.

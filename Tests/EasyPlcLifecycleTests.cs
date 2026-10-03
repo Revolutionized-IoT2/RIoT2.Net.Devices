@@ -55,7 +55,7 @@ public class EasyPlcLifecycleTests
         Assert.AreEqual(1, connection.DisposeCount);
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("connect")]
     [DataRow("truncated")]
     [DataRow("rejected")]
@@ -67,7 +67,7 @@ public class EasyPlcLifecycleTests
         var device = new EasyPLC(NullLogger.Instance, connections.Dequeue);
         device.Initialize(Configuration());
 
-        Assert.ThrowsException<Exception>(device.Start);
+        Assert.ThrowsExactly<Exception>(device.Start);
         Assert.IsTrue(failed.Disposed);
         device.Start();
         device.Stop();
@@ -114,7 +114,7 @@ public class EasyPlcLifecycleTests
         var device = new EasyPLC(NullLogger.Instance, connections.Dequeue);
         device.Initialize(CommandConfiguration());
         await device.StartAsync(default);
-        await Assert.ThrowsExceptionAsync<EndOfStreamException>(() => device.ExecuteCommandAsync("set", "true", default));
+        await Assert.ThrowsExactlyAsync<EndOfStreamException>(() => device.ExecuteCommandAsync("set", "true", default));
         Assert.IsTrue(broken.Disposed);
         await device.ExecuteCommandAsync("set", "false", default);
         await device.StopAsync(default);
@@ -167,7 +167,7 @@ public class EasyPlcLifecycleTests
         var device = new EasyPLC(NullLogger.Instance, () => connection);
         device.Initialize(CommandConfiguration());
         await device.StartAsync(default);
-        await Assert.ThrowsExceptionAsync<TimeoutException>(() =>
+        await Assert.ThrowsExactlyAsync<TimeoutException>(() =>
             device.ExecuteCommandAsync("set", "true", default)).WaitAsync(TimeSpan.FromSeconds(8));
         Assert.IsTrue(connection.Disposed);
         await device.StopAsync(default);
@@ -192,7 +192,7 @@ public class EasyPlcLifecycleTests
         await device.StopAsync(default);
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(true)]
     [DataRow(false)]
     public async Task MalformedResponsesFailAndResetTransport(bool badHeader)
@@ -204,7 +204,7 @@ public class EasyPlcLifecycleTests
         var device = new EasyPLC(NullLogger.Instance, () => connection);
         device.Initialize(CommandConfiguration());
         await device.StartAsync(default);
-        await Assert.ThrowsExceptionAsync<InvalidDataException>(() => device.ExecuteCommandAsync("set", "true", default));
+        await Assert.ThrowsExactlyAsync<InvalidDataException>(() => device.ExecuteCommandAsync("set", "true", default));
         Assert.IsTrue(connection.Disposed);
         await device.StopAsync(default);
     }

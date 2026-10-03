@@ -5,6 +5,9 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+- Changed the plugin catalog and tests to `net10.0`, with `MSTest.Sdk` 4.4.1.
+- Changed the Core dependency to `RIoT2.Core` 0.1.45 through central package management.
+- Updated the release workflow expectations to .NET 10 SDK and `bin\Release\net10.0` outputs.
 - Documentation: `AGENTS.md` is the AI instruction file, `CLAUDE.md` imports it, and version notes
   moved from the README to this file.
 

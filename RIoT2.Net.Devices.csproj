@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
 	<EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
@@ -12,11 +12,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FluentFTP" Version="55.0.0" />
-    <PackageReference Include="Google.Apis.Auth" Version="1.76.0" />
-    <PackageReference Include="Microsoft.Azure.Relay" Version="3.1.1" />
-    <PackageReference Include="RIoT2.Core" Version="0.1.43" />
-    <PackageReference Include="Zhaobang.FtpServer" Version="2.2.0" />
+    <PackageReference Include="FluentFTP" />
+    <PackageReference Include="Google.Apis.Auth" />
+    <PackageReference Include="Microsoft.Azure.Relay" />
+    <PackageReference Include="RIoT2.Core" />
+    <PackageReference Include="Zhaobang.FtpServer" />
 	<FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 

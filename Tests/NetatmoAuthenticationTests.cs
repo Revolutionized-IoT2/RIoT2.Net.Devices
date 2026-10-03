@@ -70,7 +70,7 @@ public class NetatmoAuthenticationTests
         const string malformed = "{invalid-json";
         File.WriteAllText(Path.Combine("Data", "netatmoAuth.json"), malformed);
 
-        Assert.ThrowsException<Exception>(() =>
+        Assert.ThrowsExactly<Exception>(() =>
             NetatmoBase.ConfigureNetatmo("synthetic-access", "synthetic-refresh", "test-client", "test-secret"));
 
         Assert.AreEqual(malformed, File.ReadAllText(Path.Combine("Data", "netatmoAuth.json")));

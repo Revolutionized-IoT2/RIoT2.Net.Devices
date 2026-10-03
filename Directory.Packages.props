@@ -1,0 +1,14 @@
+<Project>
+  <!-- Central package versions (plan M8 step 2). Shared versions come from
+       Revolutionized-IoT2/.github build/Directory.Packages.props.template. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="FluentFTP" Version="55.0.0" />
+    <PackageVersion Include="Google.Apis.Auth" Version="1.76.0" />
+    <PackageVersion Include="Microsoft.Azure.Relay" Version="3.1.1" />
+    <PackageVersion Include="RIoT2.Core" Version="0.1.45" />
+    <PackageVersion Include="Zhaobang.FtpServer" Version="2.2.0" />
+  </ItemGroup>
+</Project>

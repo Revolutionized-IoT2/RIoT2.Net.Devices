@@ -1,6 +1,6 @@
-<Project Sdk="MSTest.Sdk/3.6.1">
+<Project Sdk="MSTest.Sdk/4.4.1">
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseVSTest>true</UseVSTest>
   </PropertyGroup>

@@ -11,7 +11,7 @@ namespace RIoT2.Net.Devices.Tests;
 [TestClass]
 public class DownloadControllerTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("..%2Fsecret.jpg")]
     [DataRow("..%5Csecret.jpg")]
     [DataRow("C:%5CWindows%5Cwin.ini")]

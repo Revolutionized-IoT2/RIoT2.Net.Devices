@@ -8,7 +8,7 @@ workspace map, platform-wide rules and the documentation rules. In the local wor
 
 ## What this is
 
-The default .NET 9 device plugin catalog for the RIoT2 Node. It is built with
+The default .NET 10 device plugin catalog for the RIoT2 Node. It is built with
 `EnableDynamicLoading`, registers network/cloud/default devices and plugin controllers, and is
 packaged as a zip consumed by `RIoT2.Net.Node`.
 
@@ -26,7 +26,7 @@ dotnet test .\RIoT2.Net.Devices\Tests\RIoT2.Net.Devices.Tests.csproj -c Release
   `RIoT2.Net.Node`.
 - The tag workflow in `.github/workflows/main.yml` builds Release, writes `PluginManifest.json`,
   zips a hand-maintained dependency list and uploads the zip as a GitHub release asset.
-- If `RIoT2.Core` 0.1.43 is not published to the configured feed, restore/build with
+- If `RIoT2.Core` 0.1.45 is not published to the configured feed, restore/build with
   `C:\Src\RIoT2\.localfeed` as an extra NuGet source. A local feed package is not a release.
 
 ## Layout
@@ -69,8 +69,9 @@ This repository implements plugin-side pieces of these hub contracts:
   configuration discovery and are tracked by M6.
 - Keep plugin HTTP routes anonymous to match the platform model. If exposed outside a trusted
   network, put the node behind a reverse proxy or gateway instead of adding per-route auth here.
-- Release this plugin package with the Node image that hosts it. It runs inside the Node's
-  `RIoT2.Core` version.
+- Release this plugin package after the Node image is updated to `net10.0`. A `net10.0` plugin
+  cannot load into a `net9.0` node; the Node compatibility test covers the reverse direction.
+- Keep `PackageReference` items versionless; package versions belong in `Directory.Packages.props`.
 
 ## Pitfalls
 
