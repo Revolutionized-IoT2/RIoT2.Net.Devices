@@ -1,97 +1,116 @@
 # RIoT2.Net.Devices
 
-## Shared package release prerequisite
+Default device plugin catalog for the [RIoT2](https://github.com/Revolutionized-IoT2) platform.
+The assembly is a .NET 9 class library with dynamic loading enabled so `RIoT2.Net.Node` can load it
+from a plugin package at startup.
 
-These plugins, including Netatmo, require `RIoT2.Core` **0.1.43**. Publish that
-package to the configured trusted feed before releasing the plugins. Local
-validation uses the final package in `C:\Src\RIoT2\.localfeed` plus cached
-dependencies; no external publication is performed by the regression tests.
+- Type: device plugin library
+- Target framework: `net9.0`
+- Core package: `RIoT2.Core` 0.1.43
+- Plugin entry point: `Plugin.cs`
 
-## Regression tests
+How plugins fit into the platform: [configuration contract](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/contracts/configuration.md).
+
+## Contents
+
+| Path | Contents |
+|---|---|
+| `Plugin.cs` | Registers plugin services, devices and controllers with the Node host |
+| `Catalog/` | Device implementations |
+| `Controllers/` | `WebhookController` and `DownloadController` |
+| `Services/` | Supporting services for integrations and storage |
+| `Models/` | DTOs used by devices and services |
+| `Tests/` | Hardware-free regression tests |
+
+## Build and test
+
+From the workspace root (`C:\Src\RIoT2`):
 
 ```powershell
-dotnet test .\Tests\RIoT2.Net.Devices.Tests.csproj
+dotnet build .\RIoT2.Net.Devices\RIoT2.Net.Devices.csproj
+dotnet test .\RIoT2.Net.Devices\Tests\RIoT2.Net.Devices.Tests.csproj -c Release
 ```
 
-The Netatmo authentication tests use synthetic tokens in an isolated test-output
-directory and never contact Netatmo. On restart, a valid `Data/netatmoAuth.json`
-takes precedence over configured tokens so refreshed credentials are preserved.
-Keep that data directory persistent across node restarts.
+The tests use synthetic tokens, in-memory Hue and EasyPLC streams, and isolated test-output files.
+They do not contact Netatmo, Hue bridges, PLCs or cloud services.
 
-The same suite replays Hue event JSON and EasyPLC connection streams entirely
-in memory; it does not contact a Hue bridge or PLC.
+If `RIoT2.Core` 0.1.43 is not available from the trusted feed, use the local feed at
+`C:\Src\RIoT2\.localfeed` while validating. A local package is not a published release.
 
-### Driver lifecycle and partial updates
+## Packaging and deployment
 
-- Hue event updates are merged with the last known state for each light. Missing
-  fields do not reset on/off or brightness. A color received before brightness is
-  cached until brightness becomes known rather than inventing a brightness value.
-  Reconfiguration clears the per-light cache.
-- EasyPLC shutdown and connection failures dispose and clear the old connection.
-  Restart/reconfiguration establishes a fresh connection using the current
-  endpoint. Initialization reads complete eight-byte responses, including when
-  TCP splits them into smaller reads; rejected/incomplete handshakes fail startup.
-- EasyPLC now opts into `AsyncDeviceBase` and `IAsyncCommandDevice`. Connect, handshake, command,
-  and refresh I/O is awaited and cancellable, with a five-second transaction deadline. Responses
-  are read as complete length-delimited CRC-checked frames; transport failures reset the connection.
-  Stop cancels and awaits in-flight I/O. Non-zero marker-write expansions fail explicitly rather than
-  silently targeting expansion zero. Deploy the Core 0.1.43 node before deploying this plugin.
+This library is not run directly. Build or release a plugin zip and let `RIoT2.Net.Node` load it
+from the Node's `Plugins/` directory. The release workflow writes `PluginManifest.json`, zips the
+Release output and uploads the zip as a GitHub release asset.
 
-## Quick note on creating custom net core plugin
+Release this plugin with the Node image that hosts it. Plugin assemblies share the host
+`RIoT2.Core` assembly, so package/runtime version drift can show up as missing members or changed
+runtime behaviour.
 
-- Create new Class library project
+## Plugin HTTP endpoints
 
-- Add reference to RIoT2.Core
+Loaded by the Node host:
 
-- Create Plugin.cs which implements IDevicePlugin -interface
- - The plugin must have a following contructor: public Plugin(IServiceProvider services)
- - The plugin provides a list of devices to Net Node
-- Create custom Devices
- - At minimum, a Device must implement IDevice interface
- - Implement abstract class DeviceBase for easier implementation
-	- Add configuration logic to: public override void ConfigureDevice()
-	- For synchronous devices, add start logic to: public override void StartDevice()
-	- Add device stop logic to: public override void StopDevice()
-	- If device is IRefresableReportDevice, add refresh logic to: public override void Refresh(ReportTemplate report)
-	- Throw error from overridden functions. This will change devices state to error. Error message is accessible from devices StateMessage
- - Implement IDeviceWithConfiguration for device that can provide a configuration template 
- - Implement ICommandDevice -interface if device is capable of executing commands (switch, etc.)
- - Implement IRefreshableReportDevice if device data is refreshed periodically 
-	- The refresh logic is implemented by function (from DeviceBase): public override void Refresh(ReportTemplate report) 
- - Implement IMatterDevice if the device should be exposed to a Matter ecosystem (Google Home, etc.) through the RIoT Control Bridge
-	- Return one MatterEndpointTemplate per Matter endpoint from: public IEnumerable&lt;MatterEndpointTemplate&gt; GetMatterEndpoints(DeviceConfiguration configuration)
-	- Build the bindings against the configuration instance passed in, since template ids are generated per call
-	- Give each endpoint an Id that is stable across restarts, derived from the underlying device (see Catalog/Hue.cs for a worked example)
+| Method | Route | Purpose |
+|---|---|---|
+| `POST` | `/api/webhook/{address}` | Forwards a request body up to 64 KiB to the Web device |
+| `GET` | `/api/download/{filename}` | Returns an in-memory or configured stored image file |
+| `GET` | `/api/download/list/files` | Lists in-memory documents |
 
-For new asynchronous drivers, prefer `AsyncDeviceBase` and override `StartDeviceAsync`,
-`StopDeviceAsync`, and `RefreshAsync`, forwarding the cancellation token through all I/O. Implement
-`IAsyncCommandDevice.ExecuteCommandAsync` for commands. Keep synchronous compatibility entry points
-when implementing the legacy command interface; the updated node selects the async contract.
+These routes are anonymous. Keep the node behind a trusted network, reverse proxy or gateway when
+exposing webhooks.
 
+## Device catalog
 
-## Default Net Node plugins
+The list below is verified against `Catalog/*.cs`.
 
-`Plugin.Initialize` registers: `Web`, `Timer`, `Virtual`, `Mqtt`, `WaterConsumption`, `Messaging`, `FTP`, `ElectricityPrice`, `EasyPLC`, `NetatmoWeather`, `NetatmoSecurity`, `Hue`, `AzureRelay`, `ApSystems`, and `EufySecurity`. Keep credentials in orchestrator-managed configuration or mounted files; do not bake them into images or package manifests.
-
-| Device | Configuration parameters from current code | Reports / commands |
-| --- | --- | --- |
-| AP Systems | `appId`, `appSecret`, `sid`, `ecuId` | Hourly energy summaries: `today`, `month`, `year`, `lifetime` (`unit`, `precision`). |
-| Azure Relay | No template is emitted; manually configure `relayNamespace`, `connectionName`, `keyName`, `key`. | Starts/stops relay listener; message handling is still TODO in code. |
-| EasyPLC | `ipAddress`, `port` | Async/cancellable marker read/write driver; marker command addresses are `M-{netId}-{expansion}-{marker}` and `refresh`. |
-| Electricity Price | `securityToken`, `domain`, `endpoint`, `vat`; report parameter `precision` | Scheduled current price report in `c/kWh`; cached XML stored at `Data/priceData.xml`. |
-| Eufy Security | `serviceIp`, `port` for the external eufy-security-ws service | Dynamic camera/security reports and guard-mode command templates after the service is connected. |
-| FTP | No custom template is emitted; manually configure `ftpUsers` (`user:password|...`) and `ftpPort`. | File uploads become in-memory photo `SecurityReport` values keyed by FTP username. |
-| Hue | `bridgeIpAddress`, `apiKey` | Dynamic light command/report templates when running; event stream updates merge partial light state and include Matter endpoint metadata. |
-| Messaging | `firebaseProjectName`, `smtp_Server`, `smtp_User`, `smtp_Password`, `smtp_Port`; Firebase service account read from `Data/<project>.json` | Commands `fb` (Firebase topic message) and `mail` (SMTP email). |
-| MQTT | No custom template is emitted; manually configure `clientId`, `serverUrl`, `userName`, `password`, `subscribeTopics`. | Publishes command payloads and reports subscribed topic payloads as text. |
-| Netatmo Security | `token`, `refresh_token`, `clientId`, `clientSecret` | Dynamic security camera reports plus `set-person-home` / `set-person-away` commands; rotated tokens are persisted in `Data/netatmoAuth.json`. |
+| Device | Parameters | Reports and commands |
+|---|---|---|
+| AP Systems | `appId`, `appSecret`, `sid`, `ecuId` | Hourly energy summaries: `today`, `month`, `year`, `lifetime` with `unit` and `precision` report parameters. |
+| Azure Relay | No template is emitted; code reads `relayNamespace`, `connectionName`, `keyName`, `key`. | Starts/stops an Azure Relay listener. Message handling is not implemented in code. |
+| EasyPLC | No template is emitted; code reads `ipAddress`, `port`. | Async/cancellable PLC marker read/write driver. Marker command addresses are `M-{netId}-{expansion}-{marker}`; `refresh` reads markers. Non-zero write expansions are rejected. |
+| Electricity Price | `securityToken`, `domain`, `endpoint`, `vat` | Scheduled current price report at address `price`, with `unit=c/kWh` and `precision`. Cached XML is stored at `Data/priceData.xml`. |
+| Eufy Security | `serviceIp`, `port` | Dynamic camera/security reports and a station `guardMode` command after the external eufy-security-ws service is connected. |
+| FTP | No template is emitted; code reads `ftpUsers`, `ftpPort`. | File uploads become in-memory photo `SecurityReport` values keyed by FTP username. |
+| Hue | `bridgeIpAddress`, `apiKey` | Dynamic light command/report templates when running; event-stream updates merge partial state and include Matter endpoint metadata. |
+| Messaging | `firebaseProjectName`, `smtp_Server`, `smtp_User`, `smtp_Password`, `smtp_Port` | Commands `fb` (Firebase topic message) and `mail` (SMTP email). Firebase service account JSON is read from `Data/service_account.json`. |
+| MQTT | No template is emitted; code reads `clientId`, `serverUrl`, `userName`, `password`, `subscribeTopics`. | Publishes command payloads to command addresses and reports subscribed topic payloads as text. |
+| Netatmo Security | `token`, `refresh_token`, `clientId`, `clientSecret` | Dynamic security camera reports plus `refresh` and `set_home` commands; rotated tokens are persisted in `Data/netatmoAuth.json`. |
 | Netatmo Weather | `token`, `refresh_token`, `clientId`, `clientSecret`, `stationId` | Weather station and module measurements; rotated tokens are persisted in `Data/netatmoAuth.json`. |
-| Timer | Uses report-level schedules, not device-level parameters | Emits the report address whenever the scheduler refreshes that report. |
+| Timer | No device parameters; uses report-level schedules | Emits the report address whenever the scheduler refreshes that report. |
 | Virtual | No device parameters | Stores command values by address and republishes matching report values. |
-| Water Consumption | `securityToken`, `endpoint`; report parameters `unit`, `precision` | Scheduled latest water meter reading; unchanged readings are suppressed. |
-| Web Device | No device parameters | Commands perform HTTP GET/POST to command addresses; `POST /api/webhook/{address}` publishes matching reports. |
+| Water Consumption | `securityToken`, `endpoint` | Scheduled latest water meter reading at address `watermeter`, with `unit` and `precision` report parameters. |
+| Web Device | No device parameters | Commands perform HTTP GET/POST through the webhook service; `POST /api/webhook/{address}` publishes matching reports. |
 
-Plugin controllers currently add `POST /api/webhook/{address}` (body forwarded to the Web device) and download endpoints from `DownloadController`. The webhook endpoint is not authenticated in this plugin; put the node behind a trusted network, reverse proxy, or API gateway if exposed. Webhook request bodies are capped at 64 KiB. Download filenames are normalized and rejected if they contain traversal, absolute paths, encoded slashes, or encoded backslashes.
+Devices and plugin controllers use the platform configuration and HTTP contracts:
 
-## TODO
-- Instructions and an example for creating a pluging and a device 
+- [Node configuration, templates and plugins](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/contracts/configuration.md)
+- [HTTP and gRPC APIs](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/contracts/http-api.md)
+
+## Writing a new device
+
+1. Add a class under `Catalog/`.
+2. Derive from `DeviceBase`, or `AsyncDeviceBase` for network or hardware I/O that must be
+   awaited/cancelled by the node.
+3. Implement `IDeviceWithConfiguration` when the UI should discover parameters/templates.
+4. Implement `ICommandDevice` / `IAsyncCommandDevice` for commands, and
+   `IRefreshableReportDevice` for scheduled reports.
+5. Register the device in `Plugin.Initialize(IServiceCollection)` as a host-owned singleton.
+
+Configuration parameter keys should be camelCase because the platform serializes dictionary keys as
+camelCase and `DeviceBase.GetConfiguration<T>(key)` is case-sensitive.
+
+## Versions and releases
+
+- Release notes are in [CHANGELOG.md](CHANGELOG.md).
+- CI releases a zip when a version tag is pushed.
+- Release the plugin package with the compatible Node image.
+
+## Contributing
+
+- Instructions for AI coding agents: [AGENTS.md](AGENTS.md).
+- Platform documentation: [.github/docs](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/README.md).
+
+## License
+
+See [LICENSE](LICENSE).
