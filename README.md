@@ -6,7 +6,7 @@ from a plugin package at startup.
 
 - Type: device plugin library
 - Target framework: `net10.0`
-- Core package: `RIoT2.Core` 0.1.45
+- Core package: `RIoT2.Core` 1.0.1
 - Plugin entry point: `Plugin.cs`
 
 How plugins fit into the platform: [configuration contract](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/contracts/configuration.md).
@@ -34,8 +34,8 @@ dotnet test .\RIoT2.Net.Devices\Tests\RIoT2.Net.Devices.Tests.csproj -c Release
 The tests use synthetic tokens, in-memory Hue and EasyPLC streams, and isolated test-output files.
 They do not contact Netatmo, Hue bridges, PLCs or cloud services.
 
-If `RIoT2.Core` 0.1.45 is not available from the trusted feed, use the local feed at
-`C:\Src\RIoT2\.localfeed` while validating. A local package is not a published release.
+To try an unreleased Core, pack it into `C:\Src\RIoT2\.localfeed` and restore with that folder as
+an extra source. A local package is not a published release.
 
 ## Packaging and deployment
 

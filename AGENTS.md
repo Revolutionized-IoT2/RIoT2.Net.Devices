@@ -26,7 +26,7 @@ dotnet test .\RIoT2.Net.Devices\Tests\RIoT2.Net.Devices.Tests.csproj -c Release
   `RIoT2.Net.Node`.
 - The tag workflow in `.github/workflows/main.yml` builds Release, writes `PluginManifest.json`,
   zips a hand-maintained dependency list and uploads the zip as a GitHub release asset.
-- If `RIoT2.Core` 0.1.45 is not published to the configured feed, restore/build with
+- `RIoT2.Core` 1.0.1 is published on GitHub Packages. To try an unreleased Core, restore with
   `C:\Src\RIoT2\.localfeed` as an extra NuGet source. A local feed package is not a release.
 
 ## Layout
