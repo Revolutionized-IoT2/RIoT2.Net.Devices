@@ -355,9 +355,10 @@ namespace RIoT2.Net.Devices.Catalog
                         {
                             using (var streamReader = new StreamReader(await sseClient.GetStreamAsync(getHueEventUrl(), cancelToken)))
                             {
-                                while (!streamReader.EndOfStream)
+                                string line;
+                                while ((line = await streamReader.ReadLineAsync(cancelToken)) != null)
                                 {
-                                    HueEventReceived?.Invoke(await streamReader.ReadLineAsync(cancelToken));
+                                    HueEventReceived?.Invoke(line);
                                 }
                             }
                         }

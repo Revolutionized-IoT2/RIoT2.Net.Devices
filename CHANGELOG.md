@@ -8,6 +8,8 @@ uploads a plugin zip as a GitHub release asset.
 - Changed the plugin catalog and tests to `net10.0`, with `MSTest.Sdk` 4.4.1.
 - Changed the Core dependency to `RIoT2.Core` 0.1.45 through central package management.
 - Updated the release workflow expectations to .NET 10 SDK and `bin\Release\net10.0` outputs.
+- Hue: the event stream reads lines asynchronously until the stream ends, instead of polling
+  `EndOfStream`, which blocked a thread on the network stream.
 - Documentation: `AGENTS.md` is the AI instruction file, `CLAUDE.md` imports it, and version notes
   moved from the README to this file.
 
