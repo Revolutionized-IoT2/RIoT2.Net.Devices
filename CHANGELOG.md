@@ -5,6 +5,10 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-12
+
+Built on `RIoT2.Core` 1.0.1 and `net10.0`: install it only into a Node `1.0.0` or newer.
+
 - Changed the plugin catalog and tests to `net10.0`, with `MSTest.Sdk` 4.4.1.
 - Changed the Core dependency to `RIoT2.Core` 1.0.1 through central package management.
 - Updated the release workflow expectations to .NET 10 SDK and `bin\Release\net10.0` outputs.
