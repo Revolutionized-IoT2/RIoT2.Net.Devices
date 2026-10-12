@@ -49,6 +49,11 @@ namespace RIoT2.Net.Devices.Controllers
             try { decoded = DecodeRepeatedly(filename); }
             catch { return false; }
 
+            // A file name only, on every OS: the node runs on Linux, where '\' and "C:" are not
+            // path syntax, but the storage behind this endpoint may still treat them as paths.
+            if (decoded.IndexOfAny(['/', '\\', ':']) >= 0 || decoded is "." or "..")
+                return false;
+
             var baseDirectory = EnsureTrailingSeparator(DownloadBaseDirectory);
             var fullPath = Path.GetFullPath(Path.Combine(baseDirectory, decoded));
             if (!fullPath.StartsWith(baseDirectory, StringComparison.OrdinalIgnoreCase))
