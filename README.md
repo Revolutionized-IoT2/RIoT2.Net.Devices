@@ -40,8 +40,10 @@ an extra source. A local package is not a published release.
 ## Packaging and deployment
 
 This library is not run directly. Build or release a plugin zip and let `RIoT2.Net.Node` load it
-from the Node's `Plugins/` directory. The release workflow writes `PluginManifest.json`, zips the
-Release output and uploads the zip as a GitHub release asset.
+from the Node's `Plugins/` directory. Push a tag `x.y.z` to release: the release workflow runs the
+tests, zips the publish output without the assemblies the node already ships, adds
+`PluginManifest.json`, and attaches `RIoT2.Net.Devices_<tag>.zip` and its `.sha256` to the GitHub
+release ([CI guide](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/guides/ci.md)).
 
 Install this plugin only after the Node image has been updated to `net10.0`. A `net10.0` plugin
 cannot load into a `net9.0` node, while a `net9.0` plugin can load into the `net10.0` node.
@@ -105,7 +107,7 @@ camelCase and `DeviceBase.GetConfiguration<T>(key)` is case-sensitive.
 ## Versions and releases
 
 - Release notes are in [CHANGELOG.md](CHANGELOG.md).
-- CI releases a zip when a version tag is pushed.
+- A version tag releases the plugin zip and its `.sha256` sidecar; CI tests every push.
 - Release the plugin package with the compatible Node image.
 
 ## Contributing

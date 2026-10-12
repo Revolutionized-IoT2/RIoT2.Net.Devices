@@ -24,8 +24,11 @@ dotnet test .\RIoT2.Net.Devices\Tests\RIoT2.Net.Devices.Tests.csproj -c Release
 
 - This is not a standalone executable. To run it, load the built package through
   `RIoT2.Net.Node`.
-- The tag workflow in `.github/workflows/main.yml` builds Release, writes `PluginManifest.json`,
-  zips a hand-maintained dependency list and uploads the zip as a GitHub release asset.
+- Every push runs `.github/workflows/ci.yml` (build, tests, plugin zip as an artifact, secret
+  scan). A `x.y.z` tag runs `release.yml`: it validates, then the hub's `plugin-release.yml`
+  publishes the project, zips its assemblies minus those the node ships, writes
+  `PluginManifest.json` (with `coreVersion`) and attaches the zip and a `.sha256` sidecar to the
+  GitHub release ([CI guide](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/guides/ci.md)).
 - `RIoT2.Core` 1.0.1 is published on GitHub Packages. To try an unreleased Core, restore with
   `C:\Src\RIoT2\.localfeed` as an extra NuGet source. A local feed package is not a release.
 
@@ -40,7 +43,7 @@ dotnet test .\RIoT2.Net.Devices\Tests\RIoT2.Net.Devices.Tests.csproj -c Release
 | `Abstracts/` | Shared Netatmo base device logic |
 | `Models/` | DTOs for devices and services |
 | `Tests/` | MSTest hardware-free regression tests |
-| `.github/workflows/main.yml` | Tag-triggered release asset workflow |
+| `.github/workflows/ci.yml`, `release.yml` | CI on every push; plugin zip release on a tag |
 
 ## Contracts consumed here
 

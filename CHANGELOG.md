@@ -5,6 +5,15 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+- Changed the plugin zip: it is built from the `dotnet publish` output minus the assemblies the
+  node ships, instead of a hand-written list. It now also contains
+  `System.IdentityModel.Tokens.Jwt.dll`, which the list had missed. `PluginManifest.json` gains
+  `coreVersion`, and the release has a `<zip>.sha256` sidecar.
+- Fixed: `GET /api/download/{filename}` rejects `\`, `/` and `:` on every OS. On Linux, names
+  such as `..\secret.jpg` and `C:\Windows\win.ini` were accepted as plain file names.
+- CI: every push runs the tests, packs the zip as an artifact and scans for secrets; a tag
+  validates before it releases.
+
 ## [1.0.0] - 2026-10-12
 
 Built on `RIoT2.Core` 1.0.1 and `net10.0`: install it only into a Node `1.0.0` or newer.
