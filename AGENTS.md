@@ -96,7 +96,9 @@ This repository implements plugin-side pieces of these hub contracts:
   plugin configuration discovery and no static device state.
 - [M11](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/plans/m11-async-cleanup.md):
   remaining blocking and `async void` cleanup.
+- [M12](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/plans/m12-device-plugin-sdk.md) ([ADR 0014](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/adr/0014-device-plugin-sdk.md)):
+  device plugin SDK (`PluginBase`, conformance test, packaging target, typed options).
 - [Design 7.2](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/design/desired-state-configuration.md):
   desired-state configuration and plugin updates.
-- Backlog items 4, 5, 16, 18 and 20 in
+- Backlog items 4, 5, 16, 18, 20 and 23 in
   [open-issues.md](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/backlog/open-issues.md).
