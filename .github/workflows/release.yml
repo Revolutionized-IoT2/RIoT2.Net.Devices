@@ -1,0 +1,30 @@
+name: Release
+
+# Push a x.y.z tag to attach RIoT2.Net.Devices_<tag>.zip and its .sha256 sidecar to a GitHub
+# release. Release the Node image first: a plugin can't load into an older node.
+
+on:
+  push:
+    tags: ["*.*.*"]
+
+permissions:
+  contents: write
+  packages: read
+
+jobs:
+  validate:
+    uses: Revolutionized-IoT2/.github/.github/workflows/dotnet-validate.yml@main
+    with:
+      build: RIoT2.Net.Devices.sln
+      test: Tests/RIoT2.Net.Devices.Tests.csproj
+    secrets: inherit
+
+  plugin:
+    needs: validate
+    uses: Revolutionized-IoT2/.github/.github/workflows/plugin-release.yml@main
+    with:
+      project: RIoT2.Net.Devices.csproj
+      name: Devices plugin
+      package: RIoT2.Net.Devices
+      publish: true
+    secrets: inherit

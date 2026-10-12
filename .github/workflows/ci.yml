@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dotnet:
+    uses: Revolutionized-IoT2/.github/.github/workflows/dotnet-validate.yml@main
+    with:
+      build: RIoT2.Net.Devices.sln
+      test: Tests/RIoT2.Net.Devices.Tests.csproj
+    secrets: inherit
+
+  plugin:
+    uses: Revolutionized-IoT2/.github/.github/workflows/plugin-release.yml@main
+    with:
+      project: RIoT2.Net.Devices.csproj
+      name: Devices plugin
+      package: RIoT2.Net.Devices
+    secrets: inherit
+
+  secret-scan:
+    uses: Revolutionized-IoT2/.github/.github/workflows/secret-scan.yml@main
