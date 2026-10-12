@@ -5,6 +5,10 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-12
+
+Install into a Node 1.0.0 or newer.
+
 - Changed the plugin zip: it is built from the `dotnet publish` output minus the assemblies the
   node ships, instead of a hand-written list. It now also contains
   `System.IdentityModel.Tokens.Jwt.dll`, which the list had missed. `PluginManifest.json` gains
