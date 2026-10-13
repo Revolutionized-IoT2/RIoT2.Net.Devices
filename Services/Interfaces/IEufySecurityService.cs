@@ -10,8 +10,10 @@ namespace RIoT2.Net.Devices.Services.Interfaces
         Dictionary<string, EufyPropertiesData> DeviceProperties { get; }
         void Configure(string serviceIp, int port);
         event EufyEventHandler EufyEvent;
-        void Start();
-        void Stop();
+        /// <summary>Connects to eufy-security-ws. A failed connection is logged, not thrown.</summary>
+        Task StartAsync(CancellationToken cancellationToken);
+        /// <summary>Disconnects and waits until the received messages are handled.</summary>
+        Task StopAsync();
         Task SendCommand(string json);
     }
 }

@@ -5,6 +5,21 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-13
+
+Async cleanup, part 1 ([I09](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-0-1.md#i09-async-cleanup-part-1-s)). Built on `RIoT2.Core` 1.4.0: install into a Node 1.2.1 or newer.
+
+- Changed: `EufySecurityService` handles the WebSocket messages through a bounded queue (1,000) and
+  one worker, in arrival order; a message that fails is logged and the next one is still handled.
+  The handler used to be `async void`. `Start`/`Stop` became `StartAsync`/`StopAsync`, which no
+  longer block on the connection, and the service is `IAsyncDisposable`.
+- Fixed: after its first stop, the Eufy Security service could never connect again, because every
+  later start used the already cancelled token. Restarting or reconfiguring the device now works.
+- Changed: the `EufySecurity` device derives from `AsyncDeviceBase` and implements
+  `IAsyncCommandDevice`; the start waits for the initial properties without blocking a thread. A
+  station that hasn't reported its properties yet no longer puts the device into the error state.
+- Changed: the `Mqtt` device publishes commands with `MqttClient.PublishAsync` instead of the
+  obsolete `Publish`. No behaviour change.
 - Fixed: the `Virtual` device reported a command's value still serialized as JSON, so the text
   command `Living room` came back as the report `"\"Living room\""` and every number or boolean as
   text. It now reports the commanded value with its type ([I06](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-0-1.md#i06-in-process-end-to-end-harness-m), found by the end-to-end tests).

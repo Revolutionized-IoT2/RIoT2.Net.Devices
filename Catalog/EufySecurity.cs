@@ -11,16 +11,23 @@ using RIoT2.Net.Devices.Services.Interfaces;
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    public class EufySecurity : DeviceBase, IDeviceWithConfiguration, ICommandDevice
+    public class EufySecurity : AsyncDeviceBase, IDeviceWithConfiguration, IAsyncCommandDevice
     {
+        private static readonly TimeSpan DefaultInitialPropertiesDelay = TimeSpan.FromSeconds(2);
         private readonly IEufySecurityService _eufySecurityService;
         private readonly IMemoryStorageService _memoryStorageService;
+        private readonly TimeSpan _initialPropertiesDelay;
         private readonly List<string> _supportedEvents = ["motionDetected", "personName", "petDetected", "soundDetected", "strangerPersonDetected", "vehicleDetected"];
         
-        public EufySecurity(ILogger logger, IEufySecurityService eufySecurityService, IMemoryStorageService memoryStorageService) : base(logger)
+        public EufySecurity(ILogger logger, IEufySecurityService eufySecurityService, IMemoryStorageService memoryStorageService)
+            : this(logger, eufySecurityService, memoryStorageService, DefaultInitialPropertiesDelay) { }
+
+        internal EufySecurity(ILogger logger, IEufySecurityService eufySecurityService, IMemoryStorageService memoryStorageService,
+            TimeSpan initialPropertiesDelay) : base(logger)
         {
             _memoryStorageService = memoryStorageService;
             _eufySecurityService = eufySecurityService;
+            _initialPropertiesDelay = initialPropertiesDelay;
         }
 
         public override void ConfigureDevice()
@@ -93,35 +100,49 @@ namespace RIoT2.Net.Devices.Catalog
             return deviceConfiguration;
         }
 
-        public void ExecuteCommand(string commandId, string value)
+        public void ExecuteCommand(string commandId, string value) =>
+            ExecuteCommandAsync(commandId, value, CancellationToken.None).GetAwaiter().GetResult();
+
+        public async Task ExecuteCommandAsync(string commandId, string value, CancellationToken cancellationToken)
         {
             var command = CommandTemplates?.FirstOrDefault(x => x.Id == commandId);
             if (command == null)
                 return;
 
+            var station = _eufySecurityService.StationProperties;
+            if (station == null)
+                throw new InvalidOperationException("The Eufy Security station has not reported its properties yet.");
+
             //change to more generic, if more commads are added
-            if (command.Address == _eufySecurityService.StationProperties.SerialNumber + "|guardMode")
+            if (command.Address == station.SerialNumber + "|guardMode")
             {
                 int mode = 0;
                 if(Int32.TryParse(value, out mode))
-                    _eufySecurityService.SendCommand(EufyCommand.GetCommand_StationSetProperties(commandId, _eufySecurityService.StationProperties.SerialNumber, "guardMode", mode)).Wait();
+                    await _eufySecurityService.SendCommand(EufyCommand.GetCommand_StationSetProperties(commandId, station.SerialNumber, "guardMode", mode)).ConfigureAwait(false);
             }
         }
 
-        public override void StartDevice()
+        protected override async Task StartDeviceAsync(CancellationToken cancellationToken)
         {
             Logger.LogInformation("Starting Eufy Security device...");
-            _eufySecurityService.Start();
             _eufySecurityService.EufyEvent += _eufySecurityService_EufyEvent;
+            await _eufySecurityService.StartAsync(cancellationToken).ConfigureAwait(false);
             //wait a bit to get initial properties, otherwise we won't have templates to send reports with
-            Task.Delay(2000).Wait();
+            await Task.Delay(_initialPropertiesDelay, cancellationToken).ConfigureAwait(false);
             sendInitialReports();
-
         }
+
+        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) => Task.CompletedTask;
 
         private void sendInitialReports() 
         {
-            foreach (var device in _eufySecurityService.DeviceProperties) //Only send pictures as initial reports.
+            if (_eufySecurityService.StationProperties == null)
+            {
+                Logger.LogWarning("Eufy Security station properties not received yet; initial reports skipped.");
+                return;
+            }
+
+            foreach (var device in _eufySecurityService.DeviceProperties.ToArray()) //Only send pictures as initial reports.
             {
                 sendReport(device.Key, device.Value.Picture, "picture");
             }
@@ -197,9 +218,10 @@ namespace RIoT2.Net.Devices.Catalog
             }
         }
 
-        public override void StopDevice()
+        protected override async Task StopDeviceAsync(CancellationToken cancellationToken)
         {
-            _eufySecurityService.Stop();
+            _eufySecurityService.EufyEvent -= _eufySecurityService_EufyEvent;
+            await _eufySecurityService.StopAsync().ConfigureAwait(false);
         }
     }
 }

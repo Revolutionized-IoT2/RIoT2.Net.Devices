@@ -29,7 +29,7 @@ namespace RIoT2.Net.Devices.Catalog
                 return;
 
             cancellationToken.ThrowIfCancellationRequested();
-            await _mqttClient.Publish(command.Address, value);
+            await _mqttClient.PublishAsync(command.Address, value, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
 
         public override void ConfigureDevice()
