@@ -5,6 +5,10 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+- Fixed: the `Virtual` device reported a command's value still serialized as JSON, so the text
+  command `Living room` came back as the report `"\"Living room\""` and every number or boolean as
+  text. It now reports the commanded value with its type ([I06](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-0-1.md#i06-in-process-end-to-end-harness-m), found by the end-to-end tests).
+
 ## [1.0.1] - 2026-10-12
 
 Install into a Node 1.0.0 or newer.

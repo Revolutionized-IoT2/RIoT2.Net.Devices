@@ -20,7 +20,8 @@ namespace RIoT2.Net.Devices.Catalog
             if (command == null)
                 return;
 
-            UpdateData(command.Address, value);
+            // The value arrives serialized as JSON; parse it, so the report has the commanded value and type.
+            UpdateData(command.Address, new ValueModel(value, enforceCamelCase: false));
         }
 
         public void UpdateData(string address, object data) 

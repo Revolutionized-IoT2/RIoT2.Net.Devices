@@ -32,7 +32,9 @@ dotnet test .\RIoT2.Net.Devices\Tests\RIoT2.Net.Devices.Tests.csproj -c Release
 ```
 
 The tests use synthetic tokens, in-memory Hue and EasyPLC streams, and isolated test-output files.
-They do not contact Netatmo, Hue bridges, PLCs or cloud services.
+They do not contact Netatmo, Hue bridges, PLCs or cloud services. The
+[end-to-end tests](https://github.com/Revolutionized-IoT2/RIoT2.Tests/blob/main/README.md#end-to-end-tests) in RIoT2.Tests load this plugin into the Node and drive the Virtual
+device through the Orchestrator.
 
 To try an unreleased Core, pack it into `C:\Src\RIoT2\.localfeed` and restore with that folder as
 an extra source. A local package is not a published release.
@@ -82,7 +84,7 @@ The list below is verified against `Catalog/*.cs`.
 | Netatmo Security | `token`, `refresh_token`, `clientId`, `clientSecret` | Dynamic security camera reports plus `refresh` and `set_home` commands; rotated tokens are persisted in `Data/netatmoAuth.json`. |
 | Netatmo Weather | `token`, `refresh_token`, `clientId`, `clientSecret`, `stationId` | Weather station and module measurements; rotated tokens are persisted in `Data/netatmoAuth.json`. |
 | Timer | No device parameters; uses report-level schedules | Emits the report address whenever the scheduler refreshes that report. |
-| Virtual | No device parameters | Stores command values by address and republishes matching report values. |
+| Virtual | No device parameters | Stores command values by address and reports each one, with its value and type, on the report template with the same address. |
 | Water Consumption | `securityToken`, `endpoint` | Scheduled latest water meter reading at address `watermeter`, with `unit` and `precision` report parameters. |
 | Web Device | No device parameters | Commands perform HTTP GET/POST through the webhook service; `POST /api/webhook/{address}` publishes matching reports. |
 

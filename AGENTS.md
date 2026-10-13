@@ -29,6 +29,8 @@ dotnet test .\RIoT2.Net.Devices\Tests\RIoT2.Net.Devices.Tests.csproj -c Release
   publishes the project, zips its assemblies minus those the node ships, writes
   `PluginManifest.json` (with `coreVersion`) and attaches the zip and a `.sha256` sidecar to the
   GitHub release ([CI guide](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/guides/ci.md)).
+- RIoT2.Tests builds this repository's `main` and loads it into the Node in its
+  [end-to-end tests](https://github.com/Revolutionized-IoT2/RIoT2.Tests/blob/main/README.md#end-to-end-tests), which drive the `Virtual` device.
 - `RIoT2.Core` 1.0.1 is published on GitHub Packages. To try an unreleased Core, restore with
   `C:\Src\RIoT2\.localfeed` as an extra NuGet source. A local feed package is not a release.
 
