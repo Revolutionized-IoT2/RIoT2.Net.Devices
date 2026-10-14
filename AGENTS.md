@@ -31,20 +31,21 @@ dotnet test .\RIoT2.Net.Devices\Tests\RIoT2.Net.Devices.Tests.csproj -c Release
   GitHub release ([CI guide](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/guides/ci.md)).
 - RIoT2.Tests builds this repository's `main` and loads it into the Node in its
   [end-to-end tests](https://github.com/Revolutionized-IoT2/RIoT2.Tests/blob/main/README.md#end-to-end-tests), which drive the `Virtual` device.
-- `RIoT2.Core` 1.0.1 is published on GitHub Packages. To try an unreleased Core, restore with
-  `C:\Src\RIoT2\.localfeed` as an extra NuGet source. A local feed package is not a release.
+- `RIoT2.Core` and `RIoT2.Core.Devices.Testing` come from GitHub Packages, pinned in
+  `Directory.Packages.props`. To try an unreleased Core, restore with `C:\Src\RIoT2\.localfeed` as
+  an extra NuGet source. A local feed package is not a release.
 
 ## Layout
 
 | Path | Contents |
 |---|---|
-| `Plugin.cs` | `IDevicePlugin` entry point; registers services, devices and controllers |
+| `Plugin.cs` | Entry point derived from Core's `PluginBase`; registers services and devices |
 | `Catalog/` | Device implementations: Web, Timer, Virtual, MQTT, cloud services, EasyPLC, Hue and others |
 | `Controllers/` | Plugin HTTP controllers: webhook and file download |
 | `Services/` | Integration services for webhooks, storage, FTP, Azure Relay, APsystems, Eufy and clients |
 | `Abstracts/` | Shared Netatmo base device logic |
 | `Models/` | DTOs for devices and services |
-| `Tests/` | MSTest hardware-free regression tests |
+| `Tests/` | MSTest hardware-free regression tests and the shared conformance test (`PluginConformanceTests`) |
 | `.github/workflows/ci.yml`, `release.yml` | CI on every push; plugin zip release on a tag |
 
 ## Contracts consumed here
@@ -62,16 +63,20 @@ This repository implements plugin-side pieces of these hub contracts:
 
 ## Rules
 
-- Register new devices in `Plugin.Initialize(IServiceCollection)` as host-owned `IDevice`
-  singletons. Do not create a second service provider.
+- Register new devices with `AddDevice<T>()` and services with `AddService<,>()` in
+  `Plugin.Register()`; both are host-owned singletons. Do not create a second service provider or
+  call `AddControllers`.
 - Keep device parameter keys camelCase. The node/orchestrator configuration path camel-cases
   dictionary keys and `DeviceBase.GetConfiguration<T>(key)` is case-sensitive.
 - Do not hard-code secrets. Credentials belong in orchestrator-managed configuration or mounted
   runtime files under `Data/`.
 - Prefer `AsyncDeviceBase` and async command/refresh interfaces for network I/O. Keep synchronous
   compatibility shims only where the legacy Core interfaces require them.
-- Device templates must match the keys read by `GetConfiguration<T>`. Missing templates block UI
-  configuration discovery and are tracked by M6.
+- Every device that reads a parameter implements `IDeviceWithConfiguration` and declares the key
+  in its template. `PluginConformanceTests` fails otherwise.
+- Mark a device that needs a remote service, hardware or a fixed port with
+  `[RequiresHardware("reason")]`, so the conformance test doesn't start it (and never calls a real
+  service).
 - Keep plugin HTTP routes anonymous to match the platform model. If exposed outside a trusted
   network, put the node behind a reverse proxy or gateway instead of adding per-route auth here.
 - Release this plugin package after the Node image is updated to `net10.0`. A `net10.0` plugin
@@ -80,15 +85,15 @@ This repository implements plugin-side pieces of these hub contracts:
 
 ## Pitfalls
 
-- `AzureRelay`, `EasyPLC`, `FTP` and `Mqtt` read configuration but do not implement
-  `IDeviceWithConfiguration`; the UI cannot discover their parameters (backlog item 16 / M6).
-- `NetatmoBase` stores tokens, client id/secret, configured state and logger in static fields.
-  `NetatmoWeather` and `NetatmoSecurity` therefore share one account implicitly.
+- Netatmo tokens live in `NetatmoAuthClient`, one per client id, from the singleton
+  `NetatmoAuthClientFactory`. Netatmo rotates the refresh token, so two clients for the same app
+  would invalidate each other: always get the client from the factory.
 - `FTP.cs` has a storage-configuration path with PascalCase `Storage*` keys. Because
   `deviceParameters` keys are camel-cased on download, those names are a C1-style bug if enabled;
   report it instead of renaming keys only in docs.
-- The Netatmo token file is `Data/netatmoAuth.json`. A valid file takes precedence over configured
-  tokens so refreshed credentials survive restarts.
+- Netatmo token files are `Data/netatmoAuth-<clientId>.json`; the first account keeps the older
+  `Data/netatmoAuth.json` and its client id is written into it. A valid file takes precedence over
+  configured tokens so refreshed credentials survive restarts.
 - `Messaging.cs` reads a Firebase service account from `Data/service_account.json`. Do not commit
   or bake that file into images.
 - `DownloadController` rejects traversal, absolute paths, encoded slashes and encoded backslashes
@@ -105,5 +110,5 @@ This repository implements plugin-side pieces of these hub contracts:
   device plugin SDK (`PluginBase`, conformance test, packaging target, typed options).
 - [Design 7.2](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/design/desired-state-configuration.md):
   desired-state configuration and plugin updates.
-- Backlog items 4, 5, 16, 18, 20 and 23 in
+- Backlog items 4, 5 and 23 in
   [open-issues.md](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/backlog/open-issues.md).

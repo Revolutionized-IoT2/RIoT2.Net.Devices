@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using RIoT2.Core.Plugins;
+using Microsoft.Extensions.Logging;
 using RIoT2.Core;
 using RIoT2.Core.Abstracts;
 using RIoT2.Core.Interfaces;
@@ -8,6 +9,7 @@ using System.Net.Http.Headers;
 
 namespace RIoT2.Net.Devices.Catalog
 {
+    [RequiresHardware("Water meter API")]
     public class WaterConsumption : DeviceBase, IRefreshableReportDevice, IDeviceWithConfiguration
     {
         public WaterConsumption(ILogger logger) : base(logger) { }

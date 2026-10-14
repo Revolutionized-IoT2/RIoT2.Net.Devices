@@ -1,4 +1,5 @@
-﻿using RIoT2.Net.Devices.Models;
+﻿using RIoT2.Core.Plugins;
+using RIoT2.Net.Devices.Models;
 using System.Xml.Serialization;
 using System.Xml;
 using RIoT2.Core.Abstracts;
@@ -10,6 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace RIoT2.Net.Devices.Catalog
 {
+    [RequiresHardware("ENTSO-E API")]
     public class ElectricityPrice : DeviceBase, IRefreshableReportDevice, IDeviceWithConfiguration
     {
         public ElectricityPrice(ILogger logger) : base(logger) { }

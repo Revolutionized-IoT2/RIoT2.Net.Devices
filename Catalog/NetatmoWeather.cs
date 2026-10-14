@@ -1,16 +1,19 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using RIoT2.Core.Plugins;
+using Microsoft.Extensions.Logging;
 using RIoT2.Core.Interfaces;
 using RIoT2.Core.Models;
 using RIoT2.Net.Devices.Abstracts;
+using RIoT2.Net.Devices.Services.Interfaces;
 using System.Reflection;
 
 namespace RIoT2.Net.Devices.Catalog
 {
+    [RequiresHardware("Netatmo API")]
     public class NetatmoWeather : NetatmoBase, IDeviceWithConfiguration, IRefreshableReportDevice
     {
         private string _stationId;
 
-        public NetatmoWeather(ILogger logger) : base(logger) { }
+        public NetatmoWeather(ILogger logger, INetatmoAuthClientFactory authClients) : base(logger, authClients) { }
 
         public override void ConfigureDevice()
         {

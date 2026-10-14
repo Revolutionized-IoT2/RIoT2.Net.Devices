@@ -3,6 +3,7 @@ using RIoT2.Core;
 using RIoT2.Core.Abstracts;
 using RIoT2.Core.Interfaces;
 using RIoT2.Core.Models;
+using RIoT2.Core.Plugins;
 using RIoT2.Core.Utils;
 
 namespace RIoT2.Net.Devices.Catalog
@@ -10,7 +11,8 @@ namespace RIoT2.Net.Devices.Catalog
     /// <summary>
     /// Mqtt Device is used to connect any mqtt device into system...
     /// </summary>
-    public class Mqtt : DeviceBase, ICommandDevice, IAsyncCommandDevice, IAsyncDevice
+    [RequiresHardware("MQTT broker")]
+    public class Mqtt : DeviceBase, ICommandDevice, IAsyncCommandDevice, IAsyncDevice, IDeviceWithConfiguration
     {
         private MqttClient _mqttClient;
         private string _topics;
@@ -31,6 +33,23 @@ namespace RIoT2.Net.Devices.Catalog
             cancellationToken.ThrowIfCancellationRequested();
             await _mqttClient.PublishAsync(command.Address, value, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
+
+        public DeviceConfiguration GetConfigurationTemplate() => new()
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = "MQTT",
+            ClassFullName = GetType().FullName,
+            DeviceParameters = new Dictionary<string, string>
+            {
+                { "clientId", "riot2-mqtt-device" },
+                { "serverUrl", "192.168.0.10" },
+                { "userName", "" },
+                { "password", "" },
+                { "subscribeTopics", "sensors/temperature;sensors/humidity" }
+            },
+            CommandTemplates = [],
+            ReportTemplates = []
+        };
 
         public override void ConfigureDevice()
         {
@@ -63,7 +82,7 @@ namespace RIoT2.Net.Devices.Catalog
         private async Task StartMqttAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            await _mqttClient.Start(_topics.Split(';'));
+            await _mqttClient.Start((_topics ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             _mqttClient.MessageReceived += mqttClient_MessageReceived;
         }
 

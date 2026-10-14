@@ -3,6 +3,7 @@ using RIoT2.Core;
 using RIoT2.Core.Abstracts;
 using RIoT2.Core.Interfaces;
 using RIoT2.Core.Models;
+using RIoT2.Core.Plugins;
 using RIoT2.Net.Devices.Models;
 using RIoT2.Net.Devices.Services.FTP;
 using RIoT2.Net.Devices.Services.Interfaces;
@@ -14,7 +15,8 @@ namespace RIoT2.Net.Devices.Catalog
     /// <summary>
     /// This device is used to receive files from FTP (WebCameras forinstance)
     /// </summary>
-    public class FTP : DeviceBase, IDevice
+    [RequiresHardware("Listens on an FTP port")]
+    public class FTP : DeviceBase, IDeviceWithConfiguration
     {
         private List<FtpUser> _ftpUsers;
         private int _ftpPort = 0;
@@ -26,6 +28,19 @@ namespace RIoT2.Net.Devices.Catalog
             _ftpService = ftpService;
             _memoryStorageService = memoryStorageService;
         }
+        public DeviceConfiguration GetConfigurationTemplate() => new()
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = "FTP",
+            ClassFullName = GetType().FullName,
+            DeviceParameters = new Dictionary<string, string>
+            {
+                { "ftpUsers", "camera1:<password>|camera2:<password>" },
+                { "ftpPort", "21" }
+            },
+            ReportTemplates = []
+        };
+
         public override void ConfigureDevice()
         {
             _ftpUsers = new List<FtpUser>();

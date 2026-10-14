@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using RIoT2.Core.Plugins;
+using Microsoft.Extensions.Logging;
 using RIoT2.Core;
 using RIoT2.Core.Abstracts;
 using RIoT2.Core.Interfaces;
@@ -8,6 +9,7 @@ using RIoT2.Net.Devices.Services.Interfaces;
 
 namespace RIoT2.Net.Devices.Catalog
 {
+    [RequiresHardware("APsystems API")]
     public class ApSystems : DeviceBase, IRefreshableReportDevice, IDeviceWithConfiguration
     {
         MeterSummary _meterSummary;

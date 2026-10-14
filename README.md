@@ -6,7 +6,7 @@ from a plugin package at startup.
 
 - Type: device plugin library
 - Target framework: `net10.0`
-- Core package: `RIoT2.Core` 1.0.1
+- Core package: `RIoT2.Core` (version in `Directory.Packages.props`)
 - Plugin entry point: `Plugin.cs`
 
 How plugins fit into the platform: [configuration contract](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/contracts/configuration.md).
@@ -15,12 +15,12 @@ How plugins fit into the platform: [configuration contract](https://github.com/R
 
 | Path | Contents |
 |---|---|
-| `Plugin.cs` | Registers plugin services, devices and controllers with the Node host |
+| `Plugin.cs` | Derives from Core's `PluginBase`; registers plugin services and devices with the Node host |
 | `Catalog/` | Device implementations |
 | `Controllers/` | `WebhookController` and `DownloadController` |
 | `Services/` | Supporting services for integrations and storage |
 | `Models/` | DTOs used by devices and services |
-| `Tests/` | Hardware-free regression tests |
+| `Tests/` | Hardware-free regression tests and the plugin conformance test |
 
 ## Build and test
 
@@ -32,7 +32,10 @@ dotnet test .\RIoT2.Net.Devices\Tests\RIoT2.Net.Devices.Tests.csproj -c Release
 ```
 
 The tests use synthetic tokens, in-memory Hue and EasyPLC streams, and isolated test-output files.
-They do not contact Netatmo, Hue bridges, PLCs or cloud services. The
+They do not contact Netatmo, Hue bridges, PLCs or cloud services. `PluginConformanceTests` runs
+Core's shared conformance test: every device resolves, returns a template for its class, and
+reads only the parameters its template declares; devices without `[RequiresHardware]` also start
+and stop. The
 [end-to-end tests](https://github.com/Revolutionized-IoT2/RIoT2.Tests/blob/main/README.md#end-to-end-tests) in RIoT2.Tests load this plugin into the Node and drive the Virtual
 device through the Orchestrator.
 
@@ -73,20 +76,26 @@ The list below is verified against `Catalog/*.cs`.
 | Device | Parameters | Reports and commands |
 |---|---|---|
 | AP Systems | `appId`, `appSecret`, `sid`, `ecuId` | Hourly energy summaries: `today`, `month`, `year`, `lifetime` with `unit` and `precision` report parameters. |
-| Azure Relay | No template is emitted; code reads `relayNamespace`, `connectionName`, `keyName`, `key`. | Starts/stops an Azure Relay listener. Message handling is not implemented in code. |
-| EasyPLC | No template is emitted; code reads `ipAddress`, `port`. | Async/cancellable PLC marker read/write driver. Marker command addresses are `M-{netId}-{expansion}-{marker}`; `refresh` reads markers. Non-zero write expansions are rejected. |
+| Azure Relay | `relayNamespace`, `connectionName`, `keyName`, `key` | Starts/stops an Azure Relay listener. Message handling is not implemented in code. |
+| EasyPLC | `ipAddress`, `port` (default `10001`) | Async/cancellable PLC marker read/write driver. Marker command addresses are `M-{netId}-{expansion}-{marker}`; `refresh` reads markers. Non-zero write expansions are rejected. |
 | Electricity Price | `securityToken`, `domain`, `endpoint`, `vat` | Scheduled current price report at address `price`, with `unit=c/kWh` and `precision`. Cached XML is stored at `Data/priceData.xml`. |
 | Eufy Security | `serviceIp`, `port` | Dynamic camera/security reports and a station `guardMode` command after the external eufy-security-ws service is connected. |
-| FTP | No template is emitted; code reads `ftpUsers`, `ftpPort`. | File uploads become in-memory photo `SecurityReport` values keyed by FTP username. |
+| FTP | `ftpUsers` (`user:password` pairs separated by `\|`), `ftpPort` | File uploads become in-memory photo `SecurityReport` values keyed by FTP username. |
 | Hue | `bridgeIpAddress`, `apiKey` | Dynamic light command/report templates when running; event-stream updates merge partial state and include Matter endpoint metadata. |
 | Messaging | `firebaseProjectName`, `smtp_Server`, `smtp_User`, `smtp_Password`, `smtp_Port` | Commands `fb` (Firebase topic message) and `mail` (SMTP email). Firebase service account JSON is read from `Data/service_account.json`. |
-| MQTT | No template is emitted; code reads `clientId`, `serverUrl`, `userName`, `password`, `subscribeTopics`. | Publishes command payloads to command addresses and reports subscribed topic payloads as text. |
-| Netatmo Security | `token`, `refresh_token`, `clientId`, `clientSecret` | Dynamic security camera reports plus `refresh` and `set_home` commands; rotated tokens are persisted in `Data/netatmoAuth.json`. |
-| Netatmo Weather | `token`, `refresh_token`, `clientId`, `clientSecret`, `stationId` | Weather station and module measurements; rotated tokens are persisted in `Data/netatmoAuth.json`. |
+| MQTT | `clientId`, `serverUrl` (broker host, port 1883), `userName`, `password`, `subscribeTopics` (separated by `;`) | Publishes command payloads to command addresses and reports subscribed topic payloads as text. |
+| Netatmo Security | `token`, `refresh_token`, `clientId`, `clientSecret` | Dynamic security camera reports plus `refresh` and `set_home` commands; rotated tokens are persisted per client id (see below). |
+| Netatmo Weather | `token`, `refresh_token`, `clientId`, `clientSecret`, `stationId` | Weather station and module measurements; rotated tokens are persisted per client id (see below). |
 | Timer | No device parameters; uses report-level schedules | Emits the report address whenever the scheduler refreshes that report. |
 | Virtual | No device parameters | Stores command values by address and reports each one, with its value and type, on the report template with the same address. |
 | Water Consumption | `securityToken`, `endpoint` | Scheduled latest water meter reading at address `watermeter`, with `unit` and `precision` report parameters. |
 | Web Device | No device parameters | Commands perform HTTP GET/POST through the webhook service; `POST /api/webhook/{address}` publishes matching reports. |
+
+Netatmo devices with the same `clientId` share one set of tokens; different client ids are
+separate accounts. Netatmo rotates the refresh token on every refresh, so the latest tokens are
+stored in `Data/netatmoAuth-<clientId>.json` and win over the configured ones. The file of
+earlier versions, `Data/netatmoAuth.json`, stays with the account that uses it first. When
+Netatmo refuses the stored refresh token, the file is deleted and the configured tokens are used.
 
 Devices and plugin controllers use the platform configuration and HTTP contracts:
 
@@ -98,10 +107,12 @@ Devices and plugin controllers use the platform configuration and HTTP contracts
 1. Add a class under `Catalog/`.
 2. Derive from `DeviceBase`, or `AsyncDeviceBase` for network or hardware I/O that must be
    awaited/cancelled by the node.
-3. Implement `IDeviceWithConfiguration` when the UI should discover parameters/templates.
+3. Implement `IDeviceWithConfiguration` and declare every parameter the device reads; the
+   conformance test fails otherwise. Mark the class `[RequiresHardware("reason")]` when it needs a
+   remote service or hardware.
 4. Implement `ICommandDevice` / `IAsyncCommandDevice` for commands, and
    `IRefreshableReportDevice` for scheduled reports.
-5. Register the device in `Plugin.Initialize(IServiceCollection)` as a host-owned singleton.
+5. Register the device with `AddDevice<T>()` in `Plugin.Register()`.
 
 Configuration parameter keys should be camelCase because the platform serializes dictionary keys as
 camelCase and `DeviceBase.GetConfiguration<T>(key)` is case-sensitive.

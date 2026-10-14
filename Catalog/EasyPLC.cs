@@ -2,13 +2,15 @@
 using RIoT2.Core.Abstracts;
 using RIoT2.Core.Interfaces;
 using RIoT2.Core.Models;
+using RIoT2.Core.Plugins;
 using RIoT2.Core;
 using Microsoft.Extensions.Logging;
 
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    public class EasyPLC : AsyncDeviceBase, IAsyncCommandDevice
+    [RequiresHardware("Easy PLC on the network")]
+    public class EasyPLC : AsyncDeviceBase, IAsyncCommandDevice, IDeviceWithConfiguration
     {
         private IEasyPlcConnection _client;
         private readonly Func<IEasyPlcConnection> _connectionFactory;
@@ -54,6 +56,21 @@ namespace RIoT2.Net.Devices.Catalog
                 throw new NotSupportedException("Easy PLC marker writes currently support expansion zero only.");
             await WriteMarkerAsync(marker, requested, netId, cancellationToken).ConfigureAwait(false);
         }
+
+        public DeviceConfiguration GetConfigurationTemplate() => new()
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = "Easy PLC",
+            ClassFullName = GetType().FullName,
+            RefreshSchedule = DeviceTemplates.DefaultRefreshSchedule,
+            DeviceParameters = new Dictionary<string, string>
+            {
+                { "ipAddress", "192.168.0.20" },
+                { "port", "10001" }
+            },
+            CommandTemplates = [],
+            ReportTemplates = []
+        };
 
         public override void ConfigureDevice()
         {

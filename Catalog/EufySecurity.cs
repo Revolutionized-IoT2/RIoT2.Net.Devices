@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using RIoT2.Core.Plugins;
+using Microsoft.Extensions.Logging;
 using RIoT2.Core;
 using RIoT2.Core.Abstracts;
 using RIoT2.Core.Interfaces;
@@ -11,6 +12,7 @@ using RIoT2.Net.Devices.Services.Interfaces;
 
 namespace RIoT2.Net.Devices.Catalog
 {
+    [RequiresHardware("eufy-security-ws service")]
     public class EufySecurity : AsyncDeviceBase, IDeviceWithConfiguration, IAsyncCommandDevice
     {
         private static readonly TimeSpan DefaultInitialPropertiesDelay = TimeSpan.FromSeconds(2);

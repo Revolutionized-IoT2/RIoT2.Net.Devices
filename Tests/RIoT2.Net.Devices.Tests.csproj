@@ -5,6 +5,7 @@
     <UseVSTest>true</UseVSTest>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="RIoT2.Core.Devices.Testing" />
     <ProjectReference Include="..\RIoT2.Net.Devices.csproj" />
   </ItemGroup>
 </Project>

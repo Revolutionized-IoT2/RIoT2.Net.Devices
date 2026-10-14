@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using RIoT2.Core.Plugins;
+using Microsoft.Extensions.Logging;
 using RIoT2.Core;
 using RIoT2.Core.Abstracts;
 using RIoT2.Core.Interfaces;
@@ -10,6 +11,7 @@ using ValueType = RIoT2.Core.ValueType;
 
 namespace RIoT2.Net.Devices.Catalog
 {
+    [RequiresHardware("Hue bridge")]
     public class Hue : DeviceBase, ICommandDevice, IDeviceWithConfiguration, IMatterDevice
     {
         private event HueEventHandler HueEventReceived;

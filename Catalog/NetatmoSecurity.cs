@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿using RIoT2.Core.Plugins;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Logging;
 using RIoT2.Core;
 using RIoT2.Core.Interfaces;
@@ -10,6 +11,7 @@ using RIoT2.Net.Devices.Services.Interfaces;
 
 namespace RIoT2.Net.Devices.Catalog
 {
+    [RequiresHardware("Netatmo API")]
     public class NetatmoSecurity : NetatmoBase, IDeviceWithConfiguration, IRefreshableReportDevice, ICommandDevice
     {
         private NetatmoHomesData _home;
@@ -17,7 +19,7 @@ namespace RIoT2.Net.Devices.Catalog
         private IMemoryStorageService _memoryStorageService;
         private ILogger _logger;
 
-        public NetatmoSecurity(ILogger logger, IMemoryStorageService memoryStorageService) : base(logger)
+        public NetatmoSecurity(ILogger logger, IMemoryStorageService memoryStorageService, INetatmoAuthClientFactory authClients) : base(logger, authClients)
         {
             _logger = logger;
             _securityEvents = new NetatmoSecurityEvents();

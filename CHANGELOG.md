@@ -5,6 +5,31 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-14
+
+Plugin configuration and conformance ([I10](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-0-1.md#i10-plugin-configuration-and-conformance-m)). Built on `RIoT2.Core` 1.5.0: install into a
+Node 1.3.0 or newer, which has `PluginBase`.
+
+- Added: configuration templates for `AzureRelay` (`relayNamespace`, `connectionName`, `keyName`,
+  `key`), `EasyPLC` (`ipAddress`, `port`), `FTP` (`ftpUsers`, `ftpPort`) and `Mqtt` (`clientId`,
+  `serverUrl`, `userName`, `password`, `subscribeTopics`), so the UI shows their parameters
+  (backlog item 16).
+- Changed: Netatmo tokens belong to one Netatmo app (client id) instead of static fields, so two
+  Netatmo accounts work side by side; devices with the same client id still share tokens, and only
+  one of them refreshes at a time. Each account stores its tokens in
+  `Data/netatmoAuth-<clientId>.json`. The existing `Data/netatmoAuth.json` stays with the account
+  that uses it first (its client id is written into the file), so nobody has to log in again.
+- Changed: when Netatmo refuses a refresh token, the configured tokens are used again at once; they
+  used to be used only after a restart. A network error during a refresh keeps the stored tokens
+  instead of deleting them. The configured tokens are no longer written to the token file at
+  start; the file is written after the first refresh.
+- Changed: `Plugin` derives from Core's `PluginBase` and no longer calls `AddControllers`; the node
+  adds the plugin's controllers.
+- Changed: devices that need a remote service or a port are marked `[RequiresHardware]`.
+- Fixed: the `Mqtt` device no longer fails to start when `subscribeTopics` is missing, and ignores
+  empty topics.
+- Tests: the shared conformance test (`RIoT2.Core.Devices.Testing`) runs in CI.
+
 ## [1.1.0] - 2026-10-13
 
 Async cleanup, part 1 ([I09](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-0-1.md#i09-async-cleanup-part-1-s)). Built on `RIoT2.Core` 1.4.0: install into a Node 1.2.1 or newer.
