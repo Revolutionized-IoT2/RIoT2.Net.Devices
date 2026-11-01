@@ -20,7 +20,7 @@ namespace RIoT2.Net.Devices.Models
 
         private string getAsJson()
         {
-            return Json.SerializeAutoTypeNameHandling(this);
+            return Json.SerializeIgnoreNulls(this);
         }
 
         #region Commands

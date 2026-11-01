@@ -15,7 +15,11 @@
     <PackageReference Include="FluentFTP" />
     <PackageReference Include="Google.Apis.Auth" />
     <PackageReference Include="Microsoft.Azure.Relay" />
-    <PackageReference Include="RIoT2.Core" />
+    <!-- The plugin SDK, plus the HTTP helpers (Web) and the MQTT client the catalog devices use
+         (plan M1 step 4). Not the RIoT2.Core facade or the node runtime. -->
+    <PackageReference Include="RIoT2.Core.Devices" />
+    <PackageReference Include="RIoT2.Core.Http" />
+    <PackageReference Include="RIoT2.Core.Mqtt" />
     <PackageReference Include="Zhaobang.FtpServer" />
 	<FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

@@ -5,6 +5,17 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-01
+
+Narrow Core references ([I28](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-2.md#i28-narrow-references-and-generated-models-m), plan M1 step 4). Built on RIoT2.Core 1.14.0: install into Node
+1.10.0 or newer (an older node doesn't load it). No device, template or parameter changes.
+
+- Changed: references the plugin SDK `RIoT2.Core.Devices`, `RIoT2.Core.Http` (`Web`, for the
+  catalog devices that call web APIs) and `RIoT2.Core.Mqtt` (the `Mqtt` device's client) instead
+  of the `RIoT2.Core` facade 1.5.0; the tests use `RIoT2.Core.Devices.Testing` 1.14.0.
+- Changed: `EufyCommand` serializes with `Json.SerializeIgnoreNulls` instead of the `[Obsolete]`
+  `SerializeAutoTypeNameHandling` (the same camelCase JSON without nulls).
+
 ## [1.2.0] - 2026-10-14
 
 Plugin configuration and conformance ([I10](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-0-1.md#i10-plugin-configuration-and-conformance-m)). Built on `RIoT2.Core` 1.5.0: install into a
