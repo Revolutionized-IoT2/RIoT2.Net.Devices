@@ -182,7 +182,7 @@ public class EasyPlcLifecycleTests
         var configuration = Configuration();
         configuration.ReportTemplates = [new ReportTemplate { Id = "marker", Address = "M-1-0-1" }];
         device.Initialize(configuration);
-        Report received = null;
+        Report? received = null;
         device.ReportUpdated += (_, report) => received = (Report)report;
         await device.StartAsync(default);
         await device.RefreshReportAsync(device.Id, device.Id, default);
@@ -241,7 +241,7 @@ public class EasyPlcLifecycleTests
         CommandTemplates = []
     };
 
-    private sealed class FakeConnection(string failure = null, byte[] tail = null, bool stall = false) : IEasyPlcConnection
+    private sealed class FakeConnection(string? failure = null, byte[]? tail = null, bool stall = false) : IEasyPlcConnection
     {
         public bool Connected { get; private set; }
         public bool Disposed { get; private set; }
@@ -286,7 +286,7 @@ public class EasyPlcLifecycleTests
         private readonly bool _stall;
         public TaskCompletionSource Waiting { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public DuplexStream(string failure, byte[] tail, bool stall)
+        public DuplexStream(string? failure, byte[]? tail, bool stall)
         {
             _stall = stall;
             byte[] success = [0x65, 0x06, 0x00, 0x00, 0x00, 0x41, 0x48, 0x30];

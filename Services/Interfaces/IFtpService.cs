@@ -5,7 +5,7 @@ namespace RIoT2.Net.Devices.Services.Interfaces
 {
     public interface IFtpService
     {
-        event FileReceivedHandler FileReceived;
+        event FileReceivedHandler? FileReceived;
         Task StartAsync(List<FtpUser> users, int port);
         void Stop();
     }

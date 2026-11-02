@@ -33,7 +33,7 @@ public class HueEventTests
 
         Assert.AreEqual(5, reports.Count);
         Assert.AreEqual(true, reports[1].State);
-        Assert.AreEqual(42d, reports[1].Color.Brightness);
+        Assert.AreEqual(42d, reports[1].Color!.Brightness);
         Assert.AreEqual(true, reports[2].State);
         Assert.AreEqual(42d, reports[2].Dimming);
         Assert.IsNotNull(reports[2].Hue);
@@ -55,7 +55,7 @@ public class HueEventTests
         Update(device, """{"id":"light-1","type":"light","dimming":{"brightness":20}}""");
 
         Assert.IsNotNull(reports[1].Color);
-        Assert.AreEqual(20d, reports[1].Color.Brightness);
+        Assert.AreEqual(20d, reports[1].Color!.Brightness);
     }
 
     [TestMethod]
@@ -107,7 +107,7 @@ public class HueEventTests
         var device = new TestHue();
         var reports = new List<ReportedLight>();
         device.Initialize(Configuration());
-        device.ReportUpdated += (_, report) => reports.Add(((Report)report).Value.GetValue<ReportedLight>());
+        device.ReportUpdated += (_, report) => reports.Add(((Report)report).Value.GetValue<ReportedLight>()!);
         device.Start();
         return (device, reports);
     }
@@ -133,7 +133,7 @@ public class HueEventTests
     {
         public bool? State { get; set; }
         public double? Dimming { get; set; }
-        public RGB Color { get; set; }
+        public RGB? Color { get; set; }
         public double? Hue { get; set; }
         public double? Saturation { get; set; }
         public int? ColorTemperature { get; set; }

@@ -8,7 +8,7 @@ namespace RIoT2.Net.Devices.Catalog
 {
     public class Virtual : DeviceBase, ICommandDevice
     {
-        private Dictionary<string, object> _virtualData;
+        private Dictionary<string, object>? _virtualData;
 
         public Virtual(ILogger logger) : base(logger) { }
 

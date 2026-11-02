@@ -15,14 +15,14 @@ namespace RIoT2.Net.Devices.Abstracts
     public abstract class NetatmoBase : AsyncDeviceBase
     {
         private readonly INetatmoAuthClientFactory _authClients;
-        private NetatmoAuthClient _auth;
+        private NetatmoAuthClient? _auth;
 
         protected NetatmoBase(ILogger logger, INetatmoAuthClientFactory authClients) : base(logger)
         {
             _authClients = authClients ?? throw new ArgumentNullException(nameof(authClients));
         }
 
-        internal void SendNetatmoReport(IDevice device, string parameter, dynamic value)
+        internal void SendNetatmoReport(IDevice device, string? parameter, dynamic? value)
         {
             if (value == null || parameter == null)
                 return;
@@ -45,34 +45,34 @@ namespace RIoT2.Net.Devices.Abstracts
         }
 
         /// <summary>Uses the shared token client of <paramref name="clientId"/>; devices of the same Netatmo app share tokens.</summary>
-        internal void ConfigureNetatmo(string token, string refreshToken, string clientId, string clientSecret)
+        internal void ConfigureNetatmo(string? token, string? refreshToken, string? clientId, string? clientSecret)
         {
             var auth = _authClients.Get(clientId);
             auth.Configure(token, refreshToken, clientSecret);
             _auth = auth;
         }
 
-        internal Task<NetatmoStationsData> GetNetatmoStationsData(string deviceId, CancellationToken cancellationToken = default) =>
+        internal Task<NetatmoStationsData?> GetNetatmoStationsData(string? deviceId, CancellationToken cancellationToken = default) =>
             executeNetatmo<NetatmoStationsData>($"https://api.netatmo.com/api/getstationsdata?device_id={ System.Web.HttpUtility.UrlEncode(deviceId) }", HttpMethod.Get, cancellationToken);
 
-        internal Task<NetatmoHomesData> GetNetatmoHomesData(CancellationToken cancellationToken = default) =>
+        internal Task<NetatmoHomesData?> GetNetatmoHomesData(CancellationToken cancellationToken = default) =>
             executeNetatmo<NetatmoHomesData>("https://api.netatmo.com/api/homesdata", HttpMethod.Get, cancellationToken);
 
-        internal Task<NetatmoHomeStatus> GetNetatmoHomeStatus(string homeId, CancellationToken cancellationToken = default) =>
+        internal Task<NetatmoHomeStatus?> GetNetatmoHomeStatus(string homeId, CancellationToken cancellationToken = default) =>
             executeNetatmo<NetatmoHomeStatus>($"https://api.netatmo.com/api/homestatus?home_id={ System.Web.HttpUtility.UrlEncode(homeId) }", HttpMethod.Get, cancellationToken);
 
-        internal Task<NetatmoEvent> GetNetatmoEvents(string homeId, CancellationToken cancellationToken = default) =>
+        internal Task<NetatmoEvent?> GetNetatmoEvents(string homeId, CancellationToken cancellationToken = default) =>
             executeNetatmo<NetatmoEvent>($"https://api.netatmo.com/api/getevents?home_id={ System.Web.HttpUtility.UrlEncode(homeId) }", HttpMethod.Get, cancellationToken);
 
-        internal Task<NetatmoCmd> SetPersonsAway(string homeId, CancellationToken cancellationToken = default) =>
+        internal Task<NetatmoCmd?> SetPersonsAway(string homeId, CancellationToken cancellationToken = default) =>
             executeNetatmo<NetatmoCmd>($"https://api.netatmo.com/api/setpersonsaway?home_id={System.Web.HttpUtility.UrlEncode(homeId)}", HttpMethod.Post, cancellationToken);
 
-        internal Task<NetatmoCmd> SetPersonsHome(string homeId, string[] personIds, CancellationToken cancellationToken = default)
+        internal Task<NetatmoCmd?> SetPersonsHome(string homeId, string[] personIds, CancellationToken cancellationToken = default)
         {
             if (personIds == null || personIds.Length == 0) 
             {
                 Logger.LogWarning("No person IDs provided. Cannot set persons home.");
-                return Task.FromResult<NetatmoCmd>(null);
+                return Task.FromResult<NetatmoCmd?>(null);
             }
 
             var personIdsParam = string.Join("&", personIds.Select(x => $"person_id[]={System.Web.HttpUtility.UrlEncode(x)}"));
@@ -83,7 +83,7 @@ namespace RIoT2.Net.Devices.Abstracts
         internal virtual Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             Web.SendAsync(request, cancellationToken: cancellationToken);
 
-        private async Task<T> executeNetatmo<T>(string url, HttpMethod method, CancellationToken cancellationToken)
+        private async Task<T?> executeNetatmo<T>(string url, HttpMethod method, CancellationToken cancellationToken)
         {
             var auth = _auth;
             var accessToken = auth?.AccessToken;
@@ -98,7 +98,8 @@ namespace RIoT2.Net.Devices.Abstracts
                 var response = await sendNetatmo(url, method, accessToken, cancellationToken).ConfigureAwait(false);
                 if (response.StatusCode == HttpStatusCode.Forbidden || response.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    if (await auth.RefreshAsync(accessToken).ConfigureAwait(false))
+                    // accessToken came from auth, so auth is set.
+                    if (await auth!.RefreshAsync(accessToken).ConfigureAwait(false))
                     {
                         response.Dispose();
                         response = await sendNetatmo(url, method, auth.AccessToken, cancellationToken).ConfigureAwait(false);

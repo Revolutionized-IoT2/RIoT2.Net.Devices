@@ -42,12 +42,12 @@ public class DownloadControllerTests
     [TestMethod]
     public void WebhookHasRequestSizeLimit()
     {
-        var attribute = typeof(WebhookController).GetMethod(nameof(WebhookController.SaveAsync))
+        var attribute = typeof(WebhookController).GetMethod(nameof(WebhookController.SaveAsync))!
             .GetCustomAttributes(typeof(RequestSizeLimitAttribute), inherit: false)
             .Cast<RequestSizeLimitAttribute>()
             .Single();
 
-        var constructorArgument = typeof(WebhookController).GetMethod(nameof(WebhookController.SaveAsync))
+        var constructorArgument = typeof(WebhookController).GetMethod(nameof(WebhookController.SaveAsync))!
             .GetCustomAttributesData()
             .Single(attributeData => attributeData.AttributeType == typeof(RequestSizeLimitAttribute))
             .ConstructorArguments
@@ -60,8 +60,8 @@ public class DownloadControllerTests
     {
         public List<string> Requested { get; } = [];
         public string Save(Document document, string address) => "";
-        public Document Get(string filename, string address = "") { Requested.Add(filename); return null; }
-        public Document GetLatest(string address) => null;
+        public Document? Get(string filename, string address = "") { Requested.Add(filename); return null; }
+        public Document? GetLatest(string address) => null;
         public List<DocumentMetadata> List(string address) => [];
         public void DeleteAddress(string address) { }
         public List<MemoryStorageAddess> GetAllDocuments() => [];
@@ -70,7 +70,7 @@ public class DownloadControllerTests
     private sealed class NullStorage : IStorageService
     {
         public Task Save(string filename, byte[] data) => Task.CompletedTask;
-        public Task<Document> Get(string filename) => Task.FromResult<Document>(null);
+        public Task<Document?> Get(string filename) => Task.FromResult<Document?>(null);
         public Task<List<DocumentMetadata>> List() => Task.FromResult(new List<DocumentMetadata>());
         public Task Delete(string filename) => Task.CompletedTask;
         public void Configure(string username, string password, string rootFolder, string ipAddress) { }

@@ -6,7 +6,7 @@ namespace RIoT2.Net.Devices.Services.FTP
     public class CustomLocalDataConnection : IDataConnection
     {
         public delegate void FileReceivedHandler(InMemoryStream inMemoryStream);
-        public event FileReceivedHandler FileReceivedEvent;
+        public event FileReceivedHandler? FileReceivedEvent;
 
         private LocalDataConnection _localDataConnection;
 
@@ -54,7 +54,8 @@ namespace RIoT2.Net.Devices.Services.FTP
         public Task RecieveAsync(Stream streamToWrite)
         {
             _localDataConnection.RecieveAsync(streamToWrite).Wait();
-            FileReceivedEvent((InMemoryStream)streamToWrite);
+            // CustomLocalDataConnectionFactory subscribes before it hands out the connection.
+            FileReceivedEvent!((InMemoryStream)streamToWrite);
 
             return Task.CompletedTask;
         }

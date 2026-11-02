@@ -4,7 +4,7 @@ namespace RIoT2.Net.Devices.Services.Interfaces
 {
     public interface IApSystemsClientService
     {
-        void Configure(string appId, string appSecret, string sid);
-        Task<MeterSummary> GetMeterSummaryAsync(string ecuid, CancellationToken cancellationToken = default);
+        void Configure(string? appId, string? appSecret, string? sid);
+        Task<MeterSummary?> GetMeterSummaryAsync(string? ecuid, CancellationToken cancellationToken = default);
     }
 }

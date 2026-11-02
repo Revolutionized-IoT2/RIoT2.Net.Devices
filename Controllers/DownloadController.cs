@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using RIoT2.Net.Devices.Services.Interfaces;
+using System.Diagnostics.CodeAnalysis;
 
 namespace RIoT2.Net.Devices.Controllers
 {
@@ -39,7 +40,7 @@ namespace RIoT2.Net.Devices.Controllers
             return Results.File(img.Data, "image/jpeg");
         }
 
-        internal static bool TryNormalizeFilename(string filename, out string safeFilename)
+        internal static bool TryNormalizeFilename(string filename, [NotNullWhen(true)] out string? safeFilename)
         {
             safeFilename = null;
             if (string.IsNullOrWhiteSpace(filename))

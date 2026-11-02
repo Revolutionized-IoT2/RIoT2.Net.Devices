@@ -20,16 +20,16 @@ namespace RIoT2.Net.Devices.Services
         /// <summary>Received messages that may wait for the worker before the oldest one is dropped.</summary>
         public const int MessageQueueCapacity = 1000;
 
-        public event EufyEventHandler EufyEvent;
+        public event EufyEventHandler? EufyEvent;
 
         private readonly WebSocketClient _client;
-        private Uri _uri;
-        private CancellationTokenSource _shutdownCts;
-        private Channel<string> _messages;
+        private Uri? _uri;
+        private CancellationTokenSource? _shutdownCts;
+        private Channel<string>? _messages;
         private Task _worker = Task.CompletedTask;
         private ILogger _logger;
-        private EufyState _state;
-        private EufyPropertiesData _stationProperties;
+        private EufyState? _state;
+        private EufyPropertiesData? _stationProperties;
         private Dictionary<string, EufyPropertiesData> _deviceProperties;
 
         public EufySecurityService(ILogger<EufySecurityService> logger) 
@@ -57,34 +57,34 @@ namespace RIoT2.Net.Devices.Services
         }
 
         public Dictionary<string, EufyPropertiesData> DeviceProperties { get { return _deviceProperties; } }
-        public EufyPropertiesData StationProperties { get { return _stationProperties; } }
+        public EufyPropertiesData? StationProperties { get { return _stationProperties; } }
 
-        public void Configure(string serviceIp, int port)
+        public void Configure(string? serviceIp, int port)
         {
             _uri = new Uri($"ws://{serviceIp}:{port}");
         }
 
-        private void client_Closed(object sender, EventArgs e)
+        private void client_Closed(object? sender, EventArgs e)
         {
             _logger.LogWarning("Client Closed.");
         }
 
-        private void client_ListenerFaulted(object sender, Exception e)
+        private void client_ListenerFaulted(object? sender, Exception e)
         {
             _logger.LogWarning("Client Listener faulted.");
         }
 
-        private void client_Reconnected(object sender, EventArgs e)
+        private void client_Reconnected(object? sender, EventArgs e)
         {
             _logger.LogWarning("Client receonnected.");
         }
 
-        private void client_BinaryMessageReceived(object sender, byte[] e)
+        private void client_BinaryMessageReceived(object? sender, byte[] e)
         {
             _logger.LogWarning("Received binary message from Eufy Security WebSocket service. -> No handler currently");
         }
 
-        private void client_MessageReceived(object sender, string e) => EnqueueMessage(e);
+        private void client_MessageReceived(object? sender, string e) => EnqueueMessage(e);
 
         internal void EnqueueMessage(string message)
         {
@@ -131,12 +131,13 @@ namespace RIoT2.Net.Devices.Services
                     }
                     break;
                 case "version":
-                    var versionMsg = e.ToObj<EufyVersionInfo>();
+                    // e is the object that msg was read from, so it reads as any message type.
+                    var versionMsg = e.ToObj<EufyVersionInfo>()!;
                     //This should be received only once at startup, so we can log it but don't need to raise an event for it
                     await SendCommand(EufyCommand.GetCommand_SetApiSchema("1", versionMsg.MaxSchemaVersion));
                     break;
                 case "result":
-                    var resultMsg = e.ToObj<EufyResult>();
+                    var resultMsg = e.ToObj<EufyResult>()!;
                     if (!resultMsg.Success)
                     {
                         _logger.LogError("Eufy Security WebSocket command failed: {messageId}", resultMsg.MessageId);

@@ -14,16 +14,16 @@ namespace RIoT2.Net.Devices.Catalog
     [RequiresHardware("Hue bridge")]
     public class Hue : AsyncDeviceBase, IAsyncCommandDevice, IDeviceWithConfiguration, IMatterDevice
     {
-        private event HueEventHandler HueEventReceived;
-        private string _bridgeIpAddress = "192.168.0.4";
-        private string _apikey = "";
+        private event HueEventHandler? HueEventReceived;
+        private string? _bridgeIpAddress = "192.168.0.4";
+        private string? _apikey = "";
         private readonly object _lightStateLock = new();
         private readonly Dictionary<string, HueData> _lightStates = new(StringComparer.OrdinalIgnoreCase);
 
-        private CancellationTokenSource _cancellationTokenSource;
+        private CancellationTokenSource? _cancellationTokenSource;
         private Task _eventsListenerTask = Task.CompletedTask;
         // The lights read at start, which the template lists; the template is built without I/O.
-        private HueLights _lights;
+        private HueLights? _lights;
 
         private string getHueUrl() 
         {
@@ -76,7 +76,7 @@ namespace RIoT2.Net.Devices.Catalog
 
         // The bridge calls; the lifecycle tests replace them. Web's bridge client has no cancellation, so the
         // caller stops waiting instead.
-        internal virtual Task<HueLights> GetLightsAsync(CancellationToken cancellationToken) =>
+        internal virtual Task<HueLights?> GetLightsAsync(CancellationToken cancellationToken) =>
             getLight().WaitAsync(cancellationToken);
 
         internal virtual Task SetLightAsync(string hueId, string commandJson, CancellationToken cancellationToken) =>
@@ -86,7 +86,7 @@ namespace RIoT2.Net.Devices.Catalog
             startEventsListenerAsync(cancellationToken);
 
         // Hue pushes its state on the event stream; there is nothing to poll.
-        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) => Task.CompletedTask;
+        protected override Task RefreshAsync(ReportTemplate? report, CancellationToken cancellationToken) => Task.CompletedTask;
 
         private void sendReport(HueData data) 
         {
@@ -170,7 +170,7 @@ namespace RIoT2.Net.Devices.Catalog
             deviceConfiguration.DeviceParameters = new Dictionary<string, string>();
             deviceConfiguration.DeviceParameters.Add("bridgeIpAddress", "192.168.0.4");
             deviceConfiguration.DeviceParameters.Add("apiKey", "xxxx");
-            deviceConfiguration.ClassFullName = this.GetType().FullName;
+            deviceConfiguration.ClassFullName = this.GetType().FullName!;
             deviceConfiguration.RefreshSchedule = null;
 
             var reportConfigurations = new List<ReportTemplate>();
@@ -332,14 +332,15 @@ namespace RIoT2.Net.Devices.Catalog
 
         private delegate void HueEventHandler(string json);
 
-        private async Task<HueLights> getLight(string hueId = null) 
+        private async Task<HueLights?> getLight(string? hueId = null) 
         {
             string address = getHueUrl() + "/resource/light";
             if (!String.IsNullOrEmpty(hueId))
                 address += "/" + hueId;
 
             var headers = new Dictionary<string, string>();
-            headers.Add("hue-application-key", _apikey);
+            // Without a configured apiKey the value is null, which Web sends as an empty header value.
+            headers.Add("hue-application-key", _apikey!);
 
             var response = await RIoT2.Core.Utils.Web.GetAsync(address, headers);
             var json = await response.Content.ReadAsStringAsync();
@@ -350,7 +351,7 @@ namespace RIoT2.Net.Devices.Catalog
         {
             string address = getHueUrl() + $"/resource/light/{hueId}";
             var headers = new Dictionary<string, string>();
-            headers.Add("hue-application-key", _apikey);
+            headers.Add("hue-application-key", _apikey!);
 
             var hueCmd = Json.Deserialize<HueLightCommand>(commandJson);
             if(hueCmd != null)
@@ -378,7 +379,7 @@ namespace RIoT2.Net.Devices.Catalog
                         {
                             using (var streamReader = new StreamReader(await sseClient.GetStreamAsync(getHueEventUrl(), cancelToken)))
                             {
-                                string line;
+                                string? line;
                                 while ((line = await streamReader.ReadLineAsync(cancelToken)) != null)
                                 {
                                     HueEventReceived?.Invoke(line);

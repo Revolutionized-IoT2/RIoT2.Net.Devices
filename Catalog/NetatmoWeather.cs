@@ -12,18 +12,18 @@ namespace RIoT2.Net.Devices.Catalog
     [RequiresHardware("Netatmo API")]
     public class NetatmoWeather : NetatmoBase, IDeviceWithConfiguration
     {
-        private string _stationId;
+        private string? _stationId;
         // The last station data, which the template lists; the template is built without I/O.
-        private NetatmoStationsData _stationsData;
+        private NetatmoStationsData? _stationsData;
 
         public NetatmoWeather(ILogger logger, INetatmoAuthClientFactory authClients) : base(logger, authClients) { }
 
         public override void ConfigureDevice()
         {
-            string token = GetConfiguration<string>("token");
-            string refreshToken = GetConfiguration<string>("refresh_token");
-            string clientId = GetConfiguration<string>("clientId");
-            string clientSecret = GetConfiguration<string>("clientSecret");
+            string? token = GetConfiguration<string>("token");
+            string? refreshToken = GetConfiguration<string>("refresh_token");
+            string? clientId = GetConfiguration<string>("clientId");
+            string? clientSecret = GetConfiguration<string>("clientSecret");
             _stationId = GetConfiguration<string>("stationId");
             _stationsData = null;
 
@@ -35,7 +35,7 @@ namespace RIoT2.Net.Devices.Catalog
         protected override Task StopDeviceAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
         // Called by the scheduler; the refresh is defined on the device, so the report is null.
-        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) =>
+        protected override Task RefreshAsync(ReportTemplate? report, CancellationToken cancellationToken) =>
             report != null ? Task.CompletedTask : generateWeatherReports(cancellationToken);
 
         public DeviceConfiguration GetConfigurationTemplate()
@@ -52,7 +52,7 @@ namespace RIoT2.Net.Devices.Catalog
                 { "stationId", "a0:44:23:b5:b7" }
             };
 
-            deviceConfiguration.ClassFullName = this.GetType().FullName;
+            deviceConfiguration.ClassFullName = this.GetType().FullName!;
             deviceConfiguration.RefreshSchedule = "0 0/15 0 ? * * *";
 
             var reportConfigurations = new List<ReportTemplate>();
@@ -76,7 +76,8 @@ namespace RIoT2.Net.Devices.Catalog
                         Id = Guid.NewGuid().ToString(),
                         Address = $"{d._id}|{prop.Name}",
                         Name = prop.Name,
-                        Type = GetObjectValueType(value),
+                        // A missing trend is null, which GetObjectValueType types as Entity.
+                        Type = GetObjectValueType(value!),
                         Model = value
                     });
                 }
@@ -92,7 +93,7 @@ namespace RIoT2.Net.Devices.Catalog
                             Id = Guid.NewGuid().ToString(),
                             Address = $"{subModule._id}|{prop.Name}",
                             Name = prop.Name,
-                            Type = GetObjectValueType(value),
+                            Type = GetObjectValueType(value!),
                             Model = value
                         });
                     }

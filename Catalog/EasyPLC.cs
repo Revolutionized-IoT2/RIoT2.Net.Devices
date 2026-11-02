@@ -12,8 +12,9 @@ namespace RIoT2.Net.Devices.Catalog
     /// <summary>The <see cref="EasyPLC"/> device's parameters.</summary>
     public sealed class EasyPlcOptions
     {
+        // Required, so binding sets it before ConfigureDevice.
         [DeviceParameter("ipAddress", Required = true, Description = "IP address of the Easy PLC (easyE4)")]
-        public string IpAddress { get; set; }
+        public string IpAddress { get; set; } = null!;
 
         [DeviceParameter("port", Default = "10001", Description = "TCP port of the PLC")]
         public int Port { get; set; }
@@ -22,7 +23,7 @@ namespace RIoT2.Net.Devices.Catalog
     [RequiresHardware("Easy PLC on the network")]
     public class EasyPLC : AsyncDeviceBase<EasyPlcOptions>, IAsyncCommandDevice, IDeviceWithConfiguration
     {
-        private IEasyPlcConnection _client;
+        private IEasyPlcConnection? _client;
         private readonly Func<IEasyPlcConnection> _connectionFactory;
         private bool _connected;
         private Dictionary<string, bool> _states = new Dictionary<string, bool>();
@@ -69,7 +70,7 @@ namespace RIoT2.Net.Devices.Catalog
         {
             Id = Guid.NewGuid().ToString(),
             Name = "Easy PLC",
-            ClassFullName = GetType().FullName,
+            ClassFullName = GetType().FullName!,
             RefreshSchedule = DeviceTemplates.DefaultRefreshSchedule,
             // The node adds the parameters from EasyPlcOptions.
             CommandTemplates = [],
@@ -112,7 +113,7 @@ namespace RIoT2.Net.Devices.Catalog
             finally { _io.Release(); }
         }
 
-        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken)
+        protected override Task RefreshAsync(ReportTemplate? report, CancellationToken cancellationToken)
         {
             return report == null ? ReadMarkersAsync(cancellationToken) : Task.CompletedTask;
         }
@@ -181,7 +182,8 @@ namespace RIoT2.Net.Devices.Catalog
                 await ConnectCoreAsync(timeout.Token).ConfigureAwait(false);
                 try
                 {
-                    var tcpStream = _client.GetStream();
+                    // ConnectCoreAsync either connected _client or threw.
+                    var tcpStream = _client!.GetStream();
                     await tcpStream.WriteAsync(message, timeout.Token).ConfigureAwait(false);
                     var header = new byte[2];
                     await tcpStream.ReadExactlyAsync(header, timeout.Token).ConfigureAwait(false);

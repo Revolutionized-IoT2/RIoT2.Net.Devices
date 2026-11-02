@@ -21,7 +21,8 @@ namespace RIoT2.Net.Devices.Tests;
 [TestClass]
 public class DeviceLifecycleTests
 {
-    private string _dataDirectory;
+    // CreateDataDirectory sets it before each test.
+    private string _dataDirectory = null!;
 
     [TestInitialize]
     public void CreateDataDirectory()
@@ -46,8 +47,8 @@ public class DeviceLifecycleTests
         var start = device.StartAsync(CancellationToken.None);
         Assert.IsFalse(start.IsCompleted, "the start waits for the meter API without blocking the caller");
         var (request, _) = http.Requests.Single();
-        Assert.AreEqual(("Bearer", "token"), (request.Headers.Authorization.Scheme, request.Headers.Authorization.Parameter));
-        StringAssert.StartsWith(request.RequestUri.ToString(), "https://water.invalid/api?startDate=");
+        Assert.AreEqual(("Bearer", "token"), (request.Headers.Authorization!.Scheme, request.Headers.Authorization.Parameter));
+        StringAssert.StartsWith(request.RequestUri!.ToString(), "https://water.invalid/api?startDate=");
 
         http.Respond("""{"model":"m","serialNumber":"s","readings":[["2026-11-02T06:00:00",12.3456],["2026-11-02T05:00:00",12.0]]}""");
         await start;
@@ -55,7 +56,8 @@ public class DeviceLifecycleTests
         Assert.AreEqual(12.35m, reports.Single().Value.GetValue<decimal>());
 
         using var cancel = new CancellationTokenSource();
-        var refresh = device.RefreshReportAsync(device.Id, null, cancel.Token);
+        // A null report name is the device-level refresh the scheduler runs.
+        var refresh = device.RefreshReportAsync(device.Id, null!, cancel.Token);
         Assert.IsFalse(refresh.IsCompleted);
         Assert.AreEqual(cancel.Token, http.Requests.Last().Token);
         await cancel.CancelAsync();
@@ -80,7 +82,7 @@ public class DeviceLifecycleTests
         using var cancel = new CancellationTokenSource();
         var start = device.StartAsync(cancel.Token);
         Assert.IsFalse(start.IsCompleted);
-        StringAssert.StartsWith(http.Requests.Single().Request.RequestUri.ToString(), "https://prices.invalid/api?securityToken=t&documentType=A44");
+        StringAssert.StartsWith(http.Requests.Single().Request.RequestUri!.ToString(), "https://prices.invalid/api?securityToken=t&documentType=A44");
         await cancel.CancelAsync();
 
         await Assert.ThrowsAsync<OperationCanceledException>(() => start);
@@ -104,9 +106,9 @@ public class DeviceLifecycleTests
         await start;
         CollectionAssert.AreEquivalent(new[] { "today", "year" }, reports.Select(r => r.Id).ToArray());
 
-        client.Summary = new TaskCompletionSource<MeterSummary>();
+        client.Summary = new TaskCompletionSource<MeterSummary?>();
         client.Summary.SetResult(new MeterSummary { Code = ApCode.SystemBusy });
-        await Assert.ThrowsAsync<Exception>(() => device.RefreshReportAsync(device.Id, null, CancellationToken.None));
+        await Assert.ThrowsAsync<Exception>(() => device.RefreshReportAsync(device.Id, null!, CancellationToken.None));
         Assert.AreEqual(DeviceState.Error, device.State);
     }
 
@@ -137,7 +139,7 @@ public class DeviceLifecycleTests
 
         var start = device.StartAsync(CancellationToken.None);
         Assert.IsFalse(start.IsCompleted);
-        Assert.AreEqual("access", http.Requests.Single().Request.Headers.Authorization.Parameter);
+        Assert.AreEqual("access", http.Requests.Single().Request.Headers.Authorization!.Parameter);
         http.Respond("""{"status":"ok","body":{"devices":[{"_id":"70:ee","dashboard_data":{"Temperature":21.5,"Humidity":40},"modules":[]}]}}""");
         await start;
         Assert.AreEqual(21.5, reports.Single().Value.GetValue<double>());
@@ -150,7 +152,8 @@ public class DeviceLifecycleTests
     [TestMethod]
     public async Task NetatmoSecurityRejectsSetHomeUntilItsHomeIsLoaded()
     {
-        var device = new NetatmoSecurity(NullLogger.Instance, null, Factory());
+        // The memory storage isn't reached in this test.
+        var device = new NetatmoSecurity(NullLogger.Instance, null!, Factory());
         device.Initialize(Configuration(
             new() { ["token"] = "access", ["refresh_token"] = "refresh", ["clientId"] = "security-app", ["clientSecret"] = "secret" },
             commands: [new CommandTemplate { Id = "home", Address = "set_home" }, new CommandTemplate { Id = "refresh", Address = "refresh" }]));
@@ -174,7 +177,7 @@ public class DeviceLifecycleTests
         device.Lights.SetResult("""{"data":[{"id":"light-1","metadata":{"name":"Lamp"},"on":{"on":true}}]}""".ToObj<HueLights>());
         await start;
         Assert.AreEqual("lamp", reports.Single().Id);
-        Assert.AreEqual("Lamp", device.GetConfigurationTemplate().CommandTemplates.Single().Name, "the template lists the lights read at start");
+        Assert.AreEqual("Lamp", device.GetConfigurationTemplate().CommandTemplates!.Single().Name, "the template lists the lights read at start");
 
         using var cancel = new CancellationTokenSource();
         await device.ExecuteCommandAsync("lamp", """{"state":false}""", cancel.Token);
@@ -223,7 +226,8 @@ public class DeviceLifecycleTests
     public async Task FtpKeepsItsServerRunningUntilStopAndReportsAServerThatCannotStart()
     {
         var ftp = new FakeFtp();
-        var device = new FTP(NullLogger.Instance, ftp, null);
+        // The memory storage isn't reached in this test.
+        var device = new FTP(NullLogger.Instance, ftp, null!);
         device.Initialize(Configuration(new() { ["ftpUsers"] = "camera:pw", ["ftpPort"] = "2121" }));
 
         await device.StartAsync(CancellationToken.None);
@@ -243,7 +247,7 @@ public class DeviceLifecycleTests
         new(NullLogger.Instance, _dataDirectory, (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadRequest)));
 
     private static DeviceConfiguration Configuration(Dictionary<string, string> parameters,
-        List<ReportTemplate> reports = null, List<CommandTemplate> commands = null) =>
+        List<ReportTemplate>? reports = null, List<CommandTemplate>? commands = null) =>
         new() { Id = "device", Name = "Device", DeviceParameters = parameters, ReportTemplates = reports ?? [], CommandTemplates = commands ?? [] };
 
     private static ConcurrentQueue<Report> Capture(Core.Interfaces.IDevice device)
@@ -296,11 +300,11 @@ public class DeviceLifecycleTests
 
     private sealed class TestHue() : Hue(NullLogger.Instance)
     {
-        public TaskCompletionSource<HueLights> Lights { get; } = Pending<HueLights>();
+        public TaskCompletionSource<HueLights?> Lights { get; } = Pending<HueLights?>();
         public ConcurrentQueue<(string Light, string Command, CancellationToken Token)> Commands { get; } = new();
         public CancellationToken ListenerToken { get; private set; }
 
-        internal override Task<HueLights> GetLightsAsync(CancellationToken cancellationToken) => Lights.Task.WaitAsync(cancellationToken);
+        internal override Task<HueLights?> GetLightsAsync(CancellationToken cancellationToken) => Lights.Task.WaitAsync(cancellationToken);
 
         internal override Task SetLightAsync(string hueId, string commandJson, CancellationToken cancellationToken)
         {
@@ -328,12 +332,12 @@ public class DeviceLifecycleTests
 
     private sealed class FakeApSystemsClient : IApSystemsClientService
     {
-        public TaskCompletionSource<MeterSummary> Summary { get; set; } = Pending<MeterSummary>();
-        public string EcuId { get; private set; }
+        public TaskCompletionSource<MeterSummary?> Summary { get; set; } = Pending<MeterSummary?>();
+        public string? EcuId { get; private set; }
 
-        public void Configure(string appId, string appSecret, string sid) { }
+        public void Configure(string? appId, string? appSecret, string? sid) { }
 
-        public Task<MeterSummary> GetMeterSummaryAsync(string ecuid, CancellationToken cancellationToken = default)
+        public Task<MeterSummary?> GetMeterSummaryAsync(string? ecuid, CancellationToken cancellationToken = default)
         {
             EcuId = ecuid;
             return Summary.Task.WaitAsync(cancellationToken);
@@ -342,7 +346,7 @@ public class DeviceLifecycleTests
 
     private sealed class FakeRelay : IAzureRelayService
     {
-        public event WebMessageHandler MessageReceived { add { } remove { } }
+        public event WebMessageHandler? MessageReceived { add { } remove { } }
         public TaskCompletionSource Open { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public (string, string, string, string) Configured { get; private set; }
         public int Stops { get; private set; }
@@ -361,14 +365,15 @@ public class DeviceLifecycleTests
 
     private sealed class FakeFtp : IFtpService
     {
-        private TaskCompletionSource _running;
-        private CustomLocalDataConnection.FileReceivedHandler _handlers;
+        private TaskCompletionSource? _running;
+        private CustomLocalDataConnection.FileReceivedHandler? _handlers;
 
-        public event CustomLocalDataConnection.FileReceivedHandler FileReceived { add => _handlers += value; remove => _handlers -= value; }
+        public event CustomLocalDataConnection.FileReceivedHandler? FileReceived { add => _handlers += value; remove => _handlers -= value; }
         public bool Subscribed => _handlers != null;
-        public Exception StartError { get; set; }
+        public Exception? StartError { get; set; }
         public int Port { get; private set; }
-        public List<FtpUser> Users { get; private set; }
+        // StartAsync sets it.
+        public List<FtpUser> Users { get; private set; } = null!;
 
         public Task StartAsync(List<FtpUser> users, int port)
         {

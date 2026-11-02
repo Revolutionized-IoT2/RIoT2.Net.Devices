@@ -24,7 +24,7 @@ public class VirtualTests
             ReportTemplates = [new ReportTemplate { Id = "state", Address = "value" }]
         });
         device.Start();
-        Report published = null;
+        Report? published = null;
         device.ReportUpdated += (_, report) => published = (Report)report;
 
         // CommandService passes the command value to the device serialized as JSON.

@@ -12,8 +12,8 @@ namespace RIoT2.Net.Devices.Catalog
     [RequiresHardware("APsystems API")]
     public class ApSystems : AsyncDeviceBase, IDeviceWithConfiguration
     {
-        MeterSummary _meterSummary;
-        string _ecuId;
+        MeterSummary? _meterSummary;
+        string? _ecuId;
         IApSystemsClientService _client;
         public ApSystems(ILogger logger, IApSystemsClientService apSystemsClientService) : base(logger) 
         {
@@ -38,7 +38,7 @@ namespace RIoT2.Net.Devices.Catalog
             deviceConfiguration.DeviceParameters.Add("sid", "<apsystems-sid>");
             deviceConfiguration.DeviceParameters.Add("ecuId", "<ecu-id>");
 
-            deviceConfiguration.ClassFullName = this.GetType().FullName;
+            deviceConfiguration.ClassFullName = this.GetType().FullName!;
             var reportConfigurations = new List<ReportTemplate>();
 
             reportConfigurations.Add(new ReportTemplate()
@@ -123,7 +123,7 @@ namespace RIoT2.Net.Devices.Catalog
         }
 
         // Called by the scheduler; the refresh is defined on the device, so the report is null.
-        protected override async Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken)
+        protected override async Task RefreshAsync(ReportTemplate? report, CancellationToken cancellationToken)
         {
             if (report != null)
                 return;
@@ -141,7 +141,7 @@ namespace RIoT2.Net.Devices.Catalog
             return templates;
         }
 
-        private EnergyMeter getCurrenValue(ReportTemplate template) 
+        private EnergyMeter? getCurrenValue(ReportTemplate template) 
         {
             if (_meterSummary == null)
                 return null;
@@ -150,7 +150,8 @@ namespace RIoT2.Net.Devices.Catalog
             if (template != null && template.Parameters != null && template.Parameters.ContainsKey("precision"))
                 _ = int.TryParse(template.Parameters["precision"], out precision);
 
-            return template.Address switch
+            // The callers pass a template; the null test above is only defensive.
+            return template!.Address switch
             {
                 "today" => round(_meterSummary.Data.Today, precision),
                 "month" => round(_meterSummary.Data.Month, precision),
@@ -160,7 +161,7 @@ namespace RIoT2.Net.Devices.Catalog
             };
         }
 
-        private EnergyMeter round(EnergyMeter meter, int precision = -1) 
+        private EnergyMeter? round(EnergyMeter? meter, int precision = -1) 
         {
             if (meter == null)
                 return null;
@@ -196,7 +197,7 @@ namespace RIoT2.Net.Devices.Catalog
 
         private async Task LoadAsync(CancellationToken cancellationToken)
         {
-            MeterSummary summary;
+            MeterSummary? summary;
             try
             {
                 summary = await _client.GetMeterSummaryAsync(_ecuId, cancellationToken).ConfigureAwait(false);

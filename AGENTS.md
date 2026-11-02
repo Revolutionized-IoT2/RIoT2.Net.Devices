@@ -79,6 +79,8 @@ This repository implements plugin-side pieces of these hub contracts:
   No `.Result`, `.Wait()` or `GetAwaiter().GetResult()`: the threading analyzers fail CI (I31). The
   only wait is `LegacySync.Wait` in the sync `ExecuteCommand` that `IAsyncCommandDevice` requires.
   `GetConfigurationTemplate` is synchronous: build it from cached data, never call the network.
+- Nullable is on (I32). `Refresh`/`RefreshAsync` overrides take `ReportTemplate?` (null: the
+  whole device); API payload models in `Models/` turn off CS8618 in a nested `.editorconfig`.
 - Every device that reads a parameter implements `IDeviceWithConfiguration` and declares the key
   in its template. `PluginConformanceTests` fails otherwise.
 - Mark a device that needs a remote service, hardware or a fixed port with

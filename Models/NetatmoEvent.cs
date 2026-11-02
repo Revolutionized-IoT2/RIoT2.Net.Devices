@@ -12,7 +12,7 @@ namespace RIoT2.Net.Devices.Models
 
         //This will set current events and return NEW events compared to previous update
         //If there are no previous events latest event from each module is returned
-        public List<Event> Update(List<Event> events)
+        public List<Event> Update(List<Event>? events)
         {
             var newEvents = new List<Event>();
             if (events == null || events.Count == 0)
@@ -21,7 +21,11 @@ namespace RIoT2.Net.Devices.Models
             if (_netatmoEvents.Count == 0) //initial update
             {
                 foreach (var moduleId in getModuleIds(events))
-                    newEvents.Add(GetLatestByModuleId(events, moduleId));
+                {
+                    var latest = GetLatestByModuleId(events, moduleId);
+                    if (latest != null)
+                        newEvents.Add(latest);
+                }
 
                 _netatmoEvents = events;
 
@@ -36,17 +40,19 @@ namespace RIoT2.Net.Devices.Models
             }
         }
 
-        public Event GetLatestByModuleId(List<Event> events, string moduleId) 
+        // Null when none of the module's events has a snapshot.
+        public Event? GetLatestByModuleId(List<Event> events, string moduleId) 
         {
             var latestEvent = events.OrderByDescending(x => x.time).Where(e => e.snapshot != null || (e.subevents != null && e.subevents.Count > 0 && e.subevents.Any(s => s.snapshot != null))) 
                 .FirstOrDefault(m => m.module_id == moduleId);
 
             //only keep latest subevent that has snapshot
-            if (latestEvent.subevents != null) 
+            if (latestEvent?.subevents != null) 
             {
                 latestEvent.subevents = new List<Subevent>() 
                 {
-                    latestEvent.subevents.FirstOrDefault(x => x.snapshot != null)
+                    // Known gap: null when only the event itself has a snapshot.
+                    latestEvent.subevents.FirstOrDefault(x => x.snapshot != null)!
                 };
             }
             return latestEvent;
@@ -60,7 +66,7 @@ namespace RIoT2.Net.Devices.Models
 
     public class NetatmoEvent
     {
-        public EventBody body { get; set; }
+        public EventBody? body { get; set; }
         public string status { get; set; }
         public float time_exec { get; set; }
         public int time_server { get; set; }
@@ -68,21 +74,21 @@ namespace RIoT2.Net.Devices.Models
 
     public class EventBody
     {
-        public EventHome home { get; set; }
+        public EventHome? home { get; set; }
     }
 
     public class EventHome
     {
         public string id { get; set; }
-        public List<Event> events { get; set; }
+        public List<Event>? events { get; set; }
     }
 
     public class Event : Subevent
     {
         public string module_id { get; set; }
-        public List<Subevent> subevents { get; set; }
+        public List<Subevent>? subevents { get; set; }
         public string sub_message { get; set; }
-        public string person_id { get; set; }
+        public string? person_id { get; set; }
     }
 
     public class Subevent
@@ -90,7 +96,7 @@ namespace RIoT2.Net.Devices.Models
         public string id { get; set; }
         public string type { get; set; }
         public int time { get; set; }
-        public NetatmoDocument snapshot { get; set; }
+        public NetatmoDocument? snapshot { get; set; }
         public string message { get; set; }
     }
 

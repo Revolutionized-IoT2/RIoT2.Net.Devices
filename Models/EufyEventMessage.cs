@@ -13,7 +13,7 @@
         public string Event { get; set; }
         public string SerialNumber { get; set; }
         public string Name { get; set; }
-        public object Value { get; set; }
+        public object? Value { get; set; }
     }
 
     public class EufyEventData

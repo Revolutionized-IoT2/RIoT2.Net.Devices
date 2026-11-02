@@ -32,8 +32,8 @@ namespace RIoT2.Net.Devices.Catalog
 
     public class Messaging : AsyncDeviceBase<MessagingOptions>, IAsyncCommandDevice, IDeviceWithConfiguration
     {
-        private GoogleOAuth2 _authentication;
-        private SmtpClient _smtpClient;
+        private GoogleOAuth2? _authentication;
+        private SmtpClient? _smtpClient;
         private const string _serviceAccountFile = "Data/service_account.json";
 
         public Messaging(ILogger logger) : base(logger) 
@@ -54,12 +54,13 @@ namespace RIoT2.Net.Devices.Catalog
 
             if (command.Address.ToLower() == "fb")
             {
-                var msg = Json.Deserialize<FirebaseMsg>(value);
+                // An empty or "null" value fails here, as before.
+                var msg = Json.Deserialize<FirebaseMsg>(value)!;
                 await sendFBMessage(msg.GetServiceMessage(), cancellationToken).ConfigureAwait(false);
             }
             else if (command.Address.ToLower() == "mail") 
             {
-                var msg = Json.Deserialize<MailMsg>(value);
+                var msg = Json.Deserialize<MailMsg>(value)!;
                 await sendMail(msg.GetMailMessage(Options.SmtpUser), cancellationToken).ConfigureAwait(false);
             }
         }
@@ -79,7 +80,7 @@ namespace RIoT2.Net.Devices.Catalog
 
         protected override Task StopDeviceAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) => Task.CompletedTask;
+        protected override Task RefreshAsync(ReportTemplate? report, CancellationToken cancellationToken) => Task.CompletedTask;
 
         // The calls to Firebase and the SMTP server; the lifecycle tests replace them.
         internal virtual Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
@@ -95,7 +96,7 @@ namespace RIoT2.Net.Devices.Catalog
             deviceConfiguration.Name = "Messaging";
             // The node adds the parameters from MessagingOptions.
 
-            deviceConfiguration.ClassFullName = this.GetType().FullName;
+            deviceConfiguration.ClassFullName = this.GetType().FullName!;
             var commandConfigurations = new List<CommandTemplate>();
 
             commandConfigurations.Add(new CommandTemplate() {
@@ -125,7 +126,8 @@ namespace RIoT2.Net.Devices.Catalog
                 }
             });
 
-            deviceConfiguration.ReportTemplates = null;
+            // Messaging has no reports; its template has always carried null here.
+            deviceConfiguration.ReportTemplates = null!;
             deviceConfiguration.CommandTemplates = commandConfigurations;
 
             return deviceConfiguration;
@@ -147,9 +149,9 @@ namespace RIoT2.Net.Devices.Catalog
                 Logger.LogError(x, "Error while sending mail");
             }
         }
-        private async Task<string> sendFBMessage(FirebaseServiceMessage msg, CancellationToken cancellationToken)
+        private async Task<string?> sendFBMessage(FirebaseServiceMessage msg, CancellationToken cancellationToken)
         {
-            string retVal = null;
+            string? retVal = null;
             if (_authentication == null || String.IsNullOrEmpty(Options.FirebaseProjectName))
                 return null;
 
@@ -194,7 +196,7 @@ namespace RIoT2.Net.Devices.Catalog
             return true;
         }
         // ConfigureDevice is synchronous; a small local file is read directly.
-        private string readServiceAccount() 
+        private string? readServiceAccount() 
         {
             try
             {

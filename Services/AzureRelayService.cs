@@ -28,10 +28,10 @@ namespace RIoT2.Net.Devices.Services
         private string _key = "{SASKey}";
         private string _status = "";
 
-        private HybridConnectionListener _listener;
-        private CancellationTokenSource _cts;
+        private HybridConnectionListener? _listener;
+        private CancellationTokenSource? _cts;
 
-        public event WebMessageHandler MessageReceived;
+        public event WebMessageHandler? MessageReceived;
         public string Status => _status;
 
         public AzureRelayService() 
@@ -75,8 +75,9 @@ namespace RIoT2.Net.Devices.Services
                 
                 //read incoming headers
                 var headers = new Dictionary<string, string>();
+                // k comes from AllKeys, so the collection has a value for it.
                 foreach (var k in context.Request.Headers.AllKeys)
-                    headers.Add(k, context.Request.Headers[k]);
+                    headers.Add(k, context.Request.Headers[k]!);
 
                 //read incoming method
                 var method = context.Request.HttpMethod;
@@ -92,7 +93,7 @@ namespace RIoT2.Net.Devices.Services
                     if (String.IsNullOrEmpty(k))
                         continue;
 
-                    querystrings.Add(k, nvc[k]);
+                    querystrings.Add(k, nvc[k]!);
                 }
                     
 
@@ -102,7 +103,7 @@ namespace RIoT2.Net.Devices.Services
                     sw.WriteLine("received");
                 }*/
 
-                MessageReceived(method, body, querystrings, headers);
+                MessageReceived?.Invoke(method, body, querystrings, headers);
 
                 // The context MUST be closed here
                 context.Response.Close();

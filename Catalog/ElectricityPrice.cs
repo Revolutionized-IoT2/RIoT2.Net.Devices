@@ -16,12 +16,12 @@ namespace RIoT2.Net.Devices.Catalog
     {
         public ElectricityPrice(ILogger logger) : base(logger) { }
 
-        private string _securityToken = "";
-        private string _domain = "";
-        private string _endpoint = "";
+        private string? _securityToken = "";
+        private string? _domain = "";
+        private string? _endpoint = "";
         private double _vat = 0.0d;
         private const string _priceDataFile = "Data/priceData.xml";
-        Publication_MarketDocument _priceData;
+        Publication_MarketDocument? _priceData;
 
         public override void ConfigureDevice() 
         {
@@ -44,7 +44,7 @@ namespace RIoT2.Net.Devices.Catalog
         }
 
         // Called by the scheduler; the refresh is defined on the device, so the report is null.
-        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) =>
+        protected override Task RefreshAsync(ReportTemplate? report, CancellationToken cancellationToken) =>
             report != null ? Task.CompletedTask : SendPriceAsync(cancellationToken);
 
         private async Task SendPriceAsync(CancellationToken cancellationToken)
@@ -79,7 +79,7 @@ namespace RIoT2.Net.Devices.Catalog
             deviceConfiguration.DeviceParameters.Add("endpoint", "https://web-api.tp.entsoe.eu/api");
             deviceConfiguration.DeviceParameters.Add("vat", "25.5");
 
-            deviceConfiguration.ClassFullName = this.GetType().FullName;
+            deviceConfiguration.ClassFullName = this.GetType().FullName!;
             var reportConfigurations = new List<ReportTemplate>();
 
             reportConfigurations.Add(new ReportTemplate()
@@ -96,7 +96,7 @@ namespace RIoT2.Net.Devices.Catalog
             return deviceConfiguration;
         }
 
-        private ReportTemplate getPriceReportTemplate() 
+        private ReportTemplate? getPriceReportTemplate() 
         {
             return ReportTemplates?.FirstOrDefault(x => x.Address == "price");
         }
@@ -165,7 +165,7 @@ namespace RIoT2.Net.Devices.Catalog
                 XmlSerializer serializer = new XmlSerializer(typeof(Publication_MarketDocument));
                 using (var reader = new StringReader(xml))
                 {
-                    var filePriceData = (Publication_MarketDocument)serializer.Deserialize(new NamespaceIgnorantXmlTextReader(reader));
+                    var filePriceData = (Publication_MarketDocument?)serializer.Deserialize(new NamespaceIgnorantXmlTextReader(reader));
                     if (isPriceDataValid(filePriceData))
                         _priceData = filePriceData;
                     else
@@ -182,7 +182,7 @@ namespace RIoT2.Net.Devices.Catalog
             }
         }
 
-        private bool isPriceDataValid(Publication_MarketDocument priceData)
+        private bool isPriceDataValid(Publication_MarketDocument? priceData)
         {
             if (priceData == null)
                 return false;
@@ -227,7 +227,7 @@ namespace RIoT2.Net.Devices.Catalog
                 XmlSerializer serializer = new XmlSerializer(typeof(Publication_MarketDocument));
                 using (StringReader reader = new StringReader(xml))
                 {
-                    _priceData = (Publication_MarketDocument)serializer.Deserialize(new NamespaceIgnorantXmlTextReader(reader));
+                    _priceData = (Publication_MarketDocument?)serializer.Deserialize(new NamespaceIgnorantXmlTextReader(reader));
                     save();
                 }
             }

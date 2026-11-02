@@ -6,9 +6,9 @@ namespace RIoT2.Net.Devices.Services
 {
     public sealed class WebSocketClient : IAsyncDisposable
     {
-        private ClientWebSocket _ws;
-        private Task _listenTask;
-        private CancellationTokenSource _listenCts;
+        private ClientWebSocket? _ws;
+        private Task? _listenTask;
+        private CancellationTokenSource? _listenCts;
 
         private readonly SemaphoreSlim _sendLock = new(1, 1);
         private readonly SemaphoreSlim _reconnectLock = new(1, 1);
@@ -17,26 +17,26 @@ namespace RIoT2.Net.Devices.Services
         private volatile bool _reconnecting;
 
         // Reconnection state
-        private Uri _cachedUri;
-        private Dictionary<string, string> _cachedHeaders;
-        private List<string> _cachedSubprotocols;
+        private Uri? _cachedUri;
+        private Dictionary<string, string>? _cachedHeaders;
+        private List<string>? _cachedSubprotocols;
 
         // Pending response routing (text OR binary)
-        private IPendingResponse _pendingResponse;
+        private IPendingResponse? _pendingResponse;
         private readonly object _pendingLock = new();
 
         // For reconnect decisions
         private WebSocketCloseStatus _lastCloseStatus;
-        private string _lastCloseDescription;
-        private Exception _lastListenerException;
+        private string? _lastCloseDescription;
+        private Exception? _lastListenerException;
 
-        public event EventHandler<string> MessageReceived;
-        public event EventHandler<byte[]> BinaryMessageReceived;
-        public event EventHandler<Exception> ListenerFaulted;
-        public event EventHandler Closed;
-        public event EventHandler Reconnected;
+        public event EventHandler<string>? MessageReceived;
+        public event EventHandler<byte[]>? BinaryMessageReceived;
+        public event EventHandler<Exception>? ListenerFaulted;
+        public event EventHandler? Closed;
+        public event EventHandler? Reconnected;
 
-        public Uri ConnectedUri { get; private set; }
+        public Uri? ConnectedUri { get; private set; }
         public bool IsConnected => _ws?.State == WebSocketState.Open;
 
         public AutoReconnectOptions AutoReconnect { get; } = new();
@@ -46,8 +46,8 @@ namespace RIoT2.Net.Devices.Services
         /// </summary>
         public async Task ConnectAsync(
             Uri uri,
-            IDictionary<string, string> headers = null,
-            IEnumerable<string> subprotocols = null,
+            IDictionary<string, string>? headers = null,
+            IEnumerable<string>? subprotocols = null,
             CancellationToken cancellationToken = default)
         {
             if (IsConnected)
@@ -314,7 +314,7 @@ namespace RIoT2.Net.Devices.Services
                                 using var sr = new StreamReader(aggregator, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, leaveOpen: true);
                                 var text = await sr.ReadToEndAsync().ConfigureAwait(false);
 
-                                IPendingResponse toFulfill = null;
+                                IPendingResponse? toFulfill = null;
                                 lock (_pendingLock) { toFulfill = _pendingResponse; }
 
                                 if (toFulfill != null && toFulfill.TrySetText(text))
@@ -331,7 +331,7 @@ namespace RIoT2.Net.Devices.Services
                             {
                                 var data = aggregator.ToArray();
 
-                                IPendingResponse toFulfill = null;
+                                IPendingResponse? toFulfill = null;
                                 lock (_pendingLock) { toFulfill = _pendingResponse; }
 
                                 if (toFulfill != null && toFulfill.TrySetBinary(data))
@@ -497,8 +497,8 @@ namespace RIoT2.Net.Devices.Services
         }
 
         private static ClientWebSocket CreateClientWebSocket(
-            IDictionary<string, string> headers,
-            IEnumerable<string> subprotocols)
+            IDictionary<string, string>? headers,
+            IEnumerable<string>? subprotocols)
         {
             var ws = new ClientWebSocket();
             if (headers != null)
@@ -518,7 +518,7 @@ namespace RIoT2.Net.Devices.Services
 
         private void FailPendingResponse(Exception ex, bool isTimeout)
         {
-            IPendingResponse pending;
+            IPendingResponse? pending;
             lock (_pendingLock)
             {
                 pending = _pendingResponse;
@@ -612,13 +612,13 @@ namespace RIoT2.Net.Devices.Services
         /// Optional predicate to decide if we should reconnect, given last close/exception.
         /// Return false to stop reconnecting.
         /// </summary>
-        public Func<WebSocketCloseStatus?, string, Exception, bool> ShouldReconnect { get; set; }
+        public Func<WebSocketCloseStatus?, string?, Exception?, bool>? ShouldReconnect { get; set; }
 
         /// <summary>Optional hook before each reconnect attempt.</summary>
-        public Func<WebSocketClient, Task> OnBeforeReconnectAsync { get; set; }
+        public Func<WebSocketClient, Task>? OnBeforeReconnectAsync { get; set; }
 
         /// <summary>Optional hook after a successful reconnect.</summary>
-        public Func<WebSocketClient, Task> OnAfterReconnectAsync { get; set; }
+        public Func<WebSocketClient, Task>? OnAfterReconnectAsync { get; set; }
     }
 
     internal static class TaskExtensions

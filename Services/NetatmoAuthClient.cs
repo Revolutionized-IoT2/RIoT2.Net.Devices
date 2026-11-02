@@ -21,8 +21,9 @@ namespace RIoT2.Net.Devices.Services
         private string _accessToken = "";
         private string _refreshToken = "";
         private string _clientSecret = "";
-        private string _configuredAccessToken;
-        private string _configuredRefreshToken;
+        // Configure sets these; NetatmoBase only uses a client after configuring it.
+        private string _configuredAccessToken = null!;
+        private string _configuredRefreshToken = null!;
         private bool _loaded;
 
         internal NetatmoAuthClient(string clientId, string tokenFile, ILogger logger, Func<string, string, Task<HttpResponseMessage>> postForm)
@@ -52,7 +53,7 @@ namespace RIoT2.Net.Devices.Services
         /// Applies the tokens and secret of a device configuration. The first call loads the stored tokens, which
         /// win over the configured ones; without a stored file the configured tokens are used.
         /// </summary>
-        public void Configure(string accessToken, string refreshToken, string clientSecret)
+        public void Configure(string? accessToken, string? refreshToken, string? clientSecret)
         {
             lock (_lock)
             {
@@ -142,7 +143,7 @@ namespace RIoT2.Net.Devices.Services
             }
         }
 
-        private NetatmoAuth Load()
+        private NetatmoAuth? Load()
         {
             try
             {

@@ -6,9 +6,9 @@ namespace RIoT2.Net.Devices.Models
     internal class GoogleOAuth2
     {
         private bool _authenticated = false;
-        private ServiceAccountCredential _credentials;
+        private ServiceAccountCredential? _credentials;
         private DateTime _expires;
-        private string _token;
+        private string? _token;
 
         internal GoogleOAuth2(string serviceAccountJson)
         {
@@ -18,7 +18,8 @@ namespace RIoT2.Net.Devices.Models
 
             try
             {
-                var cr = Json.Deserialize<ServiceAccount>(serviceAccountJson);
+                // A "null" document fails here like any invalid one and is wrapped below.
+                var cr = Json.Deserialize<ServiceAccount>(serviceAccountJson)!;
                 _credentials = new ServiceAccountCredential(new ServiceAccountCredential.Initializer(cr.client_email)
                 {
                     Scopes = new[] {
@@ -35,7 +36,7 @@ namespace RIoT2.Net.Devices.Models
 
         internal bool IsAuthenticated { get { return _authenticated; } }
 
-        internal async Task<string> GetToken()
+        internal async Task<string?> GetToken()
         {
             if (_credentials == null)
                 return null;

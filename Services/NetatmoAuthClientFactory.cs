@@ -21,7 +21,7 @@ namespace RIoT2.Net.Devices.Services
         private readonly string _dataDirectory;
         private readonly ILogger _logger;
         private readonly Func<string, string, Task<HttpResponseMessage>> _postForm;
-        private string _legacyOwner;
+        private string? _legacyOwner;
 
         public NetatmoAuthClientFactory(ILogger logger)
             : this(logger, "Data", PostFormAsync) { }
@@ -33,7 +33,7 @@ namespace RIoT2.Net.Devices.Services
             _postForm = postForm;
         }
 
-        public NetatmoAuthClient Get(string clientId)
+        public NetatmoAuthClient Get(string? clientId)
         {
             clientId ??= "";
             lock (_lock)
@@ -57,7 +57,7 @@ namespace RIoT2.Net.Devices.Services
             if (!File.Exists(legacy))
                 return own;
 
-            NetatmoAuth stored;
+            NetatmoAuth? stored;
             try
             {
                 stored = File.ReadAllText(legacy).ToObj<NetatmoAuth>();

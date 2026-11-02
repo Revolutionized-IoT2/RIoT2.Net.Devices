@@ -47,7 +47,7 @@ namespace RIoT2.Net.Devices.Catalog
             deviceConfiguration.DeviceParameters = new Dictionary<string, string>();
             deviceConfiguration.DeviceParameters.Add("serviceIp", "192.168.0.36");
             deviceConfiguration.DeviceParameters.Add("port", "3000");
-            deviceConfiguration.ClassFullName = this.GetType().FullName;
+            deviceConfiguration.ClassFullName = this.GetType().FullName!;
            
             //Eufy must be connected, other we can't provide templates.
             if (_eufySecurityService.DeviceProperties == null || _eufySecurityService.StationProperties == null) 
@@ -134,7 +134,7 @@ namespace RIoT2.Net.Devices.Catalog
             sendInitialReports();
         }
 
-        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) => Task.CompletedTask;
+        protected override Task RefreshAsync(ReportTemplate? report, CancellationToken cancellationToken) => Task.CompletedTask;
 
         private void sendInitialReports() 
         {
@@ -165,7 +165,7 @@ namespace RIoT2.Net.Devices.Catalog
                 sendReport(data.Event.SerialNumber, data.Event.Value, data.Event.Name);
         }
 
-        private void sendReport(string address, object propertyValue, string propertyName) 
+        private void sendReport(string address, object? propertyValue, string propertyName) 
         {
             var template = ReportTemplates?.FirstOrDefault(x => x.Address == address);
             if (template == null) 
@@ -174,7 +174,7 @@ namespace RIoT2.Net.Devices.Catalog
             if (propertyName == "guardMode")
             {
                 int modeValue = 0;
-                if (Int32.TryParse(propertyValue.ToString(), out modeValue))
+                if (Int32.TryParse(propertyValue?.ToString(), out modeValue))
                 {
                     SendReport(this, new Report()
                     {
@@ -186,11 +186,12 @@ namespace RIoT2.Net.Devices.Catalog
             }
             else 
             {
-                string imgUrl = null;
+                string? imgUrl = null;
                 if (propertyName == "picture") 
                 {
                     var fileGuid = Guid.NewGuid().ToString();
-                    EufyImage img = propertyValue as EufyImage;
+                    // Known issue: a "picture" event carries the raw JSON value, not an EufyImage, so this throws.
+                    EufyImage img = (propertyValue as EufyImage)!;
                     Document d = new Document()
                     {
                         Data = img.Data.Data,

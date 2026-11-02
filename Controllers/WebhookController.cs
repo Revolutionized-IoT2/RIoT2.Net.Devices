@@ -22,7 +22,8 @@ namespace RIoT2.Net.Devices.Controllers
             if (content == null)
                 return Results.BadRequest();
 
-            _webhookService.SetWebhook(address, content.ToString());
+            // The body binds to a JSON element (JsonElement or JToken), whose ToString never returns null.
+            _webhookService.SetWebhook(address, content.ToString()!);
             return Results.Ok();
         }
 

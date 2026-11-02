@@ -31,20 +31,20 @@ public class DeviceOptionsTests
         var device = host.Devices.Single(d => d.GetType() == deviceType);
         var template = DeviceTemplates.Create(device);
 
-        CollectionAssert.AreEqual(keys.Split(','), template.ParameterDefinitions.Select(d => d.Key).ToArray());
+        CollectionAssert.AreEqual(keys.Split(','), template.ParameterDefinitions!.Select(d => d.Key).ToArray());
         CollectionAssert.AreEquivalent(keys.Split(','), template.DeviceParameters.Keys.ToArray());
         CollectionAssert.AreEqual(secrets.Split(',', StringSplitOptions.RemoveEmptyEntries),
-            template.ParameterDefinitions.Where(d => d.Secret).Select(d => d.Key).ToArray());
-        Assert.IsTrue(template.ParameterDefinitions.All(d => !string.IsNullOrEmpty(d.Description)), "every parameter is described");
+            template.ParameterDefinitions!.Where(d => d.Secret).Select(d => d.Key).ToArray());
+        Assert.IsTrue(template.ParameterDefinitions!.All(d => !string.IsNullOrEmpty(d.Description)), "every parameter is described");
     }
 
     [TestMethod]
     public void NumericParametersAreTypedWithTheirDefaults()
     {
-        var easyPlc = DeviceTemplates.Create(new EasyPLC(NullLogger.Instance)).ParameterDefinitions.Single(d => d.Key == "port");
+        var easyPlc = DeviceTemplates.Create(new EasyPLC(NullLogger.Instance)).ParameterDefinitions!.Single(d => d.Key == "port");
         using var host = new PluginTestHost(typeof(Plugin));
-        var ftp = DeviceTemplates.Create(host.GetDevice<FTP>()).ParameterDefinitions.Single(d => d.Key == "ftpPort");
-        var smtp = DeviceTemplates.Create(new Messaging(NullLogger.Instance)).ParameterDefinitions.Single(d => d.Key == "smtp_Port");
+        var ftp = DeviceTemplates.Create(host.GetDevice<FTP>()).ParameterDefinitions!.Single(d => d.Key == "ftpPort");
+        var smtp = DeviceTemplates.Create(new Messaging(NullLogger.Instance)).ParameterDefinitions!.Single(d => d.Key == "smtp_Port");
 
         Assert.AreEqual((DeviceParameterType.Integer, "10001"), (easyPlc.Type, easyPlc.Default));
         Assert.AreEqual((DeviceParameterType.Integer, "21"), (ftp.Type, ftp.Default));

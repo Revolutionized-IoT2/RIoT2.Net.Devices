@@ -4,7 +4,7 @@
     {
         public string title { get; set; }
         public string body { get; set; }
-        public string image { get; set; }
+        public string? image { get; set; }
     }
 
     internal class Message
@@ -23,7 +23,7 @@
         public string Title { get; set; }
         public string Body { get; set; }
         public string Topic { get; set; }
-        public string ImgUrl { get; set; }
+        public string? ImgUrl { get; set; }
 
         internal FirebaseServiceMessage GetServiceMessage() 
         {

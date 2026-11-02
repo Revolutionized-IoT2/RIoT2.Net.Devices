@@ -11,9 +11,10 @@ namespace RIoT2.Net.Devices.Tests;
 [TestClass]
 public class NetatmoAuthenticationTests
 {
-    private string _dataDirectory;
-    private ConcurrentQueue<string> _posts;
-    private Func<string, HttpResponseMessage> _respond;
+    // Initialize sets these before each test.
+    private string _dataDirectory = null!;
+    private ConcurrentQueue<string> _posts = null!;
+    private Func<string, HttpResponseMessage> _respond = null!;
 
     [TestInitialize]
     public void Initialize()

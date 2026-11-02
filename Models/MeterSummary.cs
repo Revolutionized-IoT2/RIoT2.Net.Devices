@@ -28,10 +28,10 @@
 
     public class Data
     {
-        public EnergyMeter Month { get; set; }
-        public EnergyMeter Year { get; set; }
-        public EnergyMeter Today { get; set; }
-        public EnergyMeter Lifetime { get; set; }
+        public EnergyMeter? Month { get; set; }
+        public EnergyMeter? Year { get; set; }
+        public EnergyMeter? Today { get; set; }
+        public EnergyMeter? Lifetime { get; set; }
     }
 
     public class EnergyMeter

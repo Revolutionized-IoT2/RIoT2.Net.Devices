@@ -8,8 +8,9 @@ namespace RIoT2.Net.Devices.Services
 {
     public class FTPStorageService : IStorageService
     {
-        private FtpClient _client;
-        private string _rootFolder;
+        // Configure sets these; DownloadController, the only caller, checks IsConfigured first.
+        private FtpClient _client = null!;
+        private string _rootFolder = null!;
         private bool _configured = false;
         private ILogger<FTPStorageService> _logger;
 
@@ -48,9 +49,9 @@ namespace RIoT2.Net.Devices.Services
             });
         }
 
-        public async Task<Document> Get(string filename)
+        public async Task<Document?> Get(string filename)
         {
-            Document doc = null;
+            Document? doc = null;
 
             await Task.Factory.StartNew(() =>
             {

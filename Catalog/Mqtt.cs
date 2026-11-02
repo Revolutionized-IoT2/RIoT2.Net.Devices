@@ -12,19 +12,20 @@ namespace RIoT2.Net.Devices.Catalog
     public sealed class MqttOptions
     {
         [DeviceParameter("clientId", Description = "MQTT client id, unique on the broker, for example riot2-mqtt-device")]
-        public string ClientId { get; set; }
+        public string? ClientId { get; set; }
 
+        // Required, so binding sets it before ConfigureDevice.
         [DeviceParameter("serverUrl", Required = true, Description = "Broker host name or IP address (port 1883)")]
-        public string ServerUrl { get; set; }
+        public string ServerUrl { get; set; } = null!;
 
         [DeviceParameter("userName", Description = "Broker user; leave empty to connect anonymously")]
-        public string UserName { get; set; }
+        public string? UserName { get; set; }
 
         [DeviceParameter("password", Secret = true, Description = "Broker password")]
-        public string Password { get; set; }
+        public string? Password { get; set; }
 
         [DeviceParameter("subscribeTopics", Description = "Topics reported as text, separated by ';', for example sensors/temperature;sensors/humidity")]
-        public string SubscribeTopics { get; set; }
+        public string? SubscribeTopics { get; set; }
     }
 
     /// <summary>
@@ -33,7 +34,8 @@ namespace RIoT2.Net.Devices.Catalog
     [RequiresHardware("MQTT broker")]
     public class Mqtt : AsyncDeviceBase<MqttOptions>, IAsyncCommandDevice, IDeviceWithConfiguration
     {
-        private MqttClient _mqttClient;
+        // ConfigureDevice sets it.
+        private MqttClient _mqttClient = null!;
 
         public Mqtt(ILogger logger) : base(logger) { }
 
@@ -56,14 +58,15 @@ namespace RIoT2.Net.Devices.Catalog
         {
             Id = Guid.NewGuid().ToString(),
             Name = "MQTT",
-            ClassFullName = GetType().FullName,
+            ClassFullName = GetType().FullName!,
             // The node adds the parameters from MqttOptions.
             CommandTemplates = [],
             ReportTemplates = []
         };
 
+        // An unset clientId reaches MqttClient as null, as before.
         public override void ConfigureDevice() =>
-            _mqttClient = new MqttClient(Options.ClientId, Options.ServerUrl, Options.UserName, Options.Password);
+            _mqttClient = new MqttClient(Options.ClientId!, Options.ServerUrl, Options.UserName, Options.Password);
 
         protected override async Task StartDeviceAsync(CancellationToken cancellationToken)
         {
@@ -72,7 +75,7 @@ namespace RIoT2.Net.Devices.Catalog
             _mqttClient.MessageReceived += mqttClient_MessageReceived;
         }
 
-        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) => Task.CompletedTask;
+        protected override Task RefreshAsync(ReportTemplate? report, CancellationToken cancellationToken) => Task.CompletedTask;
 
         protected override async Task StopDeviceAsync(CancellationToken cancellationToken)
         {

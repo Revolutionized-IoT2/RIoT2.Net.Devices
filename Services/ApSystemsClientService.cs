@@ -9,9 +9,10 @@ namespace RIoT2.Net.Devices.Services
     public class ApSystemsClientService : IApSystemsClientService
     {
         private static readonly HttpClient _httpClient = new HttpClient();
-        private string _appId;
-        private string _appSecret;
-        private string _sid; // Your System ID
+        // Configure (from the device's ConfigureDevice) sets these before any request.
+        private string _appId = null!;
+        private string _appSecret = null!;
+        private string _sid = null!; // Your System ID
         private string BaseUrl = "https://api.apsystemsema.com:9282";
 
         /// <summary>
@@ -20,7 +21,7 @@ namespace RIoT2.Net.Devices.Services
         /// <param name="appId">Provided by APsystems after API access approval.</param>
         /// <param name="appSecret">Provided by APsystems.</param>
         /// <param name="sid">System ID found in your EMA portal.</param>
-        public void Configure(string appId, string appSecret, string sid)
+        public void Configure(string? appId, string? appSecret, string? sid)
         {
             _appId = appId ?? throw new ArgumentNullException(nameof(appId));
             _appSecret = appSecret ?? throw new ArgumentNullException(nameof(appSecret));
@@ -59,7 +60,7 @@ namespace RIoT2.Net.Devices.Services
             return await SendRequestAsync(HttpMethod.Get, requestPath);
         }
 
-        public async Task<MeterSummary> GetMeterSummaryAsync(string ecuid, CancellationToken cancellationToken = default)
+        public async Task<MeterSummary?> GetMeterSummaryAsync(string? ecuid, CancellationToken cancellationToken = default)
         {
             // The API specific route for meter summary data
             var requestPath = $"/user/api/v2/systems/{_sid}/devices/meter/summary/{ecuid}";

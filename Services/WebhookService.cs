@@ -5,7 +5,7 @@ namespace RIoT2.Net.Devices.Services
 {
     public class WebhookService : IWebhookService
     {
-        public event WebhookHandler WebhookReceived;
+        public event WebhookHandler? WebhookReceived;
 
         public async Task<string> SendMessageAsync(string address, string content)
         {

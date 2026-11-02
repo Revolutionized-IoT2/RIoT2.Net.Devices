@@ -6,10 +6,10 @@ namespace RIoT2.Net.Devices.Services.Interfaces
 
     public interface IEufySecurityService
     {
-        EufyPropertiesData StationProperties { get; }
+        EufyPropertiesData? StationProperties { get; }
         Dictionary<string, EufyPropertiesData> DeviceProperties { get; }
-        void Configure(string serviceIp, int port);
-        event EufyEventHandler EufyEvent;
+        void Configure(string? serviceIp, int port);
+        event EufyEventHandler? EufyEvent;
         /// <summary>Connects to eufy-security-ws. A failed connection is logged, not thrown.</summary>
         Task StartAsync(CancellationToken cancellationToken);
         /// <summary>Disconnects and waits until the received messages are handled.</summary>

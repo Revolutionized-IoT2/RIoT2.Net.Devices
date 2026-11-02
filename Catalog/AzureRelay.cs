@@ -10,17 +10,18 @@ namespace RIoT2.Net.Devices.Catalog
     /// <summary>The <see cref="AzureRelay"/> device's parameters: an Azure Relay hybrid connection.</summary>
     public sealed class AzureRelayOptions
     {
+        // All are required, so binding sets them before ConfigureDevice.
         [DeviceParameter("relayNamespace", Required = true, Description = "<namespace>.servicebus.windows.net")]
-        public string RelayNamespace { get; set; }
+        public string RelayNamespace { get; set; } = null!;
 
         [DeviceParameter("connectionName", Required = true, Description = "Hybrid connection name")]
-        public string ConnectionName { get; set; }
+        public string ConnectionName { get; set; } = null!;
 
         [DeviceParameter("keyName", Required = true, Description = "Shared access policy name")]
-        public string KeyName { get; set; }
+        public string KeyName { get; set; } = null!;
 
         [DeviceParameter("key", Required = true, Secret = true, Description = "Shared access key")]
-        public string Key { get; set; }
+        public string Key { get; set; } = null!;
     }
 
     [RequiresHardware("Azure Relay namespace")]
@@ -51,7 +52,7 @@ namespace RIoT2.Net.Devices.Catalog
         {
             Id = Guid.NewGuid().ToString(),
             Name = "Azure Relay",
-            ClassFullName = GetType().FullName,
+            ClassFullName = GetType().FullName!,
             // The node adds the parameters from AzureRelayOptions.
             ReportTemplates = []
         };
@@ -65,6 +66,6 @@ namespace RIoT2.Net.Devices.Catalog
 
         protected override Task StopDeviceAsync(CancellationToken cancellationToken) => _azureRelayService.StopAsync();
 
-        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) => Task.CompletedTask;
+        protected override Task RefreshAsync(ReportTemplate? report, CancellationToken cancellationToken) => Task.CompletedTask;
     } 
 }

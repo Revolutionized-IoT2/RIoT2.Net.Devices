@@ -2,7 +2,7 @@
 {
     public class NetatmoHomesData
     {
-        public HomesDataBody body { get; set; }
+        public HomesDataBody? body { get; set; }
         public string status { get; set; }
         public double time_exec { get; set; }
         public int time_server { get; set; }
@@ -10,7 +10,7 @@
 
     public class HomesDataBody
     {
-        public List<Home> homes { get; set; }
+        public List<Home>? homes { get; set; }
         public HomesUser user { get; set; }
     }
 

@@ -19,7 +19,7 @@
     {
         public EufyDriver Driver { get; set; }
         public string[] Stations { get; set; }
-        public string[] Devices { get; set; }
+        public string[]? Devices { get; set; }
     }
 
     public class EufyDriver

@@ -8,12 +8,12 @@
     <PackageVersion Include="FluentFTP" Version="55.0.0" />
     <PackageVersion Include="Google.Apis.Auth" Version="1.76.0" />
     <PackageVersion Include="Microsoft.Azure.Relay" Version="3.1.1" />
-    <PackageVersion Include="RIoT2.Core.Devices" Version="1.16.0" />
+    <PackageVersion Include="RIoT2.Core.Devices" Version="1.17.0" />
     <!-- Packs the plugin zip on dotnet publish (plan M12 step 3). -->
-    <PackageVersion Include="RIoT2.Core.Devices.Build" Version="1.16.0" />
-    <PackageVersion Include="RIoT2.Core.Devices.Testing" Version="1.16.0" />
-    <PackageVersion Include="RIoT2.Core.Http" Version="1.16.0" />
-    <PackageVersion Include="RIoT2.Core.Mqtt" Version="1.16.0" />
+    <PackageVersion Include="RIoT2.Core.Devices.Build" Version="1.17.0" />
+    <PackageVersion Include="RIoT2.Core.Devices.Testing" Version="1.17.0" />
+    <PackageVersion Include="RIoT2.Core.Http" Version="1.17.0" />
+    <PackageVersion Include="RIoT2.Core.Mqtt" Version="1.17.0" />
     <PackageVersion Include="Zhaobang.FtpServer" Version="2.2.0" />
   </ItemGroup>
 </Project>

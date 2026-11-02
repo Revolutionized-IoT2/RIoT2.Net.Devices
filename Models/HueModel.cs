@@ -41,7 +41,7 @@
     {
         public HueGamut gamut { get; set; }
         public string gamut_type { get; set; }
-        public HueXy xy { get; set; }
+        public HueXy? xy { get; set; }
         public static HueXy ConvertRGBToHueColor(double red, double green, double blue, out double brightness)
         {
             red = (red > 0.04045) ? Math.Pow((red + 0.055) / (1.0 + 0.055), 2.4) : (red / 12.92);
@@ -64,7 +64,8 @@
         }
         public RGB ConvertToRGB(double brightness) 
         {
-            double z = 1.0f - xy.x - xy.y;
+            // The callers check xy first.
+            double z = 1.0f - xy!.x - xy.y;
             double Y = brightness; // The given brightness value
             double X = (Y / xy.y) * xy.x;
             double Z = (Y / xy.y) * z;
@@ -141,16 +142,16 @@
     public class HueData
     {
         public HueAlert alert { get; set; }
-        public HueColor color { get; set; }
-        public HueColorTemperature color_temperature { get; set; }
-        public HueDimming dimming { get; set; }
+        public HueColor? color { get; set; }
+        public HueColorTemperature? color_temperature { get; set; }
+        public HueDimming? dimming { get; set; }
         public HueDynamics dynamics { get; set; }
         public HueEffects effects { get; set; }
         public string id { get; set; }
         public string id_v1 { get; set; }
         public HueMetadata metadata { get; set; }
         public string mode { get; set; }
-        public HueOn on { get; set; }
+        public HueOn? on { get; set; }
         public HueOwner owner { get; set; }
         public string type { get; set; }
     }
@@ -158,7 +159,7 @@
     public class HueLights
     {
         public List<HueError> errors { get; set; }
-        public List<HueData> data { get; set; }
+        public List<HueData>? data { get; set; }
 
     }
 
@@ -188,7 +189,7 @@
         }
 
         public bool? State { get; set; }
-        public RGB Color { get; set; }
+        public RGB? Color { get; set; }
         public double? Dimming { get; set; }
 
         /// <summary>
@@ -221,7 +222,7 @@
             };
         }
 
-        private HueOn GetOnCommand()
+        private HueOn? GetOnCommand()
         {
             if (!State.HasValue)
                 return null;
@@ -232,7 +233,7 @@
             };
         }
 
-        private HueDimming GetDimmingCommand()
+        private HueDimming? GetDimmingCommand()
         {
             double? dim = Color != null ? Color.Brightness : Dimming;
             if (!dim.HasValue)
@@ -244,7 +245,7 @@
             };
         }
 
-        private HueColor GetColorCommand()
+        private HueColor? GetColorCommand()
         {
             var color = Color;
 
@@ -260,7 +261,7 @@
             };
         }
 
-        private HueColorTemperature GetColorTemperatureCommand()
+        private HueColorTemperature? GetColorTemperatureCommand()
         {
             if (!ColorTemperature.HasValue)
                 return null;
@@ -340,7 +341,7 @@
     public class HueEvent
     {
         public DateTime creationtime { get; set; }
-        public List<HueData> data { get; set; }
+        public List<HueData>? data { get; set; }
         public string id { get; set; }
         public string type { get; set; }
     }

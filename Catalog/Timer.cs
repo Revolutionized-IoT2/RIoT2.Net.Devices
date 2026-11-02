@@ -24,7 +24,7 @@ namespace RIoT2.Net.Devices.Catalog
 
         }
 
-        public override void Refresh(ReportTemplate report)
+        public override void Refresh(ReportTemplate? report)
         {
             if (report == null)
                 return;

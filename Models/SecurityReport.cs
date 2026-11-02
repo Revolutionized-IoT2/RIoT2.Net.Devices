@@ -9,16 +9,16 @@ namespace RIoT2.Net.Devices.Models
 
         public SecurityReport(Subevent netatmoSubEvent)
         {
-            ImageUrl = netatmoSubEvent.snapshot.url;
+            ImageUrl = netatmoSubEvent.snapshot?.url;
             Message = netatmoSubEvent.message;
             SecurityEvent = getSecurityEventType(netatmoSubEvent.type);
             EventValue = "";
             Source = "netatmo";
         }
 
-        public SecurityReport(Event netatmoEvent, List<Person> knownPersons) 
+        public SecurityReport(Event netatmoEvent, List<Person>? knownPersons) 
         {
-            ImageUrl = netatmoEvent.snapshot.url;
+            ImageUrl = netatmoEvent.snapshot?.url;
             Message = netatmoEvent.message;
             SecurityEvent = getSecurityEventType(netatmoEvent.type, netatmoEvent.person_id);
             EventValue = getPersonName(netatmoEvent.person_id, knownPersons);
@@ -26,12 +26,12 @@ namespace RIoT2.Net.Devices.Models
         }
 
         public string Source { get; set; }
-        public string ImageUrl { get; set; }
+        public string? ImageUrl { get; set; }
         public string Message { get; set; }
         public SecurityEventType SecurityEvent { get; set; }
-        public object EventValue { get; set; }
+        public object? EventValue { get; set; }
 
-        private string getPersonName(string personId, List<Person> knownPersons)
+        private string? getPersonName(string? personId, List<Person>? knownPersons)
         {
             if (String.IsNullOrEmpty(personId) || knownPersons == null)
                 return null;
@@ -43,7 +43,7 @@ namespace RIoT2.Net.Devices.Models
             return homePerson.pseudo;
         }
 
-        private SecurityEventType getSecurityEventType(string eventType, string personId = null)
+        private SecurityEventType getSecurityEventType(string eventType, string? personId = null)
         {
             switch (eventType.ToLower()) 
             {

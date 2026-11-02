@@ -28,7 +28,8 @@ namespace RIoT2.Net.Devices.Catalog
     [RequiresHardware("Listens on an FTP port")]
     public class FTP : AsyncDeviceBase<FtpOptions>, IDeviceWithConfiguration
     {
-        private List<FtpUser> _ftpUsers;
+        // ConfigureDevice sets it.
+        private List<FtpUser> _ftpUsers = null!;
         // The running server; it ends when the service stops it.
         private Task _server = Task.CompletedTask;
         private IFtpService _ftpService;
@@ -43,7 +44,7 @@ namespace RIoT2.Net.Devices.Catalog
         {
             Id = Guid.NewGuid().ToString(),
             Name = "FTP",
-            ClassFullName = GetType().FullName,
+            ClassFullName = GetType().FullName!,
             // The node adds the parameters from FtpOptions.
             ReportTemplates = []
         };
@@ -92,7 +93,7 @@ namespace RIoT2.Net.Devices.Catalog
             _server = Task.CompletedTask;
         }
 
-        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) => Task.CompletedTask;
+        protected override Task RefreshAsync(ReportTemplate? report, CancellationToken cancellationToken) => Task.CompletedTask;
 
         private async Task ObserveAsync(Task server)
         {

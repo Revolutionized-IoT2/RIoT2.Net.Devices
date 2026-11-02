@@ -37,7 +37,7 @@ public class EufySecurityLifecycleTests
         Assert.AreEqual(1, connectErrors, "The unreachable service is logged, not thrown.");
         Assert.AreEqual(2, logger.Errors.Count);
         Assert.AreEqual("Door", service.DeviceProperties["T1"].Name);
-        Assert.AreEqual("S1", service.StationProperties.SerialNumber);
+        Assert.AreEqual("S1", service.StationProperties!.SerialNumber);
     }
 
     [TestMethod]
@@ -62,13 +62,14 @@ public class EufySecurityLifecycleTests
     public async Task DeviceAwaitsTheServiceSendsInitialReportsAndCommands()
     {
         var service = new FakeEufyService();
-        var device = new EufySecurity(NullLogger.Instance, service, null, TimeSpan.Zero);
+        // The memory storage isn't reached in this test.
+        var device = new EufySecurity(NullLogger.Instance, service, null!, TimeSpan.Zero);
         device.Initialize(device.GetConfigurationTemplate());
         var reports = new List<Report>();
         device.ReportUpdated += (_, report) => reports.Add((Report)report);
 
         await device.StartAsync(CancellationToken.None);
-        await device.ExecuteCommandAsync(device.CommandTemplates.Single().Id, "2", CancellationToken.None);
+        await device.ExecuteCommandAsync(device.CommandTemplates!.Single().Id, "2", CancellationToken.None);
         await device.StopAsync(CancellationToken.None);
 
         Assert.AreEqual(1, service.Starts);
@@ -84,7 +85,8 @@ public class EufySecurityLifecycleTests
     public async Task DeviceStartsWhenTheStationHasNotReportedYet()
     {
         var service = new FakeEufyService { Station = null };
-        var device = new EufySecurity(NullLogger.Instance, service, null, TimeSpan.Zero);
+        // The memory storage isn't reached in this test.
+        var device = new EufySecurity(NullLogger.Instance, service, null!, TimeSpan.Zero);
         device.Initialize(device.GetConfigurationTemplate());
 
         await device.StartAsync(CancellationToken.None);
@@ -104,11 +106,11 @@ public class EufySecurityLifecycleTests
 
     private sealed class ListLogger<T> : ILogger<T>
     {
-        private readonly ConcurrentQueue<Exception> _errors = new();
-        public IReadOnlyCollection<Exception> Errors => _errors.ToArray();
-        public IDisposable BeginScope<TState>(TState state) where TState : notnull => null;
+        private readonly ConcurrentQueue<Exception?> _errors = new();
+        public IReadOnlyCollection<Exception?> Errors => _errors.ToArray();
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
         public bool IsEnabled(LogLevel logLevel) => true;
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
             if (logLevel >= LogLevel.Error)
                 _errors.Enqueue(exception);
@@ -120,12 +122,12 @@ public class EufySecurityLifecycleTests
         public int Starts;
         public int Stops;
         public List<string> Sent { get; } = [];
-        public EufyPropertiesData Station { get; set; } = new() { SerialNumber = "S1", GuardMode = 1 };
-        public EufyPropertiesData StationProperties => Station;
+        public EufyPropertiesData? Station { get; set; } = new() { SerialNumber = "S1", GuardMode = 1 };
+        public EufyPropertiesData? StationProperties => Station;
         public Dictionary<string, EufyPropertiesData> DeviceProperties { get; } = [];
         public bool HasSubscribers => EufyEvent != null;
-        public event EufyEventHandler EufyEvent;
-        public void Configure(string serviceIp, int port) { }
+        public event EufyEventHandler? EufyEvent;
+        public void Configure(string? serviceIp, int port) { }
         public Task StartAsync(CancellationToken cancellationToken) { Starts++; return Task.CompletedTask; }
         public Task StopAsync() { Stops++; return Task.CompletedTask; }
         public Task SendCommand(string json) { Sent.Add(json); return Task.CompletedTask; }

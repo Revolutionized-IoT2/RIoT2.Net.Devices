@@ -4,23 +4,25 @@ namespace RIoT2.Net.Devices.Models
 {
     internal class EufyCommand
     {
-        public string MessageId { get; set; }
-        public string Command { get; set; }
-        public string SerialNumber { get; set; } = null;
+        public required string MessageId { get; set; }
+        public required string Command { get; set; }
+        public string? SerialNumber { get; set; } = null;
         public int? SchemaVersion { get; set; } = null;
-        public string VerifyCode { get; set; } = null;
-        public string CaptchaId { get; set; } = null;
-        public string Captcha { get; set; } = null;
-        public string File { get; set; } = null;
-        public string Name { get; set; } = null;
-        public object Value { get; set; } = null;
-        public string[] SerialNumbers { get; set; } = null;
-        public string StartDate { get; set; } = null;
-        public string EndDate { get; set; } = null;
+        public string? VerifyCode { get; set; } = null;
+        public string? CaptchaId { get; set; } = null;
+        public string? Captcha { get; set; } = null;
+        public string? File { get; set; } = null;
+        public string? Name { get; set; } = null;
+        public object? Value { get; set; } = null;
+        public string[]? SerialNumbers { get; set; } = null;
+        public string? StartDate { get; set; } = null;
+        public string? EndDate { get; set; } = null;
 
         private string getAsJson()
         {
-            return Json.SerializeIgnoreNulls(this);
+            // The members are strings, numbers and the primitive property values the callers pass,
+            // so serializing them does not fail (SerializeIgnoreNulls returns null only on failure).
+            return Json.SerializeIgnoreNulls(this)!;
         }
 
         #region Commands

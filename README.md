@@ -6,7 +6,7 @@ from a plugin package at startup.
 
 - Type: device plugin library
 - Target framework: `net10.0`
-- Core packages: `RIoT2.Core.Devices` (plus `RIoT2.Core.Http` and `RIoT2.Core.Mqtt` for the catalog devices that call web APIs or run an MQTT client), 1.16.0 (version in `Directory.Packages.props`); not the `RIoT2.Core` facade. `RIoT2.Core.Devices.Build` packs the plugin zip
+- Core packages: `RIoT2.Core.Devices` (plus `RIoT2.Core.Http` and `RIoT2.Core.Mqtt` for the catalog devices that call web APIs or run an MQTT client), 1.17.0 (version in `Directory.Packages.props`); not the `RIoT2.Core` facade. `RIoT2.Core.Devices.Build` packs the plugin zip
 - Plugin entry point: `Plugin.cs`
 
 How plugins fit into the platform: [configuration contract](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/contracts/configuration.md).
@@ -55,7 +55,8 @@ Install this plugin only after the Node image has been updated to `net10.0`. A `
 cannot load into a `net9.0` node, while a `net9.0` plugin can load into the `net10.0` node.
 Release this plugin with the Node image that hosts it, node first. Plugin assemblies share the
 host's `RIoT2.Core*` assemblies, and a plugin built against a newer Core than the node's doesn't
-load: 1.4.0 and 1.5.0 (Core 1.16.0) need Node 1.11.0 or newer; 1.3.x (Core 1.14.0) Node 1.10.0.
+load: 1.6.0 (Core 1.17.0) needs Node 1.12.0 or newer; 1.4.0 and 1.5.0 (Core 1.16.0) Node 1.11.0;
+1.3.x (Core 1.14.0) Node 1.10.0.
 
 ## Plugin HTTP endpoints
 

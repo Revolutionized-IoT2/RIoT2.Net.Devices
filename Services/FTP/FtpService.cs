@@ -7,21 +7,21 @@ namespace RIoT2.Net.Devices.Services.FTP
 {
     public class FtpService : IFtpService
     {
-        private FtpServer _ftpServer;
+        private FtpServer? _ftpServer;
         private CancellationToken _token;
-        private CancellationTokenSource _tokenSource;
+        private CancellationTokenSource? _tokenSource;
 
-        public event FileReceivedHandler FileReceived;
+        public event FileReceivedHandler? FileReceived;
 
         private void fileReceived(InMemoryStream inMemoryStream)
         {
-            FileReceived(inMemoryStream);
+            FileReceived?.Invoke(inMemoryStream);
         }
 
         public void Stop()
         {
             if (_token.CanBeCanceled)
-                _tokenSource.Cancel();
+                _tokenSource?.Cancel();
 
             _tokenSource = null;
         }

@@ -2,7 +2,7 @@
 {
     public interface IWebhookService
     {
-        event WebhookHandler WebhookReceived;
+        event WebhookHandler? WebhookReceived;
         Task<string> SendMessageAsync(string address, string content);
 
         void SetWebhook(string id, string content);

@@ -14,9 +14,9 @@ namespace RIoT2.Net.Devices.Catalog
     {
         public WaterConsumption(ILogger logger) : base(logger) { }
 
-        private string _securityToken = "";
-        private string _endpoint = "";
-        private List<WaterConsumptionValue> _consumption;
+        private string? _securityToken = "";
+        private string? _endpoint = "";
+        private List<WaterConsumptionValue>? _consumption;
 
         public override void ConfigureDevice()
         {
@@ -25,7 +25,7 @@ namespace RIoT2.Net.Devices.Catalog
         }
 
         // Called by the scheduler; the refresh is defined on the device, so the report is null.
-        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) =>
+        protected override Task RefreshAsync(ReportTemplate? report, CancellationToken cancellationToken) =>
             report != null ? Task.CompletedTask : SendLatestValueAsync(cancellationToken);
 
         public DeviceConfiguration GetConfigurationTemplate()
@@ -38,7 +38,7 @@ namespace RIoT2.Net.Devices.Catalog
             deviceConfiguration.DeviceParameters.Add("securityToken", Guid.NewGuid().ToString());
             deviceConfiguration.DeviceParameters.Add("endpoint", "https://wmd.wrm-systems.fi/api/watermeter");
 
-            deviceConfiguration.ClassFullName = this.GetType().FullName;
+            deviceConfiguration.ClassFullName = this.GetType().FullName!;
             var reportConfigurations = new List<ReportTemplate>();
 
             reportConfigurations.Add(new ReportTemplate()
@@ -92,7 +92,7 @@ namespace RIoT2.Net.Devices.Catalog
         internal virtual Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             Core.Utils.Web.SendAsync(request, cancellationToken: cancellationToken);
 
-        private ReportTemplate getReportTemplate()
+        private ReportTemplate? getReportTemplate()
         {
             return ReportTemplates?.FirstOrDefault(x => x.Address == "watermeter");
         }
@@ -109,7 +109,8 @@ namespace RIoT2.Net.Devices.Catalog
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _securityToken);
                 using var response = await SendAsync(request, cancellationToken).ConfigureAwait(false);
                 var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                var values = Json.Deserialize<WaterConsumtionJson>(json);
+                // An empty or "null" body fails here and is wrapped below, as before.
+                var values = Json.Deserialize<WaterConsumtionJson>(json)!;
                 var newValues = new List<WaterConsumptionValue>();
                 foreach (var reading in values.readings)
                 {
@@ -151,8 +152,9 @@ namespace RIoT2.Net.Devices.Catalog
 
     public class WaterConsumtionJson
     {
-        public string model { get; set; }
-        public string serialNumber { get; set; }
-        public List<List<object>> readings { get; set; }
+        // Set by the JSON deserializer; a valid payload carries every member.
+        public string model { get; set; } = null!;
+        public string serialNumber { get; set; } = null!;
+        public List<List<object>> readings { get; set; } = null!;
     }
 }

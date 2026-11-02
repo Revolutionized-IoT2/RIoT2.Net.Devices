@@ -5,6 +5,19 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-02
+
+Nullable reference types ([I32](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-2.md#i32-nullable-reference-types-m)). Built on RIoT2.Core 1.17.0: install into Node 1.12.0 or newer.
+No template, parameter or report changes.
+
+- Build: nullable is enabled, and CI fails on a nullable warning. The API payload models turn off
+  CS8618 in a nested `.editorconfig`; a member the code checks for null is nullable.
+- Fixed (found by the annotations): a Netatmo security event or subevent without a snapshot, and
+  a module without snapshot events, no longer throw (the event is reported without an image or
+  skipped). Stopping the FTP device twice no longer throws. A received FTP file or Azure Relay
+  message with no subscriber no longer throws (the relay's HTTP response is closed). A Eufy
+  guard-mode report with no value no longer throws.
+
 ## [1.5.0] - 2026-11-02
 
 Async device drivers ([I31](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-2.md#i31-async-cleanup-part-2-and-threading-analyzers-m), plan M11 step 3, backlog item 4). Built on RIoT2.Core 1.16.0:

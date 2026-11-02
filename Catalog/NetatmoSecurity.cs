@@ -13,7 +13,7 @@ namespace RIoT2.Net.Devices.Catalog
     [RequiresHardware("Netatmo API")]
     public class NetatmoSecurity : NetatmoBase, IDeviceWithConfiguration, IAsyncCommandDevice
     {
-        private NetatmoHomesData _home;
+        private NetatmoHomesData? _home;
         private NetatmoSecurityEvents _securityEvents;
         private IMemoryStorageService _memoryStorageService;
         private ILogger _logger;
@@ -37,7 +37,7 @@ namespace RIoT2.Net.Devices.Catalog
                 { "clientId", "clientid" },
                 { "clientSecret", "adfdfd-dfdf-df" }
             };
-            deviceConfiguration.ClassFullName = this.GetType().FullName;
+            deviceConfiguration.ClassFullName = this.GetType().FullName!;
             deviceConfiguration.RefreshSchedule = "0 0/5 0 ? * * *";
 
             var reportConfigurations = new List<ReportTemplate>();
@@ -50,7 +50,8 @@ namespace RIoT2.Net.Devices.Catalog
             if (_home == null)
                 return deviceConfiguration;
 
-            foreach (var module in _home.body.homes[0].modules)
+            // As before, a home loaded without body.homes fails here.
+            foreach (var module in _home.body!.homes![0].modules)
             {
                 if(module.type.ToLower() != "noc" && module.type.ToLower() != "nacamera")
                     continue;
@@ -100,15 +101,15 @@ namespace RIoT2.Net.Devices.Catalog
         }
 
         // Called by the scheduler; the refresh is defined on the device, so the report is null.
-        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) =>
+        protected override Task RefreshAsync(ReportTemplate? report, CancellationToken cancellationToken) =>
             report != null ? Task.CompletedTask : generateSecurityReports(cancellationToken);
 
         public override void ConfigureDevice()
         {
-            string token = GetConfiguration<string>("token");
-            string refreshToken = GetConfiguration<string>("refresh_token");
-            string clientId = GetConfiguration<string>("clientId");
-            string clientSecret = GetConfiguration<string>("clientSecret");
+            string? token = GetConfiguration<string>("token");
+            string? refreshToken = GetConfiguration<string>("refresh_token");
+            string? clientId = GetConfiguration<string>("clientId");
+            string? clientSecret = GetConfiguration<string>("clientSecret");
 
             ConfigureNetatmo(token, refreshToken, clientId, clientSecret);
         }
@@ -133,7 +134,8 @@ namespace RIoT2.Net.Devices.Catalog
             if (_home == null || ReportTemplates == null || ReportTemplates?.Count() == 0)
                 return;
 
-            var data = await GetNetatmoHomeStatus(_home.body.homes[0].id, cancellationToken).ConfigureAwait(false);
+            // As before, a home loaded without body.homes fails here.
+            var data = await GetNetatmoHomeStatus(_home.body!.homes![0].id, cancellationToken).ConfigureAwait(false);
             var events = await GetNetatmoEvents(_home.body.homes[0].id, cancellationToken).ConfigureAwait(false);
             if (data == null || events == null || data?.status.ToLower() != "ok")
                 return;
@@ -148,7 +150,8 @@ namespace RIoT2.Net.Devices.Catalog
                 {
                     foreach (var se in e.subevents)
                     {
-                        var template = ReportTemplates.FirstOrDefault(x => x.Address.Equals(e.module_id, StringComparison.CurrentCultureIgnoreCase));
+                        // Checked at the top; the ?. test there only makes the compiler forget it.
+                        var template = ReportTemplates!.FirstOrDefault(x => x.Address.Equals(e.module_id, StringComparison.CurrentCultureIgnoreCase));
                         if (template == null)
                             continue;
 
@@ -163,7 +166,7 @@ namespace RIoT2.Net.Devices.Catalog
                 }
                 else
                 {
-                    var template = ReportTemplates.FirstOrDefault(x => x.Address.Equals(e.module_id, StringComparison.CurrentCultureIgnoreCase));
+                    var template = ReportTemplates!.FirstOrDefault(x => x.Address.Equals(e.module_id, StringComparison.CurrentCultureIgnoreCase));
                     if (template == null)
                         continue;
 

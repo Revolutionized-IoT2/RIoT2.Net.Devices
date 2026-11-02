@@ -28,10 +28,10 @@ public class ElectricityPriceTests
         });
         device.Start();
         typeof(ElectricityPrice)
-            .GetField("_priceData", BindingFlags.Instance | BindingFlags.NonPublic)
+            .GetField("_priceData", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(device, ValidPriceData(123.456m));
 
-        Report published = null;
+        Report? published = null;
         device.ReportUpdated += (_, report) => published = (Report)report;
 
         device.Refresh(null);
