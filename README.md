@@ -6,7 +6,7 @@ from a plugin package at startup.
 
 - Type: device plugin library
 - Target framework: `net10.0`
-- Core packages: `RIoT2.Core.Devices` (plus `RIoT2.Core.Http` and `RIoT2.Core.Mqtt` for the catalog devices that call web APIs or run an MQTT client), 1.14.0 (version in `Directory.Packages.props`); not the `RIoT2.Core` facade
+- Core packages: `RIoT2.Core.Devices` (plus `RIoT2.Core.Http` and `RIoT2.Core.Mqtt` for the catalog devices that call web APIs or run an MQTT client), 1.14.0 (version in `Directory.Packages.props`); not the `RIoT2.Core` facade. `RIoT2.Core.Devices.Build` 1.15.0 packs the plugin zip
 - Plugin entry point: `Plugin.cs`
 
 How plugins fit into the platform: [configuration contract](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/contracts/configuration.md).
@@ -44,17 +44,18 @@ an extra source. A local package is not a published release.
 
 ## Packaging and deployment
 
-This library is not run directly. Build or release a plugin zip and let `RIoT2.Net.Node` load it
-from the Node's `Plugins/` directory. Push a tag `x.y.z` to release: the release workflow runs the
-tests, zips the publish output without the assemblies the node already ships, adds
-`PluginManifest.json`, and attaches `RIoT2.Net.Devices_<tag>.zip` and its `.sha256` to the GitHub
-release ([CI guide](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/guides/ci.md)).
+This library is not run directly. `RIoT2.Net.Node` loads it from a plugin zip extracted into its
+`Plugins/` directory. `dotnet publish -c Release -p:Version=x.y.z` writes that zip,
+`bin/plugin/RIoT2.Net.Devices_x.y.z.zip`, and its `.sha256` sidecar (Core's
+`RIoT2.Core.Devices.Build`): the publish output without the assemblies the node already ships, plus
+`PluginManifest.json`. Push a tag `x.y.z` to release: the release workflow runs the tests, publishes
+the same way and attaches the zip and its `.sha256` to the GitHub release ([CI guide](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/guides/ci.md)).
 
 Install this plugin only after the Node image has been updated to `net10.0`. A `net10.0` plugin
 cannot load into a `net9.0` node, while a `net9.0` plugin can load into the `net10.0` node.
 Release this plugin with the Node image that hosts it, node first. Plugin assemblies share the
 host's `RIoT2.Core*` assemblies, and a plugin built against a newer Core than the node's doesn't
-load: 1.3.0 (Core 1.14.0) needs Node 1.10.0 or newer.
+load: 1.3.0 and 1.3.1 (Core 1.14.0) need Node 1.10.0 or newer.
 
 ## Plugin HTTP endpoints
 

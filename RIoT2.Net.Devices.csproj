@@ -4,6 +4,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
 	<EnableDynamicLoading>true</EnableDynamicLoading>
+    <!-- "name" in PluginManifest.json; the zip is RIoT2.Net.Devices_<version>.zip. -->
+    <RIoT2PluginName>Devices plugin</RIoT2PluginName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,6 +20,8 @@
     <!-- The plugin SDK, plus the HTTP helpers (Web) and the MQTT client the catalog devices use
          (plan M1 step 4). Not the RIoT2.Core facade or the node runtime. -->
     <PackageReference Include="RIoT2.Core.Devices" />
+    <!-- dotnet publish also writes bin/plugin/<zip> and its .sha256 (plan M12 step 3). -->
+    <PackageReference Include="RIoT2.Core.Devices.Build" PrivateAssets="all" />
     <PackageReference Include="RIoT2.Core.Http" />
     <PackageReference Include="RIoT2.Core.Mqtt" />
     <PackageReference Include="Zhaobang.FtpServer" />

@@ -26,12 +26,13 @@ dotnet test .\RIoT2.Net.Devices\Tests\RIoT2.Net.Devices.Tests.csproj -c Release
   `RIoT2.Net.Node`.
 - Every push runs `.github/workflows/ci.yml` (build, tests, plugin zip as an artifact, secret
   scan). A `x.y.z` tag runs `release.yml`: it validates, then the hub's `plugin-release.yml`
-  publishes the project, zips its assemblies minus those the node ships, writes
-  `PluginManifest.json` (with `coreVersion`) and attaches the zip and a `.sha256` sidecar to the
-  GitHub release ([CI guide](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/guides/ci.md)).
+  publishes the project and attaches the zip and `.sha256` sidecar that the publish wrote to the
+  GitHub release. `RIoT2.Core.Devices.Build` packs them on every `dotnet publish` (into
+  `bin/plugin/`): the assemblies minus those the node ships, plus `PluginManifest.json` with
+  `coreVersion`. `RIoT2PluginName` in the csproj is the manifest's `name` ([CI guide](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/guides/ci.md)).
 - RIoT2.Tests builds this repository's `main` and loads it into the Node in its
   [end-to-end tests](https://github.com/Revolutionized-IoT2/RIoT2.Tests/blob/main/README.md#end-to-end-tests), which drive the `Virtual` device.
-- `RIoT2.Core.Devices`, `RIoT2.Core.Http`, `RIoT2.Core.Mqtt` and `RIoT2.Core.Devices.Testing` come from GitHub Packages, pinned in
+- `RIoT2.Core.Devices`, `RIoT2.Core.Http`, `RIoT2.Core.Mqtt`, `RIoT2.Core.Devices.Build` (`PrivateAssets="all"`) and `RIoT2.Core.Devices.Testing` come from GitHub Packages, pinned in
   `Directory.Packages.props` (plan M1 step 4: never the `RIoT2.Core` facade or `RIoT2.Core.Node`). To try an unreleased Core, restore with `C:\Src\RIoT2\.localfeed` as
   an extra NuGet source. A local feed package is not a release.
 

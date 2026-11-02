@@ -5,6 +5,16 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-11-02
+
+Plugin packaging ([I29](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-2.md#i29-plugin-packaging-s), plan M12 step 3). Built on RIoT2.Core 1.14.0: install into Node
+1.10.0 or newer. The zip holds the same files as 1.3.0; no device, template or parameter changes.
+
+- Changed: the plugin zip, `PluginManifest.json` and the `.sha256` sidecar come from Core's
+  `RIoT2.Core.Devices.Build` 1.15.0 (`PrivateAssets="all"`) on `dotnet publish`, so a local publish
+  writes the release zip to `bin/plugin/`. The manifest `name` is `RIoT2PluginName` in the csproj;
+  the workflows no longer pass the name.
+
 ## [1.3.0] - 2026-11-01
 
 Narrow Core references ([I28](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-2.md#i28-narrow-references-and-generated-models-m), plan M1 step 4). Built on RIoT2.Core 1.14.0: install into Node
