@@ -24,7 +24,7 @@ namespace RIoT2.Net.Devices.Catalog
     }
 
     [RequiresHardware("Azure Relay namespace")]
-    public class AzureRelay : DeviceBase<AzureRelayOptions>, IDeviceWithConfiguration
+    public class AzureRelay : AsyncDeviceBase<AzureRelayOptions>, IDeviceWithConfiguration
     {
         private readonly ILogger _logger;
         private readonly IAzureRelayService _azureRelayService;
@@ -61,14 +61,10 @@ namespace RIoT2.Net.Devices.Catalog
             _azureRelayService.Configure(Options.RelayNamespace, Options.ConnectionName, Options.KeyName, Options.Key);
         }
 
-        public override void StartDevice()
-        {
-            _azureRelayService?.StartAsync();
-        }
+        protected override Task StartDeviceAsync(CancellationToken cancellationToken) => _azureRelayService.StartAsync();
 
-        public override void StopDevice()
-        {
-            _azureRelayService?.StopAsync();
-        }
+        protected override Task StopDeviceAsync(CancellationToken cancellationToken) => _azureRelayService.StopAsync();
+
+        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) => Task.CompletedTask;
     } 
 }

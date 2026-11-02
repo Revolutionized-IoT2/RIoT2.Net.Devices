@@ -5,6 +5,27 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-02
+
+Async device drivers ([I31](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-2.md#i31-async-cleanup-part-2-and-threading-analyzers-m), plan M11 step 3, backlog item 4). Built on RIoT2.Core 1.16.0:
+install into Node 1.11.0 or newer, as 1.4.0. No template, parameter or report changes.
+
+- Changed: ApSystems, ElectricityPrice, WaterConsumption, NetatmoWeather, NetatmoSecurity, Hue,
+  Messaging, AzureRelay, FTP and Mqtt derive from `AsyncDeviceBase`: their starts, refreshes and
+  commands await the network instead of blocking a scheduler or node thread, and a cancelled
+  configuration or shutdown cancels them. Messaging sends mail with `SendMailAsync`.
+- Changed: the templates of NetatmoWeather and Hue list the stations and lights read at the last
+  start or refresh instead of calling Netatmo or the bridge while the node builds them.
+- Fixed: NetatmoSecurity handled no further events after one that matched no report template, and
+  its `refresh` command returned before the refresh ended; `set_home` before the home is loaded is
+  now rejected (the orchestrator delivers it again) instead of failing.
+- Fixed: an APsystems or Netatmo snapshot request that times out puts the device into the error state
+  with the reason, also on Node 1.11.0.
+- Fixed: AzureRelay and FTP no longer start their listener without observing it: an FTP server that
+  can't start (port in use) puts the device into the error state, and stopping waits for it.
+- Build: the threading analyzers fail the CI build on a blocking wait, `async void` or an
+  unobserved task; the synchronous `ExecuteCommand` shims go through one `LegacySync.Wait`.
+
 ## [1.4.0] - 2026-11-02
 
 Typed device options ([I30](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-2.md#i30-typed-device-options-m), plan M12 step 4). Built on RIoT2.Core 1.16.0: **install into

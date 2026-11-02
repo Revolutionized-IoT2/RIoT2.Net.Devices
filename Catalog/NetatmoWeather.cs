@@ -3,15 +3,18 @@ using Microsoft.Extensions.Logging;
 using RIoT2.Core.Interfaces;
 using RIoT2.Core.Models;
 using RIoT2.Net.Devices.Abstracts;
+using RIoT2.Net.Devices.Models;
 using RIoT2.Net.Devices.Services.Interfaces;
 using System.Reflection;
 
 namespace RIoT2.Net.Devices.Catalog
 {
     [RequiresHardware("Netatmo API")]
-    public class NetatmoWeather : NetatmoBase, IDeviceWithConfiguration, IRefreshableReportDevice
+    public class NetatmoWeather : NetatmoBase, IDeviceWithConfiguration
     {
         private string _stationId;
+        // The last station data, which the template lists; the template is built without I/O.
+        private NetatmoStationsData _stationsData;
 
         public NetatmoWeather(ILogger logger, INetatmoAuthClientFactory authClients) : base(logger, authClients) { }
 
@@ -22,26 +25,18 @@ namespace RIoT2.Net.Devices.Catalog
             string clientId = GetConfiguration<string>("clientId");
             string clientSecret = GetConfiguration<string>("clientSecret");
             _stationId = GetConfiguration<string>("stationId");
+            _stationsData = null;
 
             ConfigureNetatmo(token, refreshToken, clientId, clientSecret);
         }
 
-        public override void StartDevice()
-        {
-            generateWeatherReports().Wait();
-        }
-        public override void StopDevice()
-        {
-            //no actions needed
-        }
+        protected override Task StartDeviceAsync(CancellationToken cancellationToken) => generateWeatherReports(cancellationToken);
 
-        public override void Refresh(ReportTemplate report)
-        {
-            if (report != null) //report should be null because in this case, refresh is defined on device level
-                return;
+        protected override Task StopDeviceAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-            generateWeatherReports().Wait();
-        }
+        // Called by the scheduler; the refresh is defined on the device, so the report is null.
+        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) =>
+            report != null ? Task.CompletedTask : generateWeatherReports(cancellationToken);
 
         public DeviceConfiguration GetConfigurationTemplate()
         {
@@ -65,7 +60,7 @@ namespace RIoT2.Net.Devices.Catalog
             if(State != Core.DeviceState.Running)
                 return deviceConfiguration;
 
-            var data = GetNetatmoStationsData(_stationId).Result;
+            var data = _stationsData;
 
             if (data == null || data.status != "ok")
                 return deviceConfiguration;
@@ -109,11 +104,13 @@ namespace RIoT2.Net.Devices.Catalog
             return deviceConfiguration;
         }
 
-        private async Task generateWeatherReports() 
+        private async Task generateWeatherReports(CancellationToken cancellationToken)
         {
-            var data = await GetNetatmoStationsData(_stationId);
+            var data = await GetNetatmoStationsData(_stationId, cancellationToken).ConfigureAwait(false);
             if (data == null || data.status.ToLower() != "ok")
                 return;
+
+            _stationsData = data;
 
             foreach (var d in data.body.devices)
             {

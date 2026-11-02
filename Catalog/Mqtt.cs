@@ -31,14 +31,14 @@ namespace RIoT2.Net.Devices.Catalog
     /// Mqtt Device is used to connect any mqtt device into system...
     /// </summary>
     [RequiresHardware("MQTT broker")]
-    public class Mqtt : DeviceBase<MqttOptions>, ICommandDevice, IAsyncCommandDevice, IAsyncDevice, IDeviceWithConfiguration
+    public class Mqtt : AsyncDeviceBase<MqttOptions>, IAsyncCommandDevice, IDeviceWithConfiguration
     {
         private MqttClient _mqttClient;
 
         public Mqtt(ILogger logger) : base(logger) { }
 
         public void ExecuteCommand(string commandId, string value) =>
-            ExecuteCommandAsync(commandId, value, CancellationToken.None).GetAwaiter().GetResult();
+            LegacySync.Wait(ExecuteCommandAsync(commandId, value, CancellationToken.None));
 
         public async Task ExecuteCommandAsync(string commandId, string value, CancellationToken cancellationToken)
         {
@@ -65,48 +65,16 @@ namespace RIoT2.Net.Devices.Catalog
         public override void ConfigureDevice() =>
             _mqttClient = new MqttClient(Options.ClientId, Options.ServerUrl, Options.UserName, Options.Password);
 
-        public override void StartDevice() =>
-            StartMqttAsync(CancellationToken.None).GetAwaiter().GetResult();
-
-        public async Task StartAsync(CancellationToken cancellationToken)
-        {
-            try
-            {
-                SetState(DeviceState.Running);
-                await StartMqttAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception x)
-            {
-                SetState(DeviceState.Error, x.Message);
-                throw new Exception($"Error starting {Name}:{Id}", x);
-            }
-        }
-
-        private async Task StartMqttAsync(CancellationToken cancellationToken)
+        protected override async Task StartDeviceAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             await _mqttClient.Start((Options.SubscribeTopics ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             _mqttClient.MessageReceived += mqttClient_MessageReceived;
         }
 
-        public override void StopDevice() =>
-            StopMqttAsync().GetAwaiter().GetResult();
+        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) => Task.CompletedTask;
 
-        public async Task StopAsync(CancellationToken cancellationToken)
-        {
-            try
-            {
-                await StopMqttAsync().ConfigureAwait(false);
-                SetState(DeviceState.Stopped);
-            }
-            catch (Exception x)
-            {
-                SetState(DeviceState.Error, x.Message);
-                throw new Exception($"Error stopping {Name}:{Id}", x);
-            }
-        }
-
-        private async Task StopMqttAsync()
+        protected override async Task StopDeviceAsync(CancellationToken cancellationToken)
         {
             if (_mqttClient == null)
                 return;

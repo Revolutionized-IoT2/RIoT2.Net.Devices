@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 namespace RIoT2.Net.Devices.Catalog
 {
     [RequiresHardware("ENTSO-E API")]
-    public class ElectricityPrice : DeviceBase, IRefreshableReportDevice, IDeviceWithConfiguration
+    public class ElectricityPrice : AsyncDeviceBase, IDeviceWithConfiguration
     {
         public ElectricityPrice(ILogger logger) : base(logger) { }
 
@@ -31,46 +31,41 @@ namespace RIoT2.Net.Devices.Catalog
             _vat = GetConfiguration<double>("vat");
         }
 
-        public override void StartDevice()
+        protected override async Task StartDeviceAsync(CancellationToken cancellationToken)
         {
-            load();
+            await LoadAsync(cancellationToken).ConfigureAwait(false);
+            await SendPriceAsync(cancellationToken).ConfigureAwait(false);
+        }
 
+        protected override Task StopDeviceAsync(CancellationToken cancellationToken)
+        {
+            _priceData = null;
+            return Task.CompletedTask;
+        }
+
+        // Called by the scheduler; the refresh is defined on the device, so the report is null.
+        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) =>
+            report != null ? Task.CompletedTask : SendPriceAsync(cancellationToken);
+
+        private async Task SendPriceAsync(CancellationToken cancellationToken)
+        {
             var template = getPriceReportTemplate();
             if (template == null)
                 return;
 
+            var price = await GetCurrentPriceAsync(template, cancellationToken).ConfigureAwait(false);
             SendReport(this, new Report()
             {
                 Id = template.Id,
                 TimeStamp = DateTime.UtcNow.ToEpoch(),
-                Value = new ValueModel(getCurrentPrice(template)),
+                Value = new ValueModel(price),
                 Filter = ""
             });
         }
 
-        public override void StopDevice()
-        {
-            _priceData = null;
-        }
-
-        //This is called by base when time trigger is activated
-        public override void Refresh(ReportTemplate report) 
-        {
-            if (report != null) //report should be null because in this case, refresh is defined on device level
-                return;
-
-            var template = getPriceReportTemplate();
-            if (template == null) 
-                return;
-
-            SendReport(this, new Report()
-            {
-                Id = template.Id,
-                TimeStamp = DateTime.UtcNow.ToEpoch(),
-                Value = new ValueModel(getCurrentPrice(template)),
-                Filter = ""
-            });
-        }
+        // The HTTP call; the lifecycle tests replace it.
+        internal virtual Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            RIoT2.Core.Utils.Web.SendAsync(request, cancellationToken: cancellationToken);
 
         public DeviceConfiguration GetConfigurationTemplate()
         {
@@ -106,10 +101,10 @@ namespace RIoT2.Net.Devices.Catalog
             return ReportTemplates?.FirstOrDefault(x => x.Address == "price");
         }
 
-        private decimal getCurrentPrice(ReportTemplate reportTemplate) 
+        private async Task<decimal> GetCurrentPriceAsync(ReportTemplate reportTemplate, CancellationToken cancellationToken)
         {
             if (!isPriceDataValid(_priceData))
-                load();
+                await LoadAsync(cancellationToken).ConfigureAwait(false);
 
             if (_priceData == null)
                 return 0m;
@@ -155,27 +150,17 @@ namespace RIoT2.Net.Devices.Catalog
             return rawPrice;
         }
 
-        private Dictionary<int, decimal> getCurrentDayPrices()
-        {
-            if (!isPriceDataValid(_priceData))
-                load();
-
-            return _priceData.TimeSeries.Period.Point
-                .Select(p => new { id = p.position, key = p.priceamount })
-                .ToDictionary(d => d.id, d => d.key);
-        }
-
-        private void load()
+        private async Task LoadAsync(CancellationToken cancellationToken)
         {
             try
             {
                 if (!File.Exists(_priceDataFile)) 
                 {
-                    getPriceDataForCurrentDay().GetAwaiter().GetResult();
+                    await getPriceDataForCurrentDay(cancellationToken).ConfigureAwait(false);
                     return;
                 }
                     
-                var xml = File.ReadAllText(_priceDataFile);
+                var xml = await File.ReadAllTextAsync(_priceDataFile, cancellationToken).ConfigureAwait(false);
 
                 XmlSerializer serializer = new XmlSerializer(typeof(Publication_MarketDocument));
                 using (var reader = new StringReader(xml))
@@ -184,8 +169,12 @@ namespace RIoT2.Net.Devices.Catalog
                     if (isPriceDataValid(filePriceData))
                         _priceData = filePriceData;
                     else
-                        getPriceDataForCurrentDay().GetAwaiter().GetResult();
+                        await getPriceDataForCurrentDay(cancellationToken).ConfigureAwait(false);
                 }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch(Exception x)
             {
@@ -225,14 +214,15 @@ namespace RIoT2.Net.Devices.Catalog
             }
         }
 
-        private async Task getPriceDataForCurrentDay() 
+        private async Task getPriceDataForCurrentDay(CancellationToken cancellationToken)
         {
             try
             {
                 var now = DateTime.Now.ToString("yyyyMMdd"); //yyyyMMddHHmm
                 var url = _endpoint + $"?securityToken={_securityToken}&documentType=A44&in_Domain={_domain}&out_Domain={_domain}&periodStart={now + "0000"}&periodEnd={now + "2300"}";
-                using var response = await RIoT2.Core.Utils.Web.GetAsync(url);
-                var xml = await response.Content.ReadAsStringAsync();
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                using var response = await SendAsync(request, cancellationToken).ConfigureAwait(false);
+                var xml = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
                 XmlSerializer serializer = new XmlSerializer(typeof(Publication_MarketDocument));
                 using (StringReader reader = new StringReader(xml))
@@ -240,6 +230,10 @@ namespace RIoT2.Net.Devices.Catalog
                     _priceData = (Publication_MarketDocument)serializer.Deserialize(new NamespaceIgnorantXmlTextReader(reader));
                     save();
                 }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception x) 
             {

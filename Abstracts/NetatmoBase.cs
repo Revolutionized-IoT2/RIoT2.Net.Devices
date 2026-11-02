@@ -8,10 +8,11 @@ using RIoT2.Core.Interfaces;
 using RIoT2.Core.Utils;
 using RIoT2.Net.Devices.Services;
 using RIoT2.Net.Devices.Services.Interfaces;
+using System.Net.Http.Headers;
 
 namespace RIoT2.Net.Devices.Abstracts
 {
-    public abstract class NetatmoBase : DeviceBase
+    public abstract class NetatmoBase : AsyncDeviceBase
     {
         private readonly INetatmoAuthClientFactory _authClients;
         private NetatmoAuthClient _auth;
@@ -51,43 +52,38 @@ namespace RIoT2.Net.Devices.Abstracts
             _auth = auth;
         }
 
-        internal async Task<NetatmoStationsData> GetNetatmoStationsData(string deviceId) 
-        {
-            return await executeNetatmo<NetatmoStationsData>($"https://api.netatmo.com/api/getstationsdata?device_id={ System.Web.HttpUtility.UrlEncode(deviceId) }");
-        }
+        internal Task<NetatmoStationsData> GetNetatmoStationsData(string deviceId, CancellationToken cancellationToken = default) =>
+            executeNetatmo<NetatmoStationsData>($"https://api.netatmo.com/api/getstationsdata?device_id={ System.Web.HttpUtility.UrlEncode(deviceId) }", HttpMethod.Get, cancellationToken);
 
-        internal async Task<NetatmoHomesData> GetNetatmoHomesData()
-        {
-            return await executeNetatmo<NetatmoHomesData>("https://api.netatmo.com/api/homesdata");
-        }
+        internal Task<NetatmoHomesData> GetNetatmoHomesData(CancellationToken cancellationToken = default) =>
+            executeNetatmo<NetatmoHomesData>("https://api.netatmo.com/api/homesdata", HttpMethod.Get, cancellationToken);
 
-        internal async Task<NetatmoHomeStatus> GetNetatmoHomeStatus(string homeId) 
-        {
-            return await executeNetatmo<NetatmoHomeStatus>($"https://api.netatmo.com/api/homestatus?home_id={ System.Web.HttpUtility.UrlEncode(homeId) }");
-        }
+        internal Task<NetatmoHomeStatus> GetNetatmoHomeStatus(string homeId, CancellationToken cancellationToken = default) =>
+            executeNetatmo<NetatmoHomeStatus>($"https://api.netatmo.com/api/homestatus?home_id={ System.Web.HttpUtility.UrlEncode(homeId) }", HttpMethod.Get, cancellationToken);
 
-        internal async Task<NetatmoEvent> GetNetatmoEvents(string homeId)
-        {
-            return await executeNetatmo<NetatmoEvent>($"https://api.netatmo.com/api/getevents?home_id={ System.Web.HttpUtility.UrlEncode(homeId) }");
-        }
+        internal Task<NetatmoEvent> GetNetatmoEvents(string homeId, CancellationToken cancellationToken = default) =>
+            executeNetatmo<NetatmoEvent>($"https://api.netatmo.com/api/getevents?home_id={ System.Web.HttpUtility.UrlEncode(homeId) }", HttpMethod.Get, cancellationToken);
 
-        internal async Task<NetatmoCmd> SetPersonsAway(string homeId)
-        {
-            return await executeNetatmo<NetatmoCmd>($"https://api.netatmo.com/api/setpersonsaway?home_id={System.Web.HttpUtility.UrlEncode(homeId)}", "POST");
-        }
-        internal async Task<NetatmoCmd> SetPersonsHome(string homeId, string[] personIds)
+        internal Task<NetatmoCmd> SetPersonsAway(string homeId, CancellationToken cancellationToken = default) =>
+            executeNetatmo<NetatmoCmd>($"https://api.netatmo.com/api/setpersonsaway?home_id={System.Web.HttpUtility.UrlEncode(homeId)}", HttpMethod.Post, cancellationToken);
+
+        internal Task<NetatmoCmd> SetPersonsHome(string homeId, string[] personIds, CancellationToken cancellationToken = default)
         {
             if (personIds == null || personIds.Length == 0) 
             {
                 Logger.LogWarning("No person IDs provided. Cannot set persons home.");
-                return await Task.FromResult<NetatmoCmd>(null);
+                return Task.FromResult<NetatmoCmd>(null);
             }
 
             var personIdsParam = string.Join("&", personIds.Select(x => $"person_id[]={System.Web.HttpUtility.UrlEncode(x)}"));
-            return await executeNetatmo<NetatmoCmd>($"https://api.netatmo.com/api/setpersonshome?home_id={System.Web.HttpUtility.UrlEncode(homeId)}&{personIdsParam}", "POST");
+            return executeNetatmo<NetatmoCmd>($"https://api.netatmo.com/api/setpersonshome?home_id={System.Web.HttpUtility.UrlEncode(homeId)}&{personIdsParam}", HttpMethod.Post, cancellationToken);
         }
 
-        private async Task<T> executeNetatmo<T>(string url, string method = "GET")
+        // The HTTP call; the lifecycle tests replace it.
+        internal virtual Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Web.SendAsync(request, cancellationToken: cancellationToken);
+
+        private async Task<T> executeNetatmo<T>(string url, HttpMethod method, CancellationToken cancellationToken)
         {
             var auth = _auth;
             var accessToken = auth?.AccessToken;
@@ -99,22 +95,30 @@ namespace RIoT2.Net.Devices.Abstracts
 
             try
             {
-                var response = await sendNetatmo(url, method, accessToken);
+                var response = await sendNetatmo(url, method, accessToken, cancellationToken).ConfigureAwait(false);
                 if (response.StatusCode == HttpStatusCode.Forbidden || response.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    if (await auth.RefreshAsync(accessToken))
-                        response = await sendNetatmo(url, method, auth.AccessToken);
+                    if (await auth.RefreshAsync(accessToken).ConfigureAwait(false))
+                    {
+                        response.Dispose();
+                        response = await sendNetatmo(url, method, auth.AccessToken, cancellationToken).ConfigureAwait(false);
+                    }
                     else
                         Logger.LogWarning("Could not refresh Netatmo authentication token");
                 }
 
-                if (response.StatusCode == HttpStatusCode.OK)
+                using (response)
                 {
-                    var content = await response.Content.ReadAsStringAsync();
-                    return content.ToObj<T>();
-                }
+                    var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                    if (response.StatusCode == HttpStatusCode.OK)
+                        return content.ToObj<T>();
 
-                Logger.LogWarning("Netatmo responded with code: {StatusCode}. Message: {Message}", response.StatusCode, await response.Content.ReadAsStringAsync());
+                    Logger.LogWarning("Netatmo responded with code: {StatusCode}. Message: {Message}", response.StatusCode, content);
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception x)
             {
@@ -125,9 +129,14 @@ namespace RIoT2.Net.Devices.Abstracts
             return default;
         }
 
-        private static Task<HttpResponseMessage> sendNetatmo(string url, string method, string accessToken) =>
-            method.Equals("get", StringComparison.OrdinalIgnoreCase)
-                ? Web.GetResponseAsync(url, accessToken)
-                : Web.PostWithBearerTokenAsync(url, null, accessToken);
+        // A fresh request per send: the retry after a token refresh can't reuse one.
+        private async Task<HttpResponseMessage> sendNetatmo(string url, HttpMethod method, string accessToken, CancellationToken cancellationToken)
+        {
+            using var request = new HttpRequestMessage(method, url);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            if (method == HttpMethod.Post)
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            return await SendAsync(request, cancellationToken).ConfigureAwait(false);
+        }
     }
 }

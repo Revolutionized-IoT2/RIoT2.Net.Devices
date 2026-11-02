@@ -1,5 +1,4 @@
 ﻿using RIoT2.Core.Plugins;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Logging;
 using RIoT2.Core;
 using RIoT2.Core.Interfaces;
@@ -12,7 +11,7 @@ using RIoT2.Net.Devices.Services.Interfaces;
 namespace RIoT2.Net.Devices.Catalog
 {
     [RequiresHardware("Netatmo API")]
-    public class NetatmoSecurity : NetatmoBase, IDeviceWithConfiguration, IRefreshableReportDevice, ICommandDevice
+    public class NetatmoSecurity : NetatmoBase, IDeviceWithConfiguration, IAsyncCommandDevice
     {
         private NetatmoHomesData _home;
         private NetatmoSecurityEvents _securityEvents;
@@ -100,13 +99,9 @@ namespace RIoT2.Net.Devices.Catalog
             return deviceConfiguration;
         }
 
-        public override void Refresh(ReportTemplate report)
-        {
-            if (report != null) //report should be null because in this case, refresh is defined on device level
-                return;
-
-            generateSecurityReports().Wait();
-        }
+        // Called by the scheduler; the refresh is defined on the device, so the report is null.
+        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) =>
+            report != null ? Task.CompletedTask : generateSecurityReports(cancellationToken);
 
         public override void ConfigureDevice()
         {
@@ -118,9 +113,9 @@ namespace RIoT2.Net.Devices.Catalog
             ConfigureNetatmo(token, refreshToken, clientId, clientSecret);
         }
 
-        public override void StartDevice()
+        protected override async Task StartDeviceAsync(CancellationToken cancellationToken)
         {
-            _home = GetNetatmoHomesData().Result;
+            _home = await GetNetatmoHomesData(cancellationToken).ConfigureAwait(false);
 
             if (_home == null || _home.status.ToLower() != "ok") 
             {
@@ -128,20 +123,18 @@ namespace RIoT2.Net.Devices.Catalog
                 return;
             }
 
-            generateSecurityReports().Wait();
-        }
-        public override void StopDevice()
-        {
-            //no actions needed
+            await generateSecurityReports(cancellationToken).ConfigureAwait(false);
         }
 
-        private async Task generateSecurityReports()
+        protected override Task StopDeviceAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        private async Task generateSecurityReports(CancellationToken cancellationToken)
         {
             if (_home == null || ReportTemplates == null || ReportTemplates?.Count() == 0)
                 return;
 
-            var data = await GetNetatmoHomeStatus(_home.body.homes[0].id);
-            var events = await GetNetatmoEvents(_home.body.homes[0].id);
+            var data = await GetNetatmoHomeStatus(_home.body.homes[0].id, cancellationToken).ConfigureAwait(false);
+            var events = await GetNetatmoEvents(_home.body.homes[0].id, cancellationToken).ConfigureAwait(false);
             if (data == null || events == null || data?.status.ToLower() != "ok")
                 return;
 
@@ -184,7 +177,7 @@ namespace RIoT2.Net.Devices.Catalog
                 }
 
                 if (reports.Count == 0)
-                    return;
+                    continue;
 
                 //Load file for each report
                 foreach (var r in reports) 
@@ -196,14 +189,25 @@ namespace RIoT2.Net.Devices.Catalog
                     if(String.IsNullOrEmpty(securityReport.ImageUrl))
                         continue;
 
-                    var response = await Core.Utils.Web.GetAsync(securityReport.ImageUrl);
+                    using var request = new HttpRequestMessage(HttpMethod.Get, securityReport.ImageUrl);
+                    HttpResponseMessage sent;
+                    try
+                    {
+                        sent = await SendAsync(request, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException error) when (!cancellationToken.IsCancellationRequested)
+                    {
+                        // An HTTP timeout, not a cancellation: the device is in error, not stopped.
+                        throw new TimeoutException("Netatmo did not send the snapshot in time.", error);
+                    }
+                    using var response = sent;
                     if (!response.IsSuccessStatusCode)
                     {
-                        _logger.LogWarning($"Could not read file from Netatmo. Status: {response.StatusCode} Content: {await response.Content.ReadAsStringAsync()}");
+                        _logger.LogWarning($"Could not read file from Netatmo. Status: {response.StatusCode} Content: {await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false)}");
                         continue;
                     }
 
-                    var content = await response.Content.ReadAsByteArrayAsync();
+                    var content = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
                     var fileGuid = Guid.NewGuid().ToString();
 
                     //prepare document
@@ -233,7 +237,10 @@ namespace RIoT2.Net.Devices.Catalog
             }
         }
 
-        public void ExecuteCommand(string commandId, string value)
+        public void ExecuteCommand(string commandId, string value) =>
+            LegacySync.Wait(ExecuteCommandAsync(commandId, value, CancellationToken.None));
+
+        public async Task ExecuteCommandAsync(string commandId, string value, CancellationToken cancellationToken)
         {
             //ínstead of timer, device can be refreshed by command -> webhook
             var command = CommandTemplates?.FirstOrDefault(x => x.Id == commandId);
@@ -242,28 +249,23 @@ namespace RIoT2.Net.Devices.Catalog
 
             if (command.Address == "refresh")
             {
-                var task = generateSecurityReports();
+                await generateSecurityReports(cancellationToken).ConfigureAwait(false);
                 return;
             }
-            else if (command.Address == "set_home")
-            {
-                bool toState = value.Equals("true", StringComparison.CurrentCultureIgnoreCase);
-                if(toState)
-                {
-                    var response = SetPersonsHome(_home.body.homes[0].id, [_home.body.homes[0].persons[0].id]).Result;
-                    if (response.status.ToLower() != "ok")
-                        _logger.LogWarning($"Could not set person home.");
-                    
-                }
-                else
-                {
-                    var response = SetPersonsAway(_home.body.homes[0].id).Result;
-                    if (response.status.ToLower() != "ok")
-                        _logger.LogWarning($"Could not set person away.");
-                }
+
+            if (command.Address != "set_home")
                 return;
-            }
-            return;
+
+            if (_home?.body?.homes == null || _home.body.homes.Count == 0)
+                throw new DeviceNotReadyException("The Netatmo home isn't loaded yet.");
+
+            var home = _home.body.homes[0];
+            bool toState = value.Equals("true", StringComparison.CurrentCultureIgnoreCase);
+            var response = toState
+                ? await SetPersonsHome(home.id, [home.persons[0].id], cancellationToken).ConfigureAwait(false)
+                : await SetPersonsAway(home.id, cancellationToken).ConfigureAwait(false);
+            if (response?.status?.ToLower() != "ok")
+                _logger.LogWarning(toState ? "Could not set person home." : "Could not set person away.");
         }
 
     }

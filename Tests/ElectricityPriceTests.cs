@@ -65,7 +65,7 @@ public class ElectricityPriceTests
 
     private sealed class TestElectricityPrice() : ElectricityPrice(NullLogger.Instance)
     {
-        public override void StartDevice() { }
-        public override void StopDevice() { }
+        protected override Task StartDeviceAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        protected override Task StopDeviceAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }

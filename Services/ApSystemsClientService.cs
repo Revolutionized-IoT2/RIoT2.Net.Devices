@@ -59,18 +59,18 @@ namespace RIoT2.Net.Devices.Services
             return await SendRequestAsync(HttpMethod.Get, requestPath);
         }
 
-        public async Task<MeterSummary> GetMeterSummaryAsync(string ecuid)
+        public async Task<MeterSummary> GetMeterSummaryAsync(string ecuid, CancellationToken cancellationToken = default)
         {
             // The API specific route for meter summary data
             var requestPath = $"/user/api/v2/systems/{_sid}/devices/meter/summary/{ecuid}";
-            var summaryJson = await SendRequestAsync(HttpMethod.Get, requestPath);
+            var summaryJson = await SendRequestAsync(HttpMethod.Get, requestPath, cancellationToken);
             return summaryJson.ToObj<MeterSummary>();
         }
 
         /// <summary>
         /// Base method to sign and send requests to the APsystems EMA API.
         /// </summary>
-        private async Task<string> SendRequestAsync(HttpMethod method, string requestPath)
+        private async Task<string> SendRequestAsync(HttpMethod method, string requestPath, CancellationToken cancellationToken = default)
         {
             // 1. Generate required signing properties
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
@@ -94,12 +94,12 @@ namespace RIoT2.Net.Devices.Services
             request.Headers.Add("X-CA-Signature", signature);
 
             // 5. Send the request
-            using var response = await _httpClient.SendAsync(request);
+            using var response = await _httpClient.SendAsync(request, cancellationToken);
 
             // Throw an exception if the HTTP status code is not 2xx
             response.EnsureSuccessStatusCode();
 
-            return await response.Content.ReadAsStringAsync();
+            return await response.Content.ReadAsStringAsync(cancellationToken);
         }
 
         /// <summary>

@@ -55,7 +55,7 @@ Install this plugin only after the Node image has been updated to `net10.0`. A `
 cannot load into a `net9.0` node, while a `net9.0` plugin can load into the `net10.0` node.
 Release this plugin with the Node image that hosts it, node first. Plugin assemblies share the
 host's `RIoT2.Core*` assemblies, and a plugin built against a newer Core than the node's doesn't
-load: 1.4.0 (Core 1.16.0) needs Node 1.11.0 or newer; 1.3.x (Core 1.14.0) Node 1.10.0.
+load: 1.4.0 and 1.5.0 (Core 1.16.0) need Node 1.11.0 or newer; 1.3.x (Core 1.14.0) Node 1.10.0.
 
 ## Plugin HTTP endpoints
 

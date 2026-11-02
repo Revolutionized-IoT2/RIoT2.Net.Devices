@@ -116,8 +116,11 @@ namespace RIoT2.Net.Devices.Services
 
         public async Task StopAsync() 
         {
-            _cts.Cancel();
-            await _listener.CloseAsync();
+            // Nothing to close when the start failed or never ran.
+            if (_cts != null)
+                await _cts.CancelAsync();
+            if (_listener != null)
+                await _listener.CloseAsync();
         }
     }
 }

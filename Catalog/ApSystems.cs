@@ -10,7 +10,7 @@ using RIoT2.Net.Devices.Services.Interfaces;
 namespace RIoT2.Net.Devices.Catalog
 {
     [RequiresHardware("APsystems API")]
-    public class ApSystems : DeviceBase, IRefreshableReportDevice, IDeviceWithConfiguration
+    public class ApSystems : AsyncDeviceBase, IDeviceWithConfiguration
     {
         MeterSummary _meterSummary;
         string _ecuId;
@@ -110,23 +110,25 @@ namespace RIoT2.Net.Devices.Catalog
             return deviceConfiguration;
         }
 
-        public override void StartDevice()
+        protected override async Task StartDeviceAsync(CancellationToken cancellationToken)
         {
-           load();
-           sendReports();
+            await LoadAsync(cancellationToken).ConfigureAwait(false);
+            sendReports();
         }
 
-        public override void StopDevice()
+        protected override Task StopDeviceAsync(CancellationToken cancellationToken)
         {
             _meterSummary = null;
+            return Task.CompletedTask;
         }
 
-        public override void Refresh(ReportTemplate report)
+        // Called by the scheduler; the refresh is defined on the device, so the report is null.
+        protected override async Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken)
         {
-            if (report != null) //report should be null because in this case, refresh is defined on device level
+            if (report != null)
                 return;
 
-            load();
+            await LoadAsync(cancellationToken).ConfigureAwait(false);
             sendReports();
         }
 
@@ -192,9 +194,18 @@ namespace RIoT2.Net.Devices.Catalog
             }
         }
 
-        private void load()
+        private async Task LoadAsync(CancellationToken cancellationToken)
         {
-            var summary = _client.GetMeterSummaryAsync(_ecuId).GetAwaiter().GetResult();
+            MeterSummary summary;
+            try
+            {
+                summary = await _client.GetMeterSummaryAsync(_ecuId, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException error) when (!cancellationToken.IsCancellationRequested)
+            {
+                // An HTTP timeout, not a cancellation: the device is in error, not stopped.
+                throw new TimeoutException("The APsystems API did not answer in time.", error);
+            }
             if (summary != null && summary.Code == ApCode.Success)
             {
                 _meterSummary = summary;

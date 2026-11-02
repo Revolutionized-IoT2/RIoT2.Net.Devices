@@ -30,7 +30,7 @@ namespace RIoT2.Net.Devices.Catalog
         public string SmtpPassword { get; set; } = "";
     }
 
-    public class Messaging : DeviceBase<MessagingOptions>, ICommandDevice, IDeviceWithConfiguration
+    public class Messaging : AsyncDeviceBase<MessagingOptions>, IAsyncCommandDevice, IDeviceWithConfiguration
     {
         private GoogleOAuth2 _authentication;
         private SmtpClient _smtpClient;
@@ -41,7 +41,10 @@ namespace RIoT2.Net.Devices.Catalog
     
         }
 
-        public void ExecuteCommand(string commandId, string value)
+        public void ExecuteCommand(string commandId, string value) =>
+            LegacySync.Wait(ExecuteCommandAsync(commandId, value, CancellationToken.None));
+
+        public async Task ExecuteCommandAsync(string commandId, string value, CancellationToken cancellationToken)
         {
             Logger.LogInformation("Executed command: {commandId}", commandId);
 
@@ -52,12 +55,12 @@ namespace RIoT2.Net.Devices.Catalog
             if (command.Address.ToLower() == "fb")
             {
                 var msg = Json.Deserialize<FirebaseMsg>(value);
-                sendFBMessage(msg.GetServiceMessage()).Wait();
+                await sendFBMessage(msg.GetServiceMessage(), cancellationToken).ConfigureAwait(false);
             }
             else if (command.Address.ToLower() == "mail") 
             {
                 var msg = Json.Deserialize<MailMsg>(value);
-                sendMail(msg.GetMailMessage(Options.SmtpUser));
+                await sendMail(msg.GetMailMessage(Options.SmtpUser), cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -66,22 +69,24 @@ namespace RIoT2.Net.Devices.Catalog
             _smtpClient = null;
             configureSmtpClient();
 
-            var serviceAccountJson = readServiceAccount().Result;
+            var serviceAccountJson = readServiceAccount();
 
             if (!String.IsNullOrEmpty(serviceAccountJson))
                 _authentication = new GoogleOAuth2(serviceAccountJson);
         }
 
-        public override void StartDevice()
-        {
-            //var temp = _authentication.GetToken().Result;
-            //no actions needed...
-        }
+        protected override Task StartDeviceAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-        public override void StopDevice()
-        {
-            //no actions needed...
-        }
+        protected override Task StopDeviceAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        // The calls to Firebase and the SMTP server; the lifecycle tests replace them.
+        internal virtual Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Core.Utils.Web.SendAsync(request, cancellationToken: cancellationToken);
+
+        internal virtual Task SendMailAsync(SmtpClient client, MailMessage message, CancellationToken cancellationToken) =>
+            client.SendMailAsync(message, cancellationToken);
 
         public DeviceConfiguration GetConfigurationTemplate()
         {
@@ -126,19 +131,23 @@ namespace RIoT2.Net.Devices.Catalog
             return deviceConfiguration;
         }
 
-        private void sendMail(MailMessage msg)
+        private async Task sendMail(MailMessage msg, CancellationToken cancellationToken)
         {
             try
             {
                 if (_smtpClient != null)
-                    _smtpClient.Send(msg);
+                    await SendMailAsync(_smtpClient, msg, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception x)
             {
                 Logger.LogError(x, "Error while sending mail");
             }
         }
-        private async Task<string> sendFBMessage(FirebaseServiceMessage msg)
+        private async Task<string> sendFBMessage(FirebaseServiceMessage msg, CancellationToken cancellationToken)
         {
             string retVal = null;
             if (_authentication == null || String.IsNullOrEmpty(Options.FirebaseProjectName))
@@ -147,12 +156,19 @@ namespace RIoT2.Net.Devices.Catalog
             try
             {
                 var data = Json.Serialize(msg);
-                var headers = new Dictionary<string, string>();
-                headers.Add("Authorization", "Bearer " + await _authentication.GetToken());
+                using var request = new HttpRequestMessage(HttpMethod.Post, $"https://fcm.googleapis.com/v1/projects/{Options.FirebaseProjectName}/messages:send")
+                {
+                    Content = new StringContent(data, System.Text.Encoding.UTF8, "application/json")
+                };
+                request.Headers.TryAddWithoutValidation("Authorization", "Bearer " + await _authentication.GetToken().ConfigureAwait(false));
 
-                var httpResult = await Core.Utils.Web.PostAsync($"https://fcm.googleapis.com/v1/projects/{Options.FirebaseProjectName}/messages:send", data, headers);
+                using var httpResult = await SendAsync(request, cancellationToken).ConfigureAwait(false);
                 if (httpResult.StatusCode == System.Net.HttpStatusCode.OK)
                     retVal = data;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception x)
             {
@@ -177,21 +193,15 @@ namespace RIoT2.Net.Devices.Catalog
 
             return true;
         }
-        private async Task<string> readServiceAccount() 
+        // ConfigureDevice is synchronous; a small local file is read directly.
+        private string readServiceAccount() 
         {
             try
             {
-                byte[] result;
                 if(!File.Exists(_serviceAccountFile))
                     return null;
-                
-                using (FileStream SourceStream = File.Open(_serviceAccountFile, FileMode.Open))
-                {
-                    result = new byte[SourceStream.Length];
-                    await SourceStream.ReadExactlyAsync(result);
-                }
 
-                return System.Text.Encoding.UTF8.GetString(result);
+                return File.ReadAllText(_serviceAccountFile, System.Text.Encoding.UTF8);
             }
             catch (Exception e)
             {

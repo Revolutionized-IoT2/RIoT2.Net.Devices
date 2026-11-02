@@ -74,8 +74,11 @@ This repository implements plugin-side pieces of these hub contracts:
   dictionary keys and `DeviceBase.GetConfiguration<T>(key)` is case-sensitive.
 - Do not hard-code secrets. Credentials belong in orchestrator-managed configuration or mounted
   runtime files under `Data/`.
-- Prefer `AsyncDeviceBase` and async command/refresh interfaces for network I/O. Keep synchronous
-  compatibility shims only where the legacy Core interfaces require them.
+- Devices doing I/O derive from `AsyncDeviceBase` and await it with the node's cancellation token,
+  HTTP through an `internal virtual SendAsync` the lifecycle tests replace (`DeviceLifecycleTests`).
+  No `.Result`, `.Wait()` or `GetAwaiter().GetResult()`: the threading analyzers fail CI (I31). The
+  only wait is `LegacySync.Wait` in the sync `ExecuteCommand` that `IAsyncCommandDevice` requires.
+  `GetConfigurationTemplate` is synchronous: build it from cached data, never call the network.
 - Every device that reads a parameter implements `IDeviceWithConfiguration` and declares the key
   in its template. `PluginConformanceTests` fails otherwise.
 - Mark a device that needs a remote service, hardware or a fixed port with
@@ -109,7 +112,7 @@ This repository implements plugin-side pieces of these hub contracts:
 - [M6](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/plans/m06-plugin-configuration-discovery.md):
   plugin configuration discovery and no static device state.
 - [M11](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/plans/m11-async-cleanup.md):
-  remaining blocking and `async void` cleanup.
+  blocking and `async void` cleanup (done in I31).
 - [M12](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/plans/m12-device-plugin-sdk.md) ([ADR 0014](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/adr/0014-device-plugin-sdk.md)):
   device plugin SDK (`PluginBase`, conformance test, packaging target, typed options).
 - [Design 7.2](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/design/desired-state-configuration.md):

@@ -12,7 +12,7 @@ using ValueType = RIoT2.Core.ValueType;
 namespace RIoT2.Net.Devices.Catalog
 {
     [RequiresHardware("Hue bridge")]
-    public class Hue : DeviceBase, ICommandDevice, IDeviceWithConfiguration, IMatterDevice
+    public class Hue : AsyncDeviceBase, IAsyncCommandDevice, IDeviceWithConfiguration, IMatterDevice
     {
         private event HueEventHandler HueEventReceived;
         private string _bridgeIpAddress = "192.168.0.4";
@@ -22,6 +22,8 @@ namespace RIoT2.Net.Devices.Catalog
 
         private CancellationTokenSource _cancellationTokenSource;
         private Task _eventsListenerTask = Task.CompletedTask;
+        // The lights read at start, which the template lists; the template is built without I/O.
+        private HueLights _lights;
 
         private string getHueUrl() 
         {
@@ -37,7 +39,10 @@ namespace RIoT2.Net.Devices.Catalog
         
         }
 
-        public void ExecuteCommand(string commandId, string value)
+        public void ExecuteCommand(string commandId, string value) =>
+            LegacySync.Wait(ExecuteCommandAsync(commandId, value, CancellationToken.None));
+
+        public async Task ExecuteCommandAsync(string commandId, string value, CancellationToken cancellationToken)
         {
             Logger.LogInformation("Executing command: {commandId}", commandId);
 
@@ -45,7 +50,7 @@ namespace RIoT2.Net.Devices.Catalog
             if (command == null)
                 return;
 
-            setLight(command.Address, value).GetAwaiter().GetResult();
+            await SetLightAsync(command.Address, value, cancellationToken).ConfigureAwait(false);
         }
 
         public override void ConfigureDevice()
@@ -54,18 +59,34 @@ namespace RIoT2.Net.Devices.Catalog
             _apikey = GetConfiguration<string>("apiKey");
             lock (_lightStateLock)
                 _lightStates.Clear();
+            _lights = null;
         }
 
-        public override void StartDevice()
+        protected override async Task StartDeviceAsync(CancellationToken cancellationToken)
         {
             _cancellationTokenSource = new CancellationTokenSource();
             HueEventReceived += Hue_HueEventReceived;
-            _eventsListenerTask = startEventsListenerAsync(_cancellationTokenSource.Token);
+            _eventsListenerTask = StartEventsListenerAsync(_cancellationTokenSource.Token);
 
             //send initial values
-            foreach (var light in getLight().GetAwaiter().GetResult()?.data)
+            _lights = await GetLightsAsync(cancellationToken).ConfigureAwait(false);
+            foreach (var light in _lights?.data ?? [])
                 sendReport(light);
         }
+
+        // The bridge calls; the lifecycle tests replace them. Web's bridge client has no cancellation, so the
+        // caller stops waiting instead.
+        internal virtual Task<HueLights> GetLightsAsync(CancellationToken cancellationToken) =>
+            getLight().WaitAsync(cancellationToken);
+
+        internal virtual Task SetLightAsync(string hueId, string commandJson, CancellationToken cancellationToken) =>
+            setLight(hueId, commandJson).WaitAsync(cancellationToken);
+
+        internal virtual Task StartEventsListenerAsync(CancellationToken cancellationToken) =>
+            startEventsListenerAsync(cancellationToken);
+
+        // Hue pushes its state on the event stream; there is nothing to poll.
+        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) => Task.CompletedTask;
 
         private void sendReport(HueData data) 
         {
@@ -127,13 +148,13 @@ namespace RIoT2.Net.Devices.Catalog
             }
         }
 
-        public override void StopDevice()
+        protected override async Task StopDeviceAsync(CancellationToken cancellationToken)
         {
             HueEventReceived -= Hue_HueEventReceived;
             if (_cancellationTokenSource != null)
             {
-                _cancellationTokenSource.Cancel();
-                try { _eventsListenerTask?.GetAwaiter().GetResult(); }
+                await _cancellationTokenSource.CancelAsync().ConfigureAwait(false);
+                try { await _eventsListenerTask.ConfigureAwait(false); }
                 catch (OperationCanceledException) { }
                 _cancellationTokenSource.Dispose();
                 _cancellationTokenSource = null;
@@ -155,10 +176,10 @@ namespace RIoT2.Net.Devices.Catalog
             var reportConfigurations = new List<ReportTemplate>();
             var commandConfigurations = new List<CommandTemplate>();
 
-            if(State != DeviceState.Running)
+            if(State != DeviceState.Running || _lights?.data == null)
                 return deviceConfiguration;
 
-            foreach (var light in getLight().GetAwaiter().GetResult().data)
+            foreach (var light in _lights.data)
             {
                 var id = Guid.NewGuid().ToString();
                 commandConfigurations.Add(new CommandTemplate()

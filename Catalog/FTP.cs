@@ -26,9 +26,11 @@ namespace RIoT2.Net.Devices.Catalog
     /// This device is used to receive files from FTP (WebCameras forinstance)
     /// </summary>
     [RequiresHardware("Listens on an FTP port")]
-    public class FTP : DeviceBase<FtpOptions>, IDeviceWithConfiguration
+    public class FTP : AsyncDeviceBase<FtpOptions>, IDeviceWithConfiguration
     {
         private List<FtpUser> _ftpUsers;
+        // The running server; it ends when the service stops it.
+        private Task _server = Task.CompletedTask;
         private IFtpService _ftpService;
         private IMemoryStorageService _memoryStorageService;
 
@@ -69,16 +71,44 @@ namespace RIoT2.Net.Devices.Catalog
             }
         }
 
-        public override void StartDevice()
+        protected override async Task StartDeviceAsync(CancellationToken cancellationToken)
         {
-            _ftpService.StartAsync(_ftpUsers, Options.Port);
             _ftpService.FileReceived += _ftpService_FileReceived;
+            var server = _ftpService.StartAsync(_ftpUsers, Options.Port);
+            // A server that can't start (the port is taken) fails before its first await.
+            if (server.IsFaulted)
+            {
+                _ftpService.FileReceived -= _ftpService_FileReceived;
+                await server.ConfigureAwait(false);
+            }
+            _server = ObserveAsync(server);
         }
 
-        public override void StopDevice()
+        protected override async Task StopDeviceAsync(CancellationToken cancellationToken)
         {
             _ftpService.Stop();
             _ftpService.FileReceived -= _ftpService_FileReceived;
+            await _server.ConfigureAwait(false);
+            _server = Task.CompletedTask;
+        }
+
+        protected override Task RefreshAsync(ReportTemplate report, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        private async Task ObserveAsync(Task server)
+        {
+            try
+            {
+                await server.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // Stopped.
+            }
+            catch (Exception error)
+            {
+                SetState(DeviceState.Error, error.Message);
+                Logger.LogError(error, "The FTP server of {Device} stopped", Name);
+            }
         }
 
         private void _ftpService_FileReceived(InMemoryStream inMemoryStream)
