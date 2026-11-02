@@ -8,14 +8,32 @@ using RIoT2.Core.Utils;
 
 namespace RIoT2.Net.Devices.Catalog
 {
+    /// <summary>The <see cref="Mqtt"/> device's parameters.</summary>
+    public sealed class MqttOptions
+    {
+        [DeviceParameter("clientId", Description = "MQTT client id, unique on the broker, for example riot2-mqtt-device")]
+        public string ClientId { get; set; }
+
+        [DeviceParameter("serverUrl", Required = true, Description = "Broker host name or IP address (port 1883)")]
+        public string ServerUrl { get; set; }
+
+        [DeviceParameter("userName", Description = "Broker user; leave empty to connect anonymously")]
+        public string UserName { get; set; }
+
+        [DeviceParameter("password", Secret = true, Description = "Broker password")]
+        public string Password { get; set; }
+
+        [DeviceParameter("subscribeTopics", Description = "Topics reported as text, separated by ';', for example sensors/temperature;sensors/humidity")]
+        public string SubscribeTopics { get; set; }
+    }
+
     /// <summary>
     /// Mqtt Device is used to connect any mqtt device into system...
     /// </summary>
     [RequiresHardware("MQTT broker")]
-    public class Mqtt : DeviceBase, ICommandDevice, IAsyncCommandDevice, IAsyncDevice, IDeviceWithConfiguration
+    public class Mqtt : DeviceBase<MqttOptions>, ICommandDevice, IAsyncCommandDevice, IAsyncDevice, IDeviceWithConfiguration
     {
         private MqttClient _mqttClient;
-        private string _topics;
 
         public Mqtt(ILogger logger) : base(logger) { }
 
@@ -39,28 +57,13 @@ namespace RIoT2.Net.Devices.Catalog
             Id = Guid.NewGuid().ToString(),
             Name = "MQTT",
             ClassFullName = GetType().FullName,
-            DeviceParameters = new Dictionary<string, string>
-            {
-                { "clientId", "riot2-mqtt-device" },
-                { "serverUrl", "192.168.0.10" },
-                { "userName", "" },
-                { "password", "" },
-                { "subscribeTopics", "sensors/temperature;sensors/humidity" }
-            },
+            // The node adds the parameters from MqttOptions.
             CommandTemplates = [],
             ReportTemplates = []
         };
 
-        public override void ConfigureDevice()
-        {
-            string clientId = GetConfiguration<string>("clientId");
-            string serverUrl = GetConfiguration<string>("serverUrl");
-            string userName = GetConfiguration<string>("userName");
-            string password = GetConfiguration<string>("password");
-            _topics = GetConfiguration<string>("subscribeTopics");
-
-            _mqttClient = new MqttClient(clientId, serverUrl, userName, password);
-        }
+        public override void ConfigureDevice() =>
+            _mqttClient = new MqttClient(Options.ClientId, Options.ServerUrl, Options.UserName, Options.Password);
 
         public override void StartDevice() =>
             StartMqttAsync(CancellationToken.None).GetAwaiter().GetResult();
@@ -82,7 +85,7 @@ namespace RIoT2.Net.Devices.Catalog
         private async Task StartMqttAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            await _mqttClient.Start((_topics ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+            await _mqttClient.Start((Options.SubscribeTopics ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
             _mqttClient.MessageReceived += mqttClient_MessageReceived;
         }
 

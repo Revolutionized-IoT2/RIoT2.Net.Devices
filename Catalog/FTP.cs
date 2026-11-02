@@ -12,14 +12,23 @@ using RIoT2.Net.Devices.Services.Interfaces;
 namespace RIoT2.Net.Devices.Catalog
 {
 
+    /// <summary>The <see cref="FTP"/> device's parameters.</summary>
+    public sealed class FtpOptions
+    {
+        [DeviceParameter("ftpUsers", Secret = true, Description = "Accounts the cameras log in with: user:password pairs separated by '|'; the user name is a report template's address")]
+        public string Users { get; set; } = "";
+
+        [DeviceParameter("ftpPort", Default = "21", Description = "Port the FTP server listens on")]
+        public int Port { get; set; }
+    }
+
     /// <summary>
     /// This device is used to receive files from FTP (WebCameras forinstance)
     /// </summary>
     [RequiresHardware("Listens on an FTP port")]
-    public class FTP : DeviceBase, IDeviceWithConfiguration
+    public class FTP : DeviceBase<FtpOptions>, IDeviceWithConfiguration
     {
         private List<FtpUser> _ftpUsers;
-        private int _ftpPort = 0;
         private IFtpService _ftpService;
         private IMemoryStorageService _memoryStorageService;
 
@@ -33,18 +42,14 @@ namespace RIoT2.Net.Devices.Catalog
             Id = Guid.NewGuid().ToString(),
             Name = "FTP",
             ClassFullName = GetType().FullName,
-            DeviceParameters = new Dictionary<string, string>
-            {
-                { "ftpUsers", "camera1:<password>|camera2:<password>" },
-                { "ftpPort", "21" }
-            },
+            // The node adds the parameters from FtpOptions.
             ReportTemplates = []
         };
 
         public override void ConfigureDevice()
         {
             _ftpUsers = new List<FtpUser>();
-            var ftpUsers = GetConfiguration<string>("ftpUsers");
+            var ftpUsers = Options.Users;
 
             if (!String.IsNullOrEmpty(ftpUsers))
             {
@@ -62,23 +67,11 @@ namespace RIoT2.Net.Devices.Catalog
                     }
                 }
             }
-            _ftpPort = GetConfiguration<int> ("ftpPort");
-
-            /* we dont 
-            if (!_fileService.IsConfigured())
-            {
-                var ip = GetConfiguration<string>("StorageIp");
-                var user = GetConfiguration<string>("StorageUser");
-                var pw = GetConfiguration<string>("StoragePassword");
-                var folder = GetConfiguration<string>("StorageFolder");
-
-                _fileService.Configure(user, pw, folder, ip);
-            }*/
         }
 
         public override void StartDevice()
         {
-            _ftpService.StartAsync(_ftpUsers, _ftpPort);
+            _ftpService.StartAsync(_ftpUsers, Options.Port);
             _ftpService.FileReceived += _ftpService_FileReceived;
         }
 

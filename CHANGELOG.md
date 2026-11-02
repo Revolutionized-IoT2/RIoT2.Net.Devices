@@ -5,6 +5,22 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-02
+
+Typed device options ([I30](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-2.md#i30-typed-device-options-m), plan M12 step 4). Built on RIoT2.Core 1.16.0: **install into
+Node 1.11.0 or newer**. Parameter keys are unchanged, so stored configurations load as before.
+
+- Changed: AzureRelay, EasyPLC, FTP, Mqtt and Messaging read their parameters from options classes
+  (`AzureRelayOptions`, `EasyPlcOptions`, `FtpOptions`, `MqttOptions`, `MessagingOptions`). Their
+  templates list every parameter with its type, default, description and whether it is required or
+  secret, instead of placeholder values, and the UI shows typed fields.
+- Changed: a missing required value (`relayNamespace`, `connectionName`, `keyName`, `key`,
+  `ipAddress`, `serverUrl`) or a non-numeric port puts the device into the error state, with the
+  reason in its status. EasyPLC's `port` defaults to 10001 (it was 0 when missing), FTP's
+  `ftpPort` to 21 and Messaging's `smtp_Port` to 587. An empty MQTT `userName` or `password`
+  connects anonymously (no empty user name).
+- Removed: FTP's commented-out `Storage*` parameter reads.
+
 ## [1.3.1] - 2026-11-02
 
 Plugin packaging ([I29](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-2.md#i29-plugin-packaging-s), plan M12 step 3). Built on RIoT2.Core 1.14.0: install into Node

@@ -6,7 +6,7 @@ from a plugin package at startup.
 
 - Type: device plugin library
 - Target framework: `net10.0`
-- Core packages: `RIoT2.Core.Devices` (plus `RIoT2.Core.Http` and `RIoT2.Core.Mqtt` for the catalog devices that call web APIs or run an MQTT client), 1.14.0 (version in `Directory.Packages.props`); not the `RIoT2.Core` facade. `RIoT2.Core.Devices.Build` 1.15.0 packs the plugin zip
+- Core packages: `RIoT2.Core.Devices` (plus `RIoT2.Core.Http` and `RIoT2.Core.Mqtt` for the catalog devices that call web APIs or run an MQTT client), 1.16.0 (version in `Directory.Packages.props`); not the `RIoT2.Core` facade. `RIoT2.Core.Devices.Build` packs the plugin zip
 - Plugin entry point: `Plugin.cs`
 
 How plugins fit into the platform: [configuration contract](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/contracts/configuration.md).
@@ -55,7 +55,7 @@ Install this plugin only after the Node image has been updated to `net10.0`. A `
 cannot load into a `net9.0` node, while a `net9.0` plugin can load into the `net10.0` node.
 Release this plugin with the Node image that hosts it, node first. Plugin assemblies share the
 host's `RIoT2.Core*` assemblies, and a plugin built against a newer Core than the node's doesn't
-load: 1.3.0 and 1.3.1 (Core 1.14.0) need Node 1.10.0 or newer.
+load: 1.4.0 (Core 1.16.0) needs Node 1.11.0 or newer; 1.3.x (Core 1.14.0) Node 1.10.0.
 
 ## Plugin HTTP endpoints
 
@@ -72,19 +72,22 @@ exposing webhooks.
 
 ## Device catalog
 
-The list below is verified against `Catalog/*.cs`.
+The list below is verified against `Catalog/*.cs`. Required parameters are marked \*, secrets
+are masked in the UI. Devices with typed options (Azure Relay, EasyPLC, FTP, Messaging, MQTT,
+since 1.4.0) describe their parameters in the template and validate them at start: a missing
+required or invalid value puts the device into the error state with the reason.
 
 | Device | Parameters | Reports and commands |
 |---|---|---|
 | AP Systems | `appId`, `appSecret`, `sid`, `ecuId` | Hourly energy summaries: `today`, `month`, `year`, `lifetime` with `unit` and `precision` report parameters. |
-| Azure Relay | `relayNamespace`, `connectionName`, `keyName`, `key` | Starts/stops an Azure Relay listener. Message handling is not implemented in code. |
-| EasyPLC | `ipAddress`, `port` (default `10001`) | Async/cancellable PLC marker read/write driver. Marker command addresses are `M-{netId}-{expansion}-{marker}`; `refresh` reads markers. Non-zero write expansions are rejected. |
+| Azure Relay | `relayNamespace`\*, `connectionName`\*, `keyName`\*, `key`\* (secret) | Starts/stops an Azure Relay listener. Message handling is not implemented in code. |
+| EasyPLC | `ipAddress`\*, `port` (default `10001`) | Async/cancellable PLC marker read/write driver. Marker command addresses are `M-{netId}-{expansion}-{marker}`; `refresh` reads markers. Non-zero write expansions are rejected. |
 | Electricity Price | `securityToken`, `domain`, `endpoint`, `vat` | Scheduled current price report at address `price`, with `unit=c/kWh` and `precision`. Cached XML is stored at `Data/priceData.xml`. |
 | Eufy Security | `serviceIp`, `port` | Dynamic camera/security reports and a station `guardMode` command after the external eufy-security-ws service is connected. |
-| FTP | `ftpUsers` (`user:password` pairs separated by `\|`), `ftpPort` | File uploads become in-memory photo `SecurityReport` values keyed by FTP username. |
+| FTP | `ftpUsers` (secret; `user:password` pairs separated by `\|`), `ftpPort` (default `21`) | File uploads become in-memory photo `SecurityReport` values keyed by FTP username. |
 | Hue | `bridgeIpAddress`, `apiKey` | Dynamic light command/report templates when running; event-stream updates merge partial state and include Matter endpoint metadata. |
-| Messaging | `firebaseProjectName`, `smtp_Server`, `smtp_User`, `smtp_Password`, `smtp_Port` | Commands `fb` (Firebase topic message) and `mail` (SMTP email). Firebase service account JSON is read from `Data/service_account.json`. |
-| MQTT | `clientId`, `serverUrl` (broker host, port 1883), `userName`, `password`, `subscribeTopics` (separated by `;`) | Publishes command payloads to command addresses and reports subscribed topic payloads as text. |
+| Messaging | `firebaseProjectName`, `smtp_Server`, `smtp_User`, `smtp_Password` (secret), `smtp_Port` (default `587`); mail needs the server, user and password | Commands `fb` (Firebase topic message) and `mail` (SMTP email). Firebase service account JSON is read from `Data/service_account.json`. |
+| MQTT | `clientId`, `serverUrl`\* (broker host, port 1883), `userName`, `password` (secret), `subscribeTopics` (separated by `;`) | Publishes command payloads to command addresses and reports subscribed topic payloads as text. |
 | Netatmo Security | `token`, `refresh_token`, `clientId`, `clientSecret` | Dynamic security camera reports plus `refresh` and `set_home` commands; rotated tokens are persisted per client id (see below). |
 | Netatmo Weather | `token`, `refresh_token`, `clientId`, `clientSecret`, `stationId` | Weather station and module measurements; rotated tokens are persisted per client id (see below). |
 | Timer | No device parameters; uses report-level schedules | Emits the report address whenever the scheduler refreshes that report. |

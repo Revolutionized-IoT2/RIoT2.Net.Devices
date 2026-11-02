@@ -7,8 +7,24 @@ using RIoT2.Net.Devices.Services.Interfaces;
 
 namespace RIoT2.Net.Devices.Catalog
 {
+    /// <summary>The <see cref="AzureRelay"/> device's parameters: an Azure Relay hybrid connection.</summary>
+    public sealed class AzureRelayOptions
+    {
+        [DeviceParameter("relayNamespace", Required = true, Description = "<namespace>.servicebus.windows.net")]
+        public string RelayNamespace { get; set; }
+
+        [DeviceParameter("connectionName", Required = true, Description = "Hybrid connection name")]
+        public string ConnectionName { get; set; }
+
+        [DeviceParameter("keyName", Required = true, Description = "Shared access policy name")]
+        public string KeyName { get; set; }
+
+        [DeviceParameter("key", Required = true, Secret = true, Description = "Shared access key")]
+        public string Key { get; set; }
+    }
+
     [RequiresHardware("Azure Relay namespace")]
-    public class AzureRelay : DeviceBase, IDeviceWithConfiguration
+    public class AzureRelay : DeviceBase<AzureRelayOptions>, IDeviceWithConfiguration
     {
         private readonly ILogger _logger;
         private readonly IAzureRelayService _azureRelayService;
@@ -36,24 +52,13 @@ namespace RIoT2.Net.Devices.Catalog
             Id = Guid.NewGuid().ToString(),
             Name = "Azure Relay",
             ClassFullName = GetType().FullName,
-            DeviceParameters = new Dictionary<string, string>
-            {
-                { "relayNamespace", "<namespace>.servicebus.windows.net" },
-                { "connectionName", "<hybrid-connection>" },
-                { "keyName", "<shared-access-policy>" },
-                { "key", "<shared-access-key>" }
-            },
+            // The node adds the parameters from AzureRelayOptions.
             ReportTemplates = []
         };
 
         public override void ConfigureDevice()
         {
-            _azureRelayService.Configure(
-                GetConfiguration<string>("relayNamespace"),
-                GetConfiguration<string>("connectionName"),
-                GetConfiguration<string>("keyName"),
-                GetConfiguration<string>("key")
-                );
+            _azureRelayService.Configure(Options.RelayNamespace, Options.ConnectionName, Options.KeyName, Options.Key);
         }
 
         public override void StartDevice()

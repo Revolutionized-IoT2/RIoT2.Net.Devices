@@ -32,6 +32,9 @@ dotnet test .\RIoT2.Net.Devices\Tests\RIoT2.Net.Devices.Tests.csproj -c Release
   `coreVersion`. `RIoT2PluginName` in the csproj is the manifest's `name` ([CI guide](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/guides/ci.md)).
 - RIoT2.Tests builds this repository's `main` and loads it into the Node in its
   [end-to-end tests](https://github.com/Revolutionized-IoT2/RIoT2.Tests/blob/main/README.md#end-to-end-tests), which drive the `Virtual` device.
+- New or changed device parameters go into the device's options class (`DeviceBase<TOptions>`,
+  `[DeviceParameter]`, Core 1.16.0); keep the keys stored configurations use. `DeviceOptionsTests`
+  pins the migrated devices' definitions.
 - `RIoT2.Core.Devices`, `RIoT2.Core.Http`, `RIoT2.Core.Mqtt`, `RIoT2.Core.Devices.Build` (`PrivateAssets="all"`) and `RIoT2.Core.Devices.Testing` come from GitHub Packages, pinned in
   `Directory.Packages.props` (plan M1 step 4: never the `RIoT2.Core` facade or `RIoT2.Core.Node`). To try an unreleased Core, restore with `C:\Src\RIoT2\.localfeed` as
   an extra NuGet source. A local feed package is not a release.

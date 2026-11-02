@@ -9,13 +9,21 @@ using Microsoft.Extensions.Logging;
 
 namespace RIoT2.Net.Devices.Catalog
 {
+    /// <summary>The <see cref="EasyPLC"/> device's parameters.</summary>
+    public sealed class EasyPlcOptions
+    {
+        [DeviceParameter("ipAddress", Required = true, Description = "IP address of the Easy PLC (easyE4)")]
+        public string IpAddress { get; set; }
+
+        [DeviceParameter("port", Default = "10001", Description = "TCP port of the PLC")]
+        public int Port { get; set; }
+    }
+
     [RequiresHardware("Easy PLC on the network")]
-    public class EasyPLC : AsyncDeviceBase, IAsyncCommandDevice, IDeviceWithConfiguration
+    public class EasyPLC : AsyncDeviceBase<EasyPlcOptions>, IAsyncCommandDevice, IDeviceWithConfiguration
     {
         private IEasyPlcConnection _client;
         private readonly Func<IEasyPlcConnection> _connectionFactory;
-        private string _plcIp;
-        private int _plcPort = 10001;
         private bool _connected;
         private Dictionary<string, bool> _states = new Dictionary<string, bool>();
         private readonly SemaphoreSlim _io = new(1, 1);
@@ -63,22 +71,13 @@ namespace RIoT2.Net.Devices.Catalog
             Name = "Easy PLC",
             ClassFullName = GetType().FullName,
             RefreshSchedule = DeviceTemplates.DefaultRefreshSchedule,
-            DeviceParameters = new Dictionary<string, string>
-            {
-                { "ipAddress", "192.168.0.20" },
-                { "port", "10001" }
-            },
+            // The node adds the parameters from EasyPlcOptions.
             CommandTemplates = [],
             ReportTemplates = []
         };
 
         public override void ConfigureDevice()
         {
-            _plcIp = GetConfiguration<string>("ipAddress");
-            _plcPort = GetConfiguration<int>("port");
-            
-            if (String.IsNullOrEmpty(_plcIp))
-                throw new Exception("Configuration not valid. Missing IP Adress");
             _states.Clear();
         }
 
@@ -131,7 +130,7 @@ namespace RIoT2.Net.Devices.Catalog
                 _client = _connectionFactory();
                 byte[] testConnection = new byte[] { 0x45, 0x07, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x5f }; //test PLC?
                 byte[] initConnection = new byte[] { 0x45, 0x07, 0x01, 0x00, 0x80, 0x00, 0x00, 0x3d, 0x9f }; //init baud rate?
-                await _client.ConnectAsync(_plcIp, _plcPort, cancellationToken).ConfigureAwait(false);
+                await _client.ConnectAsync(Options.IpAddress, Options.Port, cancellationToken).ConfigureAwait(false);
 
                 var tcpStream = _client.GetStream();
                 byte[] receiveBufferTest = new byte[8];

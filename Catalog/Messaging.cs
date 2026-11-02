@@ -6,21 +6,34 @@ using RIoT2.Core.Abstracts;
 using RIoT2.Core.Interfaces;
 using RIoT2.Core.Utils;
 using RIoT2.Core.Models;
+using RIoT2.Core.Plugins;
 using ValueType = RIoT2.Core.ValueType;
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    public class Messaging : DeviceBase, ICommandDevice, IDeviceWithConfiguration
+    /// <summary>The <see cref="Messaging"/> device's parameters. Both channels are optional.</summary>
+    public sealed class MessagingOptions
+    {
+        [DeviceParameter("firebaseProjectName", Description = "Firebase project for push messages; needs Data/service_account.json on the node")]
+        public string FirebaseProjectName { get; set; } = "";
+
+        [DeviceParameter("smtp_Server", Description = "SMTP server for mail (TLS); leave empty to send no mail")]
+        public string SmtpServer { get; set; } = "";
+
+        [DeviceParameter("smtp_Port", Default = "587", Description = "SMTP port")]
+        public int SmtpPort { get; set; }
+
+        [DeviceParameter("smtp_User", Description = "SMTP user, also the sender address")]
+        public string SmtpUser { get; set; } = "";
+
+        [DeviceParameter("smtp_Password", Secret = true, Description = "SMTP password")]
+        public string SmtpPassword { get; set; } = "";
+    }
+
+    public class Messaging : DeviceBase<MessagingOptions>, ICommandDevice, IDeviceWithConfiguration
     {
         private GoogleOAuth2 _authentication;
         private SmtpClient _smtpClient;
-        //private string _applicationFolder;
-
-        private string firebaseProjectName;
-        private string smtp_Server;
-        private string smtp_Port;
-        private string smtp_User;
-        private string smtp_Password;
         private const string _serviceAccountFile = "Data/service_account.json";
 
         public Messaging(ILogger logger) : base(logger) 
@@ -44,22 +57,13 @@ namespace RIoT2.Net.Devices.Catalog
             else if (command.Address.ToLower() == "mail") 
             {
                 var msg = Json.Deserialize<MailMsg>(value);
-                sendMail(msg.GetMailMessage(smtp_User));
+                sendMail(msg.GetMailMessage(Options.SmtpUser));
             }
         }
 
         public override void ConfigureDevice()
         {
-            //configure device parameters
-            firebaseProjectName = "riot-184512";
-
-            firebaseProjectName = GetConfiguration<string>("firebaseProjectName");
-            smtp_Server = GetConfiguration<string>("smtp_Server");
-            smtp_Password = GetConfiguration<string>("smtp_Password");
-            smtp_User = GetConfiguration<string>("smtp_User");
-            smtp_Port = GetConfiguration<string>("smtp_Port");
-
-            //configure device
+            _smtpClient = null;
             configureSmtpClient();
 
             var serviceAccountJson = readServiceAccount().Result;
@@ -84,12 +88,7 @@ namespace RIoT2.Net.Devices.Catalog
             var deviceConfiguration = new DeviceConfiguration();
             deviceConfiguration.Id = Guid.NewGuid().ToString();
             deviceConfiguration.Name = "Messaging";
-            deviceConfiguration.DeviceParameters = new Dictionary<string, string>();
-            deviceConfiguration.DeviceParameters.Add("firebaseProjectName", "<firebase-project>");
-            deviceConfiguration.DeviceParameters.Add("smtp_Server", "<smtp-server>");
-            deviceConfiguration.DeviceParameters.Add("smtp_User", "<smtp-user>");
-            deviceConfiguration.DeviceParameters.Add("smtp_Password", "<smtp-password>");
-            deviceConfiguration.DeviceParameters.Add("smtp_Port", "587");
+            // The node adds the parameters from MessagingOptions.
 
             deviceConfiguration.ClassFullName = this.GetType().FullName;
             var commandConfigurations = new List<CommandTemplate>();
@@ -142,7 +141,7 @@ namespace RIoT2.Net.Devices.Catalog
         private async Task<string> sendFBMessage(FirebaseServiceMessage msg)
         {
             string retVal = null;
-            if (_authentication == null || String.IsNullOrEmpty(firebaseProjectName))
+            if (_authentication == null || String.IsNullOrEmpty(Options.FirebaseProjectName))
                 return null;
 
             try
@@ -151,7 +150,7 @@ namespace RIoT2.Net.Devices.Catalog
                 var headers = new Dictionary<string, string>();
                 headers.Add("Authorization", "Bearer " + await _authentication.GetToken());
 
-                var httpResult = await Core.Utils.Web.PostAsync($"https://fcm.googleapis.com/v1/projects/{firebaseProjectName}/messages:send", data, headers);
+                var httpResult = await Core.Utils.Web.PostAsync($"https://fcm.googleapis.com/v1/projects/{Options.FirebaseProjectName}/messages:send", data, headers);
                 if (httpResult.StatusCode == System.Net.HttpStatusCode.OK)
                     retVal = data;
             }
@@ -163,23 +162,18 @@ namespace RIoT2.Net.Devices.Catalog
         }
         private bool configureSmtpClient()
         {
-            if (String.IsNullOrEmpty(smtp_Server) ||
-                String.IsNullOrEmpty(smtp_Port) ||
-                String.IsNullOrEmpty(smtp_User) ||
-                String.IsNullOrEmpty(smtp_Password))
-                return false;
-
-            int port;
-            if (!Int32.TryParse(smtp_Port, out port))
+            if (String.IsNullOrEmpty(Options.SmtpServer) ||
+                String.IsNullOrEmpty(Options.SmtpUser) ||
+                String.IsNullOrEmpty(Options.SmtpPassword))
                 return false;
 
             _smtpClient = new SmtpClient();
-            _smtpClient.Host = smtp_Server;
-            _smtpClient.Port = port;
+            _smtpClient.Host = Options.SmtpServer;
+            _smtpClient.Port = Options.SmtpPort;
             _smtpClient.UseDefaultCredentials = false;
             _smtpClient.DeliveryMethod = SmtpDeliveryMethod.Network;
             _smtpClient.EnableSsl = true;
-            _smtpClient.Credentials = new NetworkCredential(smtp_User, smtp_Password);
+            _smtpClient.Credentials = new NetworkCredential(Options.SmtpUser, Options.SmtpPassword);
 
             return true;
         }
