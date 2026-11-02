@@ -7,12 +7,9 @@ using RIoT2.Net.Devices.Services.Interfaces;
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    public class Web : DeviceBase, ICommandDevice, IAsyncCommandDevice
+    public class Web : AsyncDeviceBase, IAsyncCommandDevice
     {
         private readonly IWebhookService _webhookService;
-
-        public void ExecuteCommand(string commandId, string value) =>
-            LegacySync.Wait(ExecuteCommandAsync(commandId, value, CancellationToken.None));
 
         public async Task ExecuteCommandAsync(string commandId, string value, CancellationToken cancellationToken)
         {
@@ -59,14 +56,16 @@ namespace RIoT2.Net.Devices.Catalog
             });
         }
 
-        public override void StartDevice()
+        protected override Task StartDeviceAsync(CancellationToken cancellationToken)
         {
             _webhookService.WebhookReceived += webhookService_WebhookReceived;
+            return Task.CompletedTask;
         }
 
-        public override void StopDevice()
+        protected override Task StopDeviceAsync(CancellationToken cancellationToken)
         {
             _webhookService.WebhookReceived -= webhookService_WebhookReceived;
+            return Task.CompletedTask;
         }
 
         public override void ConfigureDevice()

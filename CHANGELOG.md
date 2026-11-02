@@ -5,6 +5,16 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-02
+
+Async-first devices ([I41](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-3-4.md#i41-async-first-plugins-and-the-plugin-template-m)). Built on RIoT2.Core 1.23.0: **install into Node 1.15.0 or newer**. No
+parameter, template or behaviour changes.
+
+- Changed: `Web` derives from `AsyncDeviceBase`, so every catalog device with I/O is async.
+- Removed: `LegacySync` and the synchronous `ExecuteCommand` shims of Hue, Mqtt, Messaging, EasyPLC,
+  EufySecurity, NetatmoSecurity and Web; `AsyncDeviceBase` supplies `ExecuteCommand`, and the node
+  calls `ExecuteCommandAsync`.
+- Tests: the EasyPLC, ElectricityPrice and Hue tests call the async members.
 - Build: `renovate.json` extends the shared Renovate preset ([I33](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-2.md#i33-supply-chain-s)). Renovate opens grouped
   update pull requests once the app is installed (MA7).
 - Release: the plugin zip gets `<zip>.spdx.json`, an SPDX SBOM of every package the plugin

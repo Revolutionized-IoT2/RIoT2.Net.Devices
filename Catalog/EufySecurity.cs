@@ -102,9 +102,6 @@ namespace RIoT2.Net.Devices.Catalog
             return deviceConfiguration;
         }
 
-        public void ExecuteCommand(string commandId, string value) =>
-            LegacySync.Wait(ExecuteCommandAsync(commandId, value, CancellationToken.None));
-
         public async Task ExecuteCommandAsync(string commandId, string value, CancellationToken cancellationToken)
         {
             var command = CommandTemplates?.FirstOrDefault(x => x.Id == commandId);

@@ -76,8 +76,9 @@ This repository implements plugin-side pieces of these hub contracts:
   runtime files under `Data/`.
 - Devices doing I/O derive from `AsyncDeviceBase` and await it with the node's cancellation token,
   HTTP through an `internal virtual SendAsync` the lifecycle tests replace (`DeviceLifecycleTests`).
-  No `.Result`, `.Wait()` or `GetAwaiter().GetResult()`: the threading analyzers fail CI (I31). The
-  only wait is `LegacySync.Wait` in the sync `ExecuteCommand` that `IAsyncCommandDevice` requires.
+  No `.Result`, `.Wait()` or `GetAwaiter().GetResult()`: the threading analyzers fail CI (I31).
+  Since Core 1.23.0 (I41) `AsyncDeviceBase` supplies `ExecuteCommand`: don't add a sync shim (CS0114),
+  and test devices through their async members or `DeviceCalls`.
   `GetConfigurationTemplate` is synchronous: build it from cached data, never call the network.
 - Nullable is on (I32). `Refresh`/`RefreshAsync` overrides take `ReportTemplate?` (null: the
   whole device); API payload models in `Models/` turn off CS8618 in a nested `.editorconfig`.

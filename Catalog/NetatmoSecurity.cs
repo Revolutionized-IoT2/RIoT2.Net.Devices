@@ -240,9 +240,6 @@ namespace RIoT2.Net.Devices.Catalog
             }
         }
 
-        public void ExecuteCommand(string commandId, string value) =>
-            LegacySync.Wait(ExecuteCommandAsync(commandId, value, CancellationToken.None));
-
         public async Task ExecuteCommandAsync(string commandId, string value, CancellationToken cancellationToken)
         {
             //ínstead of timer, device can be refreshed by command -> webhook

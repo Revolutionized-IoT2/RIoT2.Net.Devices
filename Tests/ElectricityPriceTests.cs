@@ -11,7 +11,7 @@ namespace RIoT2.Net.Devices.Tests;
 public class ElectricityPriceTests
 {
     [TestMethod]
-    public void RefreshUsesConfiguredReportTemplatePrecision()
+    public async Task RefreshUsesConfiguredReportTemplatePrecision()
     {
         var device = new TestElectricityPrice();
         var reportTemplate = new ReportTemplate
@@ -26,7 +26,7 @@ public class ElectricityPriceTests
             DeviceParameters = [],
             ReportTemplates = [reportTemplate]
         });
-        device.Start();
+        await device.StartAsync(default);
         typeof(ElectricityPrice)
             .GetField("_priceData", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(device, ValidPriceData(123.456m));
@@ -34,7 +34,7 @@ public class ElectricityPriceTests
         Report? published = null;
         device.ReportUpdated += (_, report) => published = (Report)report;
 
-        device.Refresh(null);
+        await device.RefreshReportAsync("electricity", "electricity", default);
 
         Assert.IsNotNull(published);
         Assert.AreEqual(12.3m, published.Value.GetValue<decimal>());

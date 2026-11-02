@@ -10,9 +10,9 @@ namespace RIoT2.Net.Devices.Tests;
 public class HueEventTests
 {
     [TestMethod]
-    public void BrightnessOnlyEventDoesNotInventAnOnState()
+    public async Task BrightnessOnlyEventDoesNotInventAnOnState()
     {
-        var (device, reports) = CreateDevice();
+        var (device, reports) = await CreateDeviceAsync();
 
         Update(device, """{"id":"light-1","type":"light","dimming":{"brightness":42}}""");
 
@@ -22,9 +22,9 @@ public class HueEventTests
     }
 
     [TestMethod]
-    public void PartialUpdatesPreserveKnownFieldsAndUseLatestBrightnessForColor()
+    public async Task PartialUpdatesPreserveKnownFieldsAndUseLatestBrightnessForColor()
     {
-        var (device, reports) = CreateDevice();
+        var (device, reports) = await CreateDeviceAsync();
         Update(device, """{"id":"light-1","type":"light","on":{"on":true},"dimming":{"brightness":60},"color":{"xy":{"x":0.4,"y":0.3}}}""");
         Update(device, """{"id":"light-1","type":"light","dimming":{"brightness":42}}""");
         Update(device, """{"id":"light-1","type":"light","color":{"xy":{"x":0.3,"y":0.4}}}""");
@@ -45,9 +45,9 @@ public class HueEventTests
     }
 
     [TestMethod]
-    public void ColorBeforeBrightnessIsRetainedWithoutInventingBrightness()
+    public async Task ColorBeforeBrightnessIsRetainedWithoutInventingBrightness()
     {
-        var (device, reports) = CreateDevice();
+        var (device, reports) = await CreateDeviceAsync();
         Update(device, """{"id":"light-1","type":"light","color":{"xy":{"x":0.3,"y":0.4}}}""");
         Assert.IsNull(reports[0].Color);
         Assert.IsNull(reports[0].Dimming);
@@ -59,9 +59,9 @@ public class HueEventTests
     }
 
     [TestMethod]
-    public void ExplicitInvalidTemperatureDoesNotReportStaleMirek()
+    public async Task ExplicitInvalidTemperatureDoesNotReportStaleMirek()
     {
-        var (device, reports) = CreateDevice();
+        var (device, reports) = await CreateDeviceAsync();
         Update(device, """{"id":"light-1","type":"light","color_temperature":{"mirek":300,"mirek_valid":true}}""");
         Update(device, """{"id":"light-1","type":"light","color_temperature":{"mirek":300,"mirek_valid":false}}""");
 
@@ -70,9 +70,9 @@ public class HueEventTests
     }
 
     [TestMethod]
-    public void MixedAndEmptyEventBatchesStillProcessEveryLight()
+    public async Task MixedAndEmptyEventBatchesStillProcessEveryLight()
     {
-        var (device, reports) = CreateDevice();
+        var (device, reports) = await CreateDeviceAsync();
 
         device.Hue_HueEventReceived("""
             data: [{"type":"update","data":[]},{"type":"update","data":null},{"type":"update","data":[{"id":"bridge","type":"bridge"},{"id":"light-1","type":"light","on":{"on":true}},null]}]
@@ -83,16 +83,16 @@ public class HueEventTests
     }
 
     [TestMethod]
-    public void SnapshotsAreIsolatedByLightAndClearedOnReconfiguration()
+    public async Task SnapshotsAreIsolatedByLightAndClearedOnReconfiguration()
     {
-        var (device, reports) = CreateDevice();
+        var (device, reports) = await CreateDeviceAsync();
         Update(device, """{"id":"light-1","type":"light","on":{"on":true}}""");
         Update(device, """{"id":"light-2","type":"light","dimming":{"brightness":10}}""");
         Assert.IsNull(reports[1].State);
 
-        device.Stop();
+        await device.StopAsync(default);
         device.Initialize(Configuration());
-        device.Start();
+        await device.StartAsync(default);
         Update(device, """{"id":"light-1","type":"light","dimming":{"brightness":30}}""");
 
         Assert.IsNull(reports[2].State);
@@ -102,13 +102,13 @@ public class HueEventTests
     private static void Update(Hue device, string light) =>
         device.Hue_HueEventReceived("data: [{\"type\":\"update\",\"data\":[" + light + "]}]");
 
-    private static (TestHue, List<ReportedLight>) CreateDevice()
+    private static async Task<(TestHue, List<ReportedLight>)> CreateDeviceAsync()
     {
         var device = new TestHue();
         var reports = new List<ReportedLight>();
         device.Initialize(Configuration());
         device.ReportUpdated += (_, report) => reports.Add(((Report)report).Value.GetValue<ReportedLight>()!);
-        device.Start();
+        await device.StartAsync(default);
         return (device, reports);
     }
 

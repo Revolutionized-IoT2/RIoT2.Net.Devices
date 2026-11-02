@@ -11,18 +11,18 @@ namespace RIoT2.Net.Devices.Tests;
 public class EasyPlcLifecycleTests
 {
     [TestMethod]
-    public void ReconfigurationCreatesFreshConnectionAndUsesNewEndpoint()
+    public async Task ReconfigurationCreatesFreshConnectionAndUsesNewEndpoint()
     {
         var first = new FakeConnection();
         var second = new FakeConnection();
         var connections = new Queue<IEasyPlcConnection>([first, second]);
         var device = new EasyPLC(NullLogger.Instance, connections.Dequeue);
         device.Initialize(Configuration("first.invalid", 10001));
-        device.Start();
-        device.Stop();
+        await device.StartAsync(default);
+        await device.StopAsync(default);
         device.Initialize(Configuration("second.invalid", 10002));
-        device.Start();
-        device.Stop();
+        await device.StartAsync(default);
+        await device.StopAsync(default);
 
         Assert.AreEqual(("first.invalid", 10001), first.Endpoint);
         Assert.AreEqual(("second.invalid", 10002), second.Endpoint);
@@ -39,17 +39,17 @@ public class EasyPlcLifecycleTests
     }
 
     [TestMethod]
-    public void RepeatedStartAndStopAreIdempotent()
+    public async Task RepeatedStartAndStopAreIdempotent()
     {
         var connection = new FakeConnection();
         var created = 0;
         var device = new EasyPLC(NullLogger.Instance, () => { created++; return connection; });
         device.Initialize(Configuration());
 
-        device.Start();
-        device.Start();
-        device.Stop();
-        device.Stop();
+        await device.StartAsync(default);
+        await device.StartAsync(default);
+        await device.StopAsync(default);
+        await device.StopAsync(default);
 
         Assert.AreEqual(1, created);
         Assert.AreEqual(1, connection.DisposeCount);
@@ -59,7 +59,7 @@ public class EasyPlcLifecycleTests
     [DataRow("connect")]
     [DataRow("truncated")]
     [DataRow("rejected")]
-    public void FailedConnectionIsDisposedAndNextStartCanRetry(string failure)
+    public async Task FailedConnectionIsDisposedAndNextStartCanRetry(string failure)
     {
         var failed = new FakeConnection(failure);
         var successful = new FakeConnection();
@@ -67,25 +67,25 @@ public class EasyPlcLifecycleTests
         var device = new EasyPLC(NullLogger.Instance, connections.Dequeue);
         device.Initialize(Configuration());
 
-        Assert.ThrowsExactly<Exception>(device.Start);
+        await Assert.ThrowsExactlyAsync<Exception>(() => device.StartAsync(default));
         Assert.IsTrue(failed.Disposed);
-        device.Start();
-        device.Stop();
+        await device.StartAsync(default);
+        await device.StopAsync(default);
 
         Assert.IsTrue(successful.Disposed);
         Assert.AreEqual(0, connections.Count);
     }
 
     [TestMethod]
-    public void FragmentedInitializationResponsesAreReadCompletely()
+    public async Task FragmentedInitializationResponsesAreReadCompletely()
     {
         var connection = new FakeConnection();
         connection.Stream.MaxRead = 1;
         var device = new EasyPLC(NullLogger.Instance, () => connection);
         device.Initialize(Configuration());
 
-        device.Start();
-        device.Stop();
+        await device.StartAsync(default);
+        await device.StopAsync(default);
 
         Assert.AreEqual(16, connection.Stream.ReadCalls);
     }
