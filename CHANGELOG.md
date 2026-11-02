@@ -5,6 +5,11 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+- Build: `renovate.json` extends the shared Renovate preset ([I33](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-2.md#i33-supply-chain-s)). Renovate opens grouped
+  update pull requests once the app is installed (MA7).
+- Release: the plugin zip gets `<zip>.spdx.json`, an SPDX SBOM of every package the plugin
+  depends on, on the GitHub release.
+
 ## [1.6.0] - 2026-11-02
 
 Nullable reference types ([I32](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-2.md#i32-nullable-reference-types-m)). Built on RIoT2.Core 1.17.0: install into Node 1.12.0 or newer.
