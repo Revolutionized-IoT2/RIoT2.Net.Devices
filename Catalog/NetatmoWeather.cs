@@ -9,8 +9,15 @@ using System.Reflection;
 
 namespace RIoT2.Net.Devices.Catalog
 {
+    /// <summary>The <see cref="NetatmoWeather"/> device's parameters: the Netatmo app and the station.</summary>
+    public sealed class NetatmoWeatherOptions : NetatmoOptions
+    {
+        [DeviceParameter("stationId", Description = "MAC address of the weather station")]
+        public string StationId { get; set; } = "";
+    }
+
     [RequiresHardware("Netatmo API")]
-    public class NetatmoWeather : NetatmoBase, IDeviceWithConfiguration
+    public class NetatmoWeather : NetatmoBase<NetatmoWeatherOptions>, IDeviceWithConfiguration
     {
         private string? _stationId;
         // The last station data, which the template lists; the template is built without I/O.
@@ -20,14 +27,10 @@ namespace RIoT2.Net.Devices.Catalog
 
         public override void ConfigureDevice()
         {
-            string? token = GetConfiguration<string>("token");
-            string? refreshToken = GetConfiguration<string>("refresh_token");
-            string? clientId = GetConfiguration<string>("clientId");
-            string? clientSecret = GetConfiguration<string>("clientSecret");
-            _stationId = GetConfiguration<string>("stationId");
+            _stationId = Options.StationId;
             _stationsData = null;
 
-            ConfigureNetatmo(token, refreshToken, clientId, clientSecret);
+            ConfigureNetatmo();
         }
 
         protected override Task StartDeviceAsync(CancellationToken cancellationToken) => generateWeatherReports(cancellationToken);

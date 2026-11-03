@@ -94,7 +94,7 @@ public class DeviceLifecycleTests
     {
         var client = new FakeApSystemsClient();
         var device = new ApSystems(NullLogger.Instance, client);
-        device.Initialize(Configuration(new() { ["ecuId"] = "ecu" },
+        device.Initialize(Configuration(new() { ["appId"] = "app", ["appSecret"] = "secret", ["sid"] = "sid", ["ecuId"] = "ecu" },
             reports: [new ReportTemplate { Id = "today", Address = "today" }, new ReportTemplate { Id = "year", Address = "year" }]));
         var reports = Capture(device);
 
@@ -119,7 +119,7 @@ public class DeviceLifecycleTests
         var client = new FakeApSystemsClient();
         client.Summary.SetException(new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout."));
         var device = new ApSystems(NullLogger.Instance, client);
-        device.Initialize(Configuration(new() { ["ecuId"] = "ecu" }));
+        device.Initialize(Configuration(new() { ["appId"] = "app", ["appSecret"] = "secret", ["sid"] = "sid", ["ecuId"] = "ecu" }));
 
         var error = await Assert.ThrowsAsync<Exception>(() => device.StartAsync(CancellationToken.None));
         Assert.IsInstanceOfType<TimeoutException>(error.InnerException);

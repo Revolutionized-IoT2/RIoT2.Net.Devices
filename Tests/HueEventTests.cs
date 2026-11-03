@@ -115,7 +115,7 @@ public class HueEventTests
     private static DeviceConfiguration Configuration() => new()
     {
         Id = "hue",
-        DeviceParameters = [],
+        DeviceParameters = new() { ["bridgeIpAddress"] = "hue.invalid", ["apiKey"] = "key" },
         ReportTemplates =
         [
             new ReportTemplate { Id = "report-1", Address = "light-1" },

@@ -11,8 +11,18 @@ using ValueType = RIoT2.Core.ValueType;
 
 namespace RIoT2.Net.Devices.Catalog
 {
+    /// <summary>The <see cref="Hue"/> device's parameters: the Hue bridge and its application key.</summary>
+    public sealed class HueOptions
+    {
+        [DeviceParameter("bridgeIpAddress", Required = true, Description = "IP address of the Hue bridge")]
+        public string BridgeIpAddress { get; set; } = "";
+
+        [DeviceParameter("apiKey", Required = true, Secret = true, Description = "Hue application key (hue-application-key)")]
+        public string ApiKey { get; set; } = "";
+    }
+
     [RequiresHardware("Hue bridge")]
-    public class Hue : AsyncDeviceBase, IAsyncCommandDevice, IDeviceWithConfiguration, IMatterDevice
+    public class Hue : AsyncDeviceBase<HueOptions>, IAsyncCommandDevice, IDeviceWithConfiguration, IMatterDevice
     {
         private event HueEventHandler? HueEventReceived;
         private string? _bridgeIpAddress = "192.168.0.4";
@@ -52,8 +62,8 @@ namespace RIoT2.Net.Devices.Catalog
 
         public override void ConfigureDevice()
         {
-            _bridgeIpAddress = GetConfiguration<string>("bridgeIpAddress");
-            _apikey = GetConfiguration<string>("apiKey");
+            _bridgeIpAddress = Options.BridgeIpAddress;
+            _apikey = Options.ApiKey;
             lock (_lightStateLock)
                 _lightStates.Clear();
             _lights = null;

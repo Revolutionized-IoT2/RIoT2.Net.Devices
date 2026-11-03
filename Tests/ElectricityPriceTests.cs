@@ -23,7 +23,8 @@ public class ElectricityPriceTests
         device.Initialize(new DeviceConfiguration
         {
             Id = "electricity",
-            DeviceParameters = [],
+            // The required token, and an endpoint that never reaches ENTSO-E.
+            DeviceParameters = new() { ["securityToken"] = "t", ["endpoint"] = "https://prices.invalid/api" },
             ReportTemplates = [reportTemplate]
         });
         await device.StartAsync(default);

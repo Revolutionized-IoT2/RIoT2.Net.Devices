@@ -9,8 +9,18 @@ using System.Net.Http.Headers;
 
 namespace RIoT2.Net.Devices.Catalog
 {
+    /// <summary>The <see cref="WaterConsumption"/> device's parameters.</summary>
+    public sealed class WaterConsumptionOptions
+    {
+        [DeviceParameter("securityToken", Required = true, Secret = true, Description = "Water meter API token")]
+        public string SecurityToken { get; set; } = "";
+
+        [DeviceParameter("endpoint", Default = "https://wmd.wrm-systems.fi/api/watermeter", Description = "Water meter API URL")]
+        public string Endpoint { get; set; } = "";
+    }
+
     [RequiresHardware("Water meter API")]
-    public class WaterConsumption : AsyncDeviceBase, IDeviceWithConfiguration
+    public class WaterConsumption : AsyncDeviceBase<WaterConsumptionOptions>, IDeviceWithConfiguration
     {
         public WaterConsumption(ILogger logger) : base(logger) { }
 
@@ -20,8 +30,8 @@ namespace RIoT2.Net.Devices.Catalog
 
         public override void ConfigureDevice()
         {
-            _securityToken = GetConfiguration<string>("securityToken");
-            _endpoint = GetConfiguration<string>("endpoint");
+            _securityToken = Options.SecurityToken;
+            _endpoint = Options.Endpoint;
         }
 
         // Called by the scheduler; the refresh is defined on the device, so the report is null.

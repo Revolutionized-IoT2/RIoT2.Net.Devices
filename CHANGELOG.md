@@ -5,6 +5,24 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-03
+
+Core 2.0 ([I45](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-3-4.md#i45-core-20-remove-compatibility-layers-m); backlog item 23 done). **Needs Node 2.0.0**, which refuses the 1.x plugins.
+Stored configurations load unchanged: every parameter key keeps its spelling.
+
+- Changed: built on `RIoT2.Core.Devices`, `.Http` and `.Mqtt` 2.0.0. The zip now holds
+  `Newtonsoft.Json.dll` (Google.Apis needs it), because the node no longer ships it.
+- Changed: `Timer` and `Virtual` derive from `AsyncDeviceBase` (`Virtual` implements
+  `IAsyncCommandDevice`). No catalog device uses the synchronous `DeviceBase` any more.
+- Changed: typed options for every device that reads parameters: `ApSystemsOptions`,
+  `ElectricityPriceOptions`, `EufySecurityOptions`, `HueOptions`, `WaterConsumptionOptions`,
+  `NetatmoOptions` (both Netatmo devices; `NetatmoBase<TOptions>`) and `NetatmoWeatherOptions`. The
+  templates gain `parameterDefinitions`, the UI masks secrets, and a missing required value
+  (credentials, the Hue bridge, the eufy service host) puts the device into the error state at start
+  with one message, instead of failing later. Defaults: Electricity Price `domain` and `endpoint`,
+  Water Consumption `endpoint`, Eufy `port` `3000`.
+- Tests: the Virtual and the new Timer tests run the async lifecycle.
+
 ## [1.7.0] - 2026-11-02
 
 Async-first devices ([I41](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-3-4.md#i41-async-first-plugins-and-the-plugin-template-m)). Built on RIoT2.Core 1.23.0: **install into Node 1.15.0 or newer**. No

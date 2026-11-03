@@ -12,8 +12,18 @@ using RIoT2.Net.Devices.Services.Interfaces;
 
 namespace RIoT2.Net.Devices.Catalog
 {
+    /// <summary>The <see cref="EufySecurity"/> device's parameters: where eufy-security-ws listens.</summary>
+    public sealed class EufySecurityOptions
+    {
+        [DeviceParameter("serviceIp", Required = true, Description = "Host of the eufy-security-ws service")]
+        public string ServiceIp { get; set; } = "";
+
+        [DeviceParameter("port", Default = "3000", Description = "Port of the eufy-security-ws service")]
+        public int Port { get; set; }
+    }
+
     [RequiresHardware("eufy-security-ws service")]
-    public class EufySecurity : AsyncDeviceBase, IDeviceWithConfiguration, IAsyncCommandDevice
+    public class EufySecurity : AsyncDeviceBase<EufySecurityOptions>, IDeviceWithConfiguration, IAsyncCommandDevice
     {
         private static readonly TimeSpan DefaultInitialPropertiesDelay = TimeSpan.FromSeconds(2);
         private readonly IEufySecurityService _eufySecurityService;
@@ -34,9 +44,7 @@ namespace RIoT2.Net.Devices.Catalog
 
         public override void ConfigureDevice()
         {
-            var ip = GetConfiguration<string>("serviceIp");
-            var port = GetConfiguration<int>("port");
-            _eufySecurityService.Configure(ip, port);
+            _eufySecurityService.Configure(Options.ServiceIp, Options.Port);
         }
 
         public DeviceConfiguration GetConfigurationTemplate()

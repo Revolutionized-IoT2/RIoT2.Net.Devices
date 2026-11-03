@@ -11,8 +11,24 @@ using Microsoft.Extensions.Logging;
 
 namespace RIoT2.Net.Devices.Catalog
 {
+    /// <summary>The <see cref="ElectricityPrice"/> device's parameters: the ENTSO-E transparency platform.</summary>
+    public sealed class ElectricityPriceOptions
+    {
+        [DeviceParameter("securityToken", Required = true, Secret = true, Description = "ENTSO-E API security token")]
+        public string SecurityToken { get; set; } = "";
+
+        [DeviceParameter("domain", Default = "10YFI-1--------U", Description = "Bidding zone (EIC code)")]
+        public string Domain { get; set; } = "";
+
+        [DeviceParameter("endpoint", Default = "https://web-api.tp.entsoe.eu/api", Description = "ENTSO-E API URL")]
+        public string Endpoint { get; set; } = "";
+
+        [DeviceParameter("vat", Description = "VAT percent added to the price")]
+        public double Vat { get; set; }
+    }
+
     [RequiresHardware("ENTSO-E API")]
-    public class ElectricityPrice : AsyncDeviceBase, IDeviceWithConfiguration
+    public class ElectricityPrice : AsyncDeviceBase<ElectricityPriceOptions>, IDeviceWithConfiguration
     {
         public ElectricityPrice(ILogger logger) : base(logger) { }
 
@@ -25,10 +41,10 @@ namespace RIoT2.Net.Devices.Catalog
 
         public override void ConfigureDevice() 
         {
-            _securityToken = GetConfiguration<string>("securityToken");
-            _domain = GetConfiguration<string>("domain");
-            _endpoint = GetConfiguration<string>("endpoint");
-            _vat = GetConfiguration<double>("vat");
+            _securityToken = Options.SecurityToken;
+            _domain = Options.Domain;
+            _endpoint = Options.Endpoint;
+            _vat = Options.Vat;
         }
 
         protected override async Task StartDeviceAsync(CancellationToken cancellationToken)

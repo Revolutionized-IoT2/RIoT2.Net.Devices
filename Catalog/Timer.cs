@@ -1,12 +1,12 @@
 ﻿using Microsoft.Extensions.Logging;
 using RIoT2.Core;
 using RIoT2.Core.Abstracts;
-using RIoT2.Core.Interfaces;
 using RIoT2.Core.Models;
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    public class Timer : DeviceBase, IRefreshableReportDevice
+    /// <summary>Sends each report template's <c>address</c> as its value when the template's schedule fires.</summary>
+    public class Timer : AsyncDeviceBase
     {
         public Timer(ILogger logger) : base(logger) { }
 
@@ -15,27 +15,23 @@ namespace RIoT2.Net.Devices.Catalog
             Configuration.RefreshSchedule = null; //always force this devices schedule to null -> use report template schedules instead!
         }
 
-        public override void StartDevice()
+        protected override Task StartDeviceAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        protected override Task StopDeviceAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        protected override Task RefreshAsync(ReportTemplate? report, CancellationToken cancellationToken)
         {
-
-        }
-        public override void StopDevice()
-        {
-
-        }
-
-        public override void Refresh(ReportTemplate? report)
-        {
-            if (report == null)
-                return;
-
-            SendReport(this, new Report()
+            if (report != null)
             {
-                Id = report.Id,
-                TimeStamp = DateTime.UtcNow.ToEpoch(),
-                Value = new ValueModel(report.Address),
-                Filter = ""
-            });
+                SendReport(this, new Report()
+                {
+                    Id = report.Id,
+                    TimeStamp = DateTime.UtcNow.ToEpoch(),
+                    Value = new ValueModel(report.Address),
+                    Filter = ""
+                });
+            }
+            return Task.CompletedTask;
         }
     }
 }

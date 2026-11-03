@@ -6,22 +6,24 @@ using RIoT2.Core.Models;
 
 namespace RIoT2.Net.Devices.Catalog
 {
-    public class Virtual : DeviceBase, ICommandDevice
+    /// <summary>Keeps values in memory: a command stores its value and reports it on the matching report template.</summary>
+    public class Virtual : AsyncDeviceBase, IAsyncCommandDevice
     {
         private Dictionary<string, object>? _virtualData;
 
         public Virtual(ILogger logger) : base(logger) { }
 
-        public void ExecuteCommand(string commandId, string value)
+        public Task ExecuteCommandAsync(string commandId, string value, CancellationToken cancellationToken)
         {
             Logger.LogInformation("Executed command: {commandId}", commandId);
 
             var command = CommandTemplates?.FirstOrDefault(x => x.Id == commandId);
-            if (command == null)
-                return;
-
-            // The value arrives serialized as JSON; parse it, so the report has the commanded value and type.
-            UpdateData(command.Address, new ValueModel(value, enforceCamelCase: false));
+            if (command != null)
+            {
+                // The value arrives serialized as JSON; parse it, so the report has the commanded value and type.
+                UpdateData(command.Address, new ValueModel(value, enforceCamelCase: false));
+            }
+            return Task.CompletedTask;
         }
 
         public void UpdateData(string address, object data) 
@@ -46,19 +48,20 @@ namespace RIoT2.Net.Devices.Catalog
             });
         }
 
-        public override void StartDevice()
+        protected override Task StartDeviceAsync(CancellationToken cancellationToken)
         {
             _virtualData = new Dictionary<string, object>();
+            return Task.CompletedTask;
         }
 
-        public override void StopDevice()
+        protected override Task StopDeviceAsync(CancellationToken cancellationToken)
         {
             _virtualData = null;
+            return Task.CompletedTask;
         }
 
         public override void ConfigureDevice()
         { 
-        
         }
     }
 }

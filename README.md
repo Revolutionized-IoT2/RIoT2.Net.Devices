@@ -6,7 +6,7 @@ from a plugin package at startup.
 
 - Type: device plugin library
 - Target framework: `net10.0`
-- Core packages: `RIoT2.Core.Devices` (plus `RIoT2.Core.Http` and `RIoT2.Core.Mqtt` for the catalog devices that call web APIs or run an MQTT client), 1.23.0 (version in `Directory.Packages.props`); not the `RIoT2.Core` facade. `RIoT2.Core.Devices.Build` packs the plugin zip
+- Core packages: `RIoT2.Core.Devices` (plus `RIoT2.Core.Http` and `RIoT2.Core.Mqtt` for the catalog devices that call web APIs or run an MQTT client), 2.0.0 (version in `Directory.Packages.props`). `RIoT2.Core.Devices.Build` packs the plugin zip
 - Plugin entry point: `Plugin.cs`
 
 How plugins fit into the platform: [configuration contract](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/contracts/configuration.md).
@@ -55,7 +55,7 @@ Install this plugin only after the Node image has been updated to `net10.0`. A `
 cannot load into a `net9.0` node, while a `net9.0` plugin can load into the `net10.0` node.
 Release this plugin with the Node image that hosts it, node first. Plugin assemblies share the
 host's `RIoT2.Core*` assemblies, and a plugin built against a newer Core than the node's doesn't
-load: 1.7.0 (Core 1.23.0) needs Node 1.15.0 or newer; 1.6.0 (Core 1.17.0) Node 1.12.0; 1.4.0 and 1.5.0 (Core 1.16.0) Node 1.11.0;
+load: 2.0.0 (Core 2.0.0) needs Node 2.0.0, which refuses the 1.x plugins; 1.7.0 (Core 1.23.0) needs Node 1.15.0 or newer; 1.6.0 (Core 1.17.0) Node 1.12.0; 1.4.0 and 1.5.0 (Core 1.16.0) Node 1.11.0;
 1.3.x (Core 1.14.0) Node 1.10.0.
 
 ## Plugin HTTP endpoints
@@ -74,26 +74,27 @@ exposing webhooks.
 ## Device catalog
 
 The list below is verified against `Catalog/*.cs`. Required parameters are marked \*, secrets
-are masked in the UI. Devices with typed options (Azure Relay, EasyPLC, FTP, Messaging, MQTT,
-since 1.4.0) describe their parameters in the template and validate them at start: a missing
-required or invalid value puts the device into the error state with the reason.
+are masked in the UI. Every device with parameters has typed options (since 2.0.0; Azure Relay,
+EasyPLC, FTP, Messaging and MQTT since 1.4.0): it describes them in the template and validates them
+at start, and a missing required or invalid value puts the device into the error state with the
+reason.
 
 | Device | Parameters | Reports and commands |
 |---|---|---|
-| AP Systems | `appId`, `appSecret`, `sid`, `ecuId` | Hourly energy summaries: `today`, `month`, `year`, `lifetime` with `unit` and `precision` report parameters. |
+| AP Systems | `appId`\*, `appSecret`\* (secret), `sid`\*, `ecuId`\* | Hourly energy summaries: `today`, `month`, `year`, `lifetime` with `unit` and `precision` report parameters. |
 | Azure Relay | `relayNamespace`\*, `connectionName`\*, `keyName`\*, `key`\* (secret) | Starts/stops an Azure Relay listener. Message handling is not implemented in code. |
 | EasyPLC | `ipAddress`\*, `port` (default `10001`) | Async/cancellable PLC marker read/write driver. Marker command addresses are `M-{netId}-{expansion}-{marker}`; `refresh` reads markers. Non-zero write expansions are rejected. |
-| Electricity Price | `securityToken`, `domain`, `endpoint`, `vat` | Scheduled current price report at address `price`, with `unit=c/kWh` and `precision`. Cached XML is stored at `Data/priceData.xml`. |
-| Eufy Security | `serviceIp`, `port` | Dynamic camera/security reports and a station `guardMode` command after the external eufy-security-ws service is connected. |
+| Electricity Price | `securityToken`\* (secret), `domain` (default `10YFI-1--------U`), `endpoint` (default the ENTSO-E API), `vat` (percent) | Scheduled current price report at address `price`, with `unit=c/kWh` and `precision`. Cached XML is stored at `Data/priceData.xml`. |
+| Eufy Security | `serviceIp`\*, `port` (default `3000`) | Dynamic camera/security reports and a station `guardMode` command after the external eufy-security-ws service is connected. |
 | FTP | `ftpUsers` (secret; `user:password` pairs separated by `\|`), `ftpPort` (default `21`) | File uploads become in-memory photo `SecurityReport` values keyed by FTP username. |
-| Hue | `bridgeIpAddress`, `apiKey` | Dynamic light command/report templates when running; event-stream updates merge partial state and include Matter endpoint metadata. |
+| Hue | `bridgeIpAddress`\*, `apiKey`\* (secret) | Dynamic light command/report templates when running; event-stream updates merge partial state and include Matter endpoint metadata. |
 | Messaging | `firebaseProjectName`, `smtp_Server`, `smtp_User`, `smtp_Password` (secret), `smtp_Port` (default `587`); mail needs the server, user and password | Commands `fb` (Firebase topic message) and `mail` (SMTP email). Firebase service account JSON is read from `Data/service_account.json`. |
 | MQTT | `clientId`, `serverUrl`\* (broker host, port 1883), `userName`, `password` (secret), `subscribeTopics` (separated by `;`) | Publishes command payloads to command addresses and reports subscribed topic payloads as text. |
-| Netatmo Security | `token`, `refresh_token`, `clientId`, `clientSecret` | Dynamic security camera reports plus `refresh` and `set_home` commands; rotated tokens are persisted per client id (see below). |
-| Netatmo Weather | `token`, `refresh_token`, `clientId`, `clientSecret`, `stationId` | Weather station and module measurements; rotated tokens are persisted per client id (see below). |
+| Netatmo Security | `token` (secret), `refresh_token`\* (secret), `clientId`\*, `clientSecret`\* (secret) | Dynamic security camera reports plus `refresh` and `set_home` commands; rotated tokens are persisted per client id (see below). |
+| Netatmo Weather | as Netatmo Security, plus `stationId` | Weather station and module measurements; rotated tokens are persisted per client id (see below). |
 | Timer | No device parameters; uses report-level schedules | Emits the report address whenever the scheduler refreshes that report. |
 | Virtual | No device parameters | Stores command values by address and reports each one, with its value and type, on the report template with the same address. |
-| Water Consumption | `securityToken`, `endpoint` | Scheduled latest water meter reading at address `watermeter`, with `unit` and `precision` report parameters. |
+| Water Consumption | `securityToken`\* (secret), `endpoint` (default the WRM Systems API) | Scheduled latest water meter reading at address `watermeter`, with `unit` and `precision` report parameters. |
 | Web Device | No device parameters | Commands perform HTTP GET/POST through the webhook service; `POST /api/webhook/{address}` publishes matching reports. |
 
 Netatmo devices with the same `clientId` share one set of tokens; different client ids are
@@ -110,8 +111,8 @@ Devices and plugin controllers use the platform configuration and HTTP contracts
 ## Writing a new device
 
 1. Add a class under `Catalog/`.
-2. Derive from `AsyncDeviceBase` (or `AsyncDeviceBase<TOptions>`), so the node can await and cancel
-   its I/O; `DeviceBase` is the legacy synchronous base class. The
+2. Derive from `AsyncDeviceBase<TOptions>` (or `AsyncDeviceBase` without parameters), so the node
+   can await and cancel its I/O; deriving from `DeviceBase` is deprecated since Core 2.0.0. The
    [plugin authoring guide](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/guides/plugin-authoring.md)
    describes the members.
 3. Implement `IDeviceWithConfiguration` and declare every parameter the device reads; the
@@ -121,8 +122,9 @@ Devices and plugin controllers use the platform configuration and HTTP contracts
    `IRefreshableReportDevice` for scheduled reports.
 5. Register the device with `AddDevice<T>()` in `Plugin.Register()`.
 
-Configuration parameter keys should be camelCase because the platform serializes dictionary keys as
-camelCase and `DeviceBase.GetConfiguration<T>(key)` is case-sensitive.
+Declare parameters in the options class with `[DeviceParameter("key")]` and keep the key once it is
+stored. Keys should be camelCase: the platform serializes dictionary keys as camelCase (binding
+matches them case-insensitively).
 
 ## Versions and releases
 

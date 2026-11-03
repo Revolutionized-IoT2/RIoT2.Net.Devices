@@ -174,7 +174,7 @@ public class NetatmoAuthenticationTests
     [TestMethod]
     public void NetatmoDevicesKeepNoStaticState()
     {
-        foreach (var type in new[] { typeof(NetatmoBase), typeof(Catalog.NetatmoWeather), typeof(Catalog.NetatmoSecurity) })
+        foreach (var type in new[] { typeof(NetatmoBase<NetatmoOptions>), typeof(Catalog.NetatmoWeather), typeof(Catalog.NetatmoSecurity) })
         {
             var fields = type.GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
                 .Where(field => !field.IsLiteral && !field.IsInitOnly)

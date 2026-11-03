@@ -11,7 +11,7 @@ using RIoT2.Net.Devices.Services.Interfaces;
 namespace RIoT2.Net.Devices.Catalog
 {
     [RequiresHardware("Netatmo API")]
-    public class NetatmoSecurity : NetatmoBase, IDeviceWithConfiguration, IAsyncCommandDevice
+    public class NetatmoSecurity : NetatmoBase<NetatmoOptions>, IDeviceWithConfiguration, IAsyncCommandDevice
     {
         private NetatmoHomesData? _home;
         private NetatmoSecurityEvents _securityEvents;
@@ -106,12 +106,7 @@ namespace RIoT2.Net.Devices.Catalog
 
         public override void ConfigureDevice()
         {
-            string? token = GetConfiguration<string>("token");
-            string? refreshToken = GetConfiguration<string>("refresh_token");
-            string? clientId = GetConfiguration<string>("clientId");
-            string? clientSecret = GetConfiguration<string>("clientSecret");
-
-            ConfigureNetatmo(token, refreshToken, clientId, clientSecret);
+            ConfigureNetatmo();
         }
 
         protected override async Task StartDeviceAsync(CancellationToken cancellationToken)

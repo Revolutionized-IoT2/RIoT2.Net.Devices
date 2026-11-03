@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using RIoT2.Core.Abstracts;
+using RIoT2.Core.Plugins;
 using RIoT2.Core;
 using System.Net;
 using RIoT2.Net.Devices.Models;
@@ -12,7 +13,23 @@ using System.Net.Http.Headers;
 
 namespace RIoT2.Net.Devices.Abstracts
 {
-    public abstract class NetatmoBase : AsyncDeviceBase
+    /// <summary>The Netatmo app and tokens every Netatmo device needs. Devices of one app share its tokens.</summary>
+    public class NetatmoOptions
+    {
+        [DeviceParameter("token", Secret = true, Description = "Netatmo access token; refreshed from the refresh token")]
+        public string Token { get; set; } = "";
+
+        [DeviceParameter("refresh_token", Required = true, Secret = true, Description = "Netatmo refresh token")]
+        public string RefreshToken { get; set; } = "";
+
+        [DeviceParameter("clientId", Required = true, Description = "Netatmo app client id")]
+        public string ClientId { get; set; } = "";
+
+        [DeviceParameter("clientSecret", Required = true, Secret = true, Description = "Netatmo app client secret")]
+        public string ClientSecret { get; set; } = "";
+    }
+
+    public abstract class NetatmoBase<TOptions> : AsyncDeviceBase<TOptions> where TOptions : NetatmoOptions, new()
     {
         private readonly INetatmoAuthClientFactory _authClients;
         private NetatmoAuthClient? _auth;
@@ -44,11 +61,11 @@ namespace RIoT2.Net.Devices.Abstracts
             }, threshold);
         }
 
-        /// <summary>Uses the shared token client of <paramref name="clientId"/>; devices of the same Netatmo app share tokens.</summary>
-        internal void ConfigureNetatmo(string? token, string? refreshToken, string? clientId, string? clientSecret)
+        /// <summary>Uses the shared token client of the options' client id; devices of the same Netatmo app share tokens.</summary>
+        internal void ConfigureNetatmo()
         {
-            var auth = _authClients.Get(clientId);
-            auth.Configure(token, refreshToken, clientSecret);
+            var auth = _authClients.Get(Options.ClientId);
+            auth.Configure(Options.Token, Options.RefreshToken, Options.ClientSecret);
             _auth = auth;
         }
 

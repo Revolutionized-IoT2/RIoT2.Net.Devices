@@ -9,8 +9,24 @@ using RIoT2.Net.Devices.Services.Interfaces;
 
 namespace RIoT2.Net.Devices.Catalog
 {
+    /// <summary>The <see cref="ApSystems"/> device's parameters: the APsystems OpenAPI credentials and the ECU.</summary>
+    public sealed class ApSystemsOptions
+    {
+        [DeviceParameter("appId", Required = true, Description = "APsystems OpenAPI app id")]
+        public string AppId { get; set; } = "";
+
+        [DeviceParameter("appSecret", Required = true, Secret = true, Description = "APsystems OpenAPI app secret")]
+        public string AppSecret { get; set; } = "";
+
+        [DeviceParameter("sid", Required = true, Description = "System id")]
+        public string Sid { get; set; } = "";
+
+        [DeviceParameter("ecuId", Required = true, Description = "ECU id")]
+        public string EcuId { get; set; } = "";
+    }
+
     [RequiresHardware("APsystems API")]
-    public class ApSystems : AsyncDeviceBase, IDeviceWithConfiguration
+    public class ApSystems : AsyncDeviceBase<ApSystemsOptions>, IDeviceWithConfiguration
     {
         MeterSummary? _meterSummary;
         string? _ecuId;
@@ -22,8 +38,8 @@ namespace RIoT2.Net.Devices.Catalog
 
         public override void ConfigureDevice()
         {
-            _ecuId = GetConfiguration<string>("ecuId");
-            _client.Configure(GetConfiguration<string>("appId"), GetConfiguration<string>("appSecret"), GetConfiguration<string>("sid"));
+            _ecuId = Options.EcuId;
+            _client.Configure(Options.AppId, Options.AppSecret, Options.Sid);
         }
 
         public DeviceConfiguration GetConfigurationTemplate()
