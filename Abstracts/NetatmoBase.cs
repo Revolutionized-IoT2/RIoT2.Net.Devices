@@ -1,160 +1,212 @@
 ﻿using Microsoft.Extensions.Logging;
-using RIoT2.Core.Abstracts;
-using RIoT2.Core.Plugins;
 using RIoT2.Core;
-using System.Net;
-using RIoT2.Net.Devices.Models;
-using RIoT2.Core.Models;
+using RIoT2.Core.Abstracts;
 using RIoT2.Core.Interfaces;
+using RIoT2.Core.Models;
+using RIoT2.Core.Plugins;
 using RIoT2.Core.Utils;
 using RIoT2.Net.Devices.Services;
 using RIoT2.Net.Devices.Services.Interfaces;
-using System.Net.Http.Headers;
+using RIoT2.Net.Devices.Services.Netatmo;
 
 namespace RIoT2.Net.Devices.Abstracts
 {
-    /// <summary>The Netatmo app and tokens every Netatmo device needs. Devices of one app share its tokens.</summary>
+    /// <summary>
+    /// The Netatmo app every Netatmo device signs in with. Devices of one app share its tokens. The tokens come from
+    /// connecting the device in the UI; the token parameters are the fallback for setups without it.
+    /// </summary>
     public class NetatmoOptions
     {
-        [DeviceParameter("token", Secret = true, Description = "Netatmo access token; refreshed from the refresh token")]
-        public string Token { get; set; } = "";
-
-        [DeviceParameter("refresh_token", Required = true, Secret = true, Description = "Netatmo refresh token")]
-        public string RefreshToken { get; set; } = "";
-
-        [DeviceParameter("clientId", Required = true, Description = "Netatmo app client id")]
+        [DeviceParameter("clientId", Required = true, Description = "Client id of your Netatmo app (dev.netatmo.com)")]
         public string ClientId { get; set; } = "";
 
-        [DeviceParameter("clientSecret", Required = true, Secret = true, Description = "Netatmo app client secret")]
+        [DeviceParameter("clientSecret", Required = true, Secret = true, Description = "Client secret of your Netatmo app")]
         public string ClientSecret { get; set; } = "";
+
+        [DeviceParameter("token", Secret = true, Description = "Optional: an access token from Netatmo's token generator. Not needed when the device is connected to Netatmo")]
+        public string Token { get; set; } = "";
+
+        [DeviceParameter("refresh_token", Secret = true, Description = "Optional: a refresh token from Netatmo's token generator. Not needed when the device is connected to Netatmo")]
+        public string RefreshToken { get; set; } = "";
     }
 
-    public abstract class NetatmoBase<TOptions> : AsyncDeviceBase<TOptions> where TOptions : NetatmoOptions, new()
+    /// <summary>
+    /// A device that reads the Netatmo Connect API. It signs in with an OAuth authorization code from the UI
+    /// (<see cref="IDeviceWithAuthorization"/>), calls Netatmo through <see cref="NetatmoApiClient"/>, and keeps
+    /// running while Netatmo can't be used: the state message says why, and the next refresh tries again.
+    /// </summary>
+    public abstract class NetatmoBase<TOptions> : AsyncDeviceBase<TOptions>, IDeviceWithAuthorization where TOptions : NetatmoOptions, new()
     {
+        internal const string SetupUrl = "https://dev.netatmo.com/apps/";
+
+        /// <summary>How long a device waits after Netatmo limited its calls.</summary>
+        internal static readonly TimeSpan ThrottleWait = TimeSpan.FromMinutes(15);
+
         private readonly INetatmoAuthClientFactory _authClients;
         private NetatmoAuthClient? _auth;
+        private NetatmoApiClient? _api;
+        private DateTimeOffset _backoffUntil;
 
         protected NetatmoBase(ILogger logger, INetatmoAuthClientFactory authClients) : base(logger)
         {
             _authClients = authClients ?? throw new ArgumentNullException(nameof(authClients));
         }
 
-        internal void SendNetatmoReport(IDevice device, string? parameter, dynamic? value)
-        {
-            if (value == null || parameter == null)
-                return;
+        /// <summary>The OAuth scopes the device needs; read after its options are bound.</summary>
+        protected abstract IReadOnlyCollection<string> Scopes { get; }
 
-            var template = ReportTemplates?.FirstOrDefault(x => x.Address?.ToLower() == parameter);
-            if (template == null)
-                return;
+        /// <summary>The clock; the tests replace it.</summary>
+        internal Func<DateTimeOffset> Now { get; set; } = () => DateTimeOffset.UtcNow;
 
-            double threshold = 0;
-            if (template.Parameters.ContainsKey("Threshold"))
-                double.TryParse(template.Parameters["Threshold"], out threshold);
+        internal NetatmoApiClient Api => _api ?? throw new DeviceNotReadyException("The Netatmo device isn't configured yet.");
 
-            SendReportIfValueChanged(device, new Report()
-            {
-                Id = template.Id,
-                TimeStamp = DateTime.UtcNow.ToEpoch(),
-                Value = new ValueModel(value),
-                Filter = ""
-            }, threshold);
-        }
+        internal string ClientId => _auth?.ClientId ?? "";
+
+        /// <summary>Whether a refresh should wait because Netatmo limited the calls.</summary>
+        internal bool IsBackingOff => Now() < _backoffUntil;
 
         /// <summary>Uses the shared token client of the options' client id; devices of the same Netatmo app share tokens.</summary>
         internal void ConfigureNetatmo()
         {
             var auth = _authClients.Get(Options.ClientId);
             auth.Configure(Options.Token, Options.RefreshToken, Options.ClientSecret);
+            auth.RequireScopes(Scopes);
             _auth = auth;
-        }
-
-        internal Task<NetatmoStationsData?> GetNetatmoStationsData(string? deviceId, CancellationToken cancellationToken = default) =>
-            executeNetatmo<NetatmoStationsData>($"https://api.netatmo.com/api/getstationsdata?device_id={ System.Web.HttpUtility.UrlEncode(deviceId) }", HttpMethod.Get, cancellationToken);
-
-        internal Task<NetatmoHomesData?> GetNetatmoHomesData(CancellationToken cancellationToken = default) =>
-            executeNetatmo<NetatmoHomesData>("https://api.netatmo.com/api/homesdata", HttpMethod.Get, cancellationToken);
-
-        internal Task<NetatmoHomeStatus?> GetNetatmoHomeStatus(string homeId, CancellationToken cancellationToken = default) =>
-            executeNetatmo<NetatmoHomeStatus>($"https://api.netatmo.com/api/homestatus?home_id={ System.Web.HttpUtility.UrlEncode(homeId) }", HttpMethod.Get, cancellationToken);
-
-        internal Task<NetatmoEvent?> GetNetatmoEvents(string homeId, CancellationToken cancellationToken = default) =>
-            executeNetatmo<NetatmoEvent>($"https://api.netatmo.com/api/getevents?home_id={ System.Web.HttpUtility.UrlEncode(homeId) }", HttpMethod.Get, cancellationToken);
-
-        internal Task<NetatmoCmd?> SetPersonsAway(string homeId, CancellationToken cancellationToken = default) =>
-            executeNetatmo<NetatmoCmd>($"https://api.netatmo.com/api/setpersonsaway?home_id={System.Web.HttpUtility.UrlEncode(homeId)}", HttpMethod.Post, cancellationToken);
-
-        internal Task<NetatmoCmd?> SetPersonsHome(string homeId, string[] personIds, CancellationToken cancellationToken = default)
-        {
-            if (personIds == null || personIds.Length == 0) 
-            {
-                Logger.LogWarning("No person IDs provided. Cannot set persons home.");
-                return Task.FromResult<NetatmoCmd?>(null);
-            }
-
-            var personIdsParam = string.Join("&", personIds.Select(x => $"person_id[]={System.Web.HttpUtility.UrlEncode(x)}"));
-            return executeNetatmo<NetatmoCmd>($"https://api.netatmo.com/api/setpersonshome?home_id={System.Web.HttpUtility.UrlEncode(homeId)}&{personIdsParam}", HttpMethod.Post, cancellationToken);
+            _api = new NetatmoApiClient(auth, SendAsync, Logger);
+            _backoffUntil = default;
         }
 
         // The HTTP call; the lifecycle tests replace it.
         internal virtual Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             Web.SendAsync(request, cancellationToken: cancellationToken);
 
-        private async Task<T?> executeNetatmo<T>(string url, HttpMethod method, CancellationToken cancellationToken)
+        public DeviceAuthorization Authorization => new()
+        {
+            Provider = "Netatmo",
+            SetupUrl = SetupUrl,
+            Instructions = "Once per Netatmo account: create an app at dev.netatmo.com, add the redirect URI shown here to it, " +
+                "and enter the app's client id and client secret. Save the device, then connect it. Devices that use the same " +
+                "app share its connection."
+        };
+
+        public DeviceAuthorizationStatus GetAuthorizationStatus()
         {
             var auth = _auth;
-            var accessToken = auth?.AccessToken;
-            if (String.IsNullOrEmpty(accessToken))
-            {
-                Logger.LogWarning("Cannot execute Netatmo command. Missing access token.");
-                return default;
-            }
-
-            try
-            {
-                var response = await sendNetatmo(url, method, accessToken, cancellationToken).ConfigureAwait(false);
-                if (response.StatusCode == HttpStatusCode.Forbidden || response.StatusCode == HttpStatusCode.Unauthorized)
+            if (auth == null || string.IsNullOrWhiteSpace(Options.ClientId) || !auth.HasClientSecret)
+                return new DeviceAuthorizationStatus
                 {
-                    // accessToken came from auth, so auth is set.
-                    if (await auth!.RefreshAsync(accessToken).ConfigureAwait(false))
-                    {
-                        response.Dispose();
-                        response = await sendNetatmo(url, method, auth.AccessToken, cancellationToken).ConfigureAwait(false);
-                    }
-                    else
-                        Logger.LogWarning("Could not refresh Netatmo authentication token");
-                }
-
-                using (response)
-                {
-                    var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                    if (response.StatusCode == HttpStatusCode.OK)
-                        return content.ToObj<T>();
-
-                    Logger.LogWarning("Netatmo responded with code: {StatusCode}. Message: {Message}", response.StatusCode, content);
-                }
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception x)
-            {
-                Logger.LogError(x, "Error while getting data from Netatmo");
-                throw new Exception("Error while getting data from Netatmo");
-            }
-
-            return default;
+                    State = DeviceAuthorizationState.NotConfigured,
+                    Message = "Enter the client id and client secret of your Netatmo app, and save the device."
+                };
+            if (!auth.HasTokens)
+                return new DeviceAuthorizationStatus { State = DeviceAuthorizationState.NotConnected, Message = "Connect the device to Netatmo." };
+            if (auth.Problem != null)
+                return new DeviceAuthorizationStatus { State = DeviceAuthorizationState.Expired, Account = auth.Account, Message = auth.Problem };
+            return new DeviceAuthorizationStatus { State = DeviceAuthorizationState.Connected, Account = auth.Account };
         }
 
-        // A fresh request per send: the retry after a token refresh can't reuse one.
-        private async Task<HttpResponseMessage> sendNetatmo(string url, HttpMethod method, string accessToken, CancellationToken cancellationToken)
+        public Task<string> BeginAuthorizationAsync(string redirectUri, string state, CancellationToken cancellationToken)
         {
-            using var request = new HttpRequestMessage(method, url);
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-            if (method == HttpMethod.Post)
-                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            return await SendAsync(request, cancellationToken).ConfigureAwait(false);
+            var auth = ConfiguredAuth();
+            if (!Uri.TryCreate(redirectUri, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+                throw new ArgumentException("The redirect URI must be an absolute http or https URL.", nameof(redirectUri));
+            if (string.IsNullOrEmpty(state))
+                throw new ArgumentException("A state is required.", nameof(state));
+            return Task.FromResult(auth.BuildAuthorizeUrl(redirectUri, state));
+        }
+
+        public async Task CompleteAuthorizationAsync(string code, string redirectUri, CancellationToken cancellationToken)
+        {
+            var auth = ConfiguredAuth();
+            if (string.IsNullOrEmpty(code))
+                throw new ArgumentException("A code is required.", nameof(code));
+            await auth.ExchangeCodeAsync(code, redirectUri, cancellationToken).ConfigureAwait(false);
+            _backoffUntil = default;
+            if (State == DeviceState.Running)
+                await OnConnectedAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>Called when a running device got new tokens: read what it shows.</summary>
+        protected virtual Task OnConnectedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        /// <summary>A note for the state message while Netatmo works, for example about the webhook.</summary>
+        protected virtual string? StatusNote => null;
+
+        private NetatmoAuthClient ConfiguredAuth()
+        {
+            var auth = _auth;
+            if (auth == null || string.IsNullOrWhiteSpace(Options.ClientId) || !auth.HasClientSecret)
+                throw new DeviceNotReadyException("Enter the client id and client secret of your Netatmo app, and save the device first.");
+            return auth;
+        }
+
+        /// <summary>
+        /// Runs <paramref name="call"/>. When Netatmo can't be used (not connected, limited, refused or unavailable) the
+        /// device keeps running with the reason as its state message, and false is returned; the next refresh tries
+        /// again. A cancellation and any other error pass through.
+        /// </summary>
+        internal async Task<bool> CallNetatmoAsync(Func<CancellationToken, Task> call, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await call(cancellationToken).ConfigureAwait(false);
+                SetRunningMessage(StatusNote ?? "");
+                return true;
+            }
+            catch (NetatmoNotConnectedException)
+            {
+                SetRunningMessage("Connect the device to Netatmo in its settings.");
+            }
+            catch (NetatmoApiException error) when (error.IsThrottled)
+            {
+                _backoffUntil = Now() + ThrottleWait;
+                Logger.LogWarning("Netatmo limits the calls of {Device}: waiting {Minutes} minutes. {Error}", Name, ThrottleWait.TotalMinutes, error.Message);
+                SetRunningMessage($"Netatmo limits the calls; trying again after {_backoffUntil.ToLocalTime():HH:mm}.");
+            }
+            catch (NetatmoApiException error) when (error.IsMissingScope || error.IsRejectedToken)
+            {
+                Logger.LogWarning("Netatmo refused the tokens of {Device}: {Error}", Name, error.Message);
+                SetRunningMessage(_auth?.Problem ?? error.Message);
+            }
+            catch (NetatmoApiException error)
+            {
+                Logger.LogWarning("Netatmo is unavailable for {Device}: {Error}", Name, error.Message);
+                SetRunningMessage(error.Message);
+            }
+            return false;
+        }
+
+        /// <summary>Shows <paramref name="message"/> while the device runs; never revives a stopped device.</summary>
+        internal void SetRunningMessage(string message)
+        {
+            if (State == DeviceState.Running && StateMessage != message)
+                SetState(DeviceState.Running, message);
+        }
+
+        /// <summary>The report template at <paramref name="address"/>, matched case-insensitively.</summary>
+        internal ReportTemplate? ReportAt(string address) =>
+            ReportTemplates?.FirstOrDefault(x => string.Equals(x.Address, address, StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>Sends a value when it changed; numbers within the template's <c>Threshold</c> parameter count as unchanged.</summary>
+        internal void SendState(string address, object? value, long? time = null)
+        {
+            if (value == null)
+                return;
+            var template = ReportAt(address);
+            if (template == null)
+                return;
+
+            double threshold = 0;
+            if (template.Parameters != null && template.Parameters.TryGetValue("Threshold", out var configured))
+                double.TryParse(configured, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out threshold);
+
+            SendReportIfValueChanged(this, new Report
+            {
+                Id = template.Id,
+                TimeStamp = time ?? Now().ToUnixTimeSeconds(),
+                Value = new ValueModel(value),
+                Filter = ""
+            }, threshold);
         }
     }
 }

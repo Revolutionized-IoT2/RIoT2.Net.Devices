@@ -5,6 +5,46 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+**Breaking: Netatmo Security and Netatmo Weather** (needs Node with Core 2.4.0). They follow the current Netatmo
+Connect API: security events arrive through Netatmo's webhook, both devices can be connected to Netatmo from the UI,
+and their templates change, so add them again from their templates. Guide:
+[netatmo.md](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/guides/netatmo.md).
+
+- Added: both Netatmo devices implement Core 2.4.0's `IDeviceWithAuthorization`. The UI's **Connect to Netatmo**
+  signs in with an OAuth authorization code; the node exchanges it with the app's secret and stores the tokens in
+  `Data/netatmoAuth-<clientId>.json`, as refreshed tokens before. One sign-in asks for the scopes of every device of
+  the same app. `token` and `refresh_token` are optional now; a configured refresh token alone is used too (before,
+  only an access token was).
+- Added: Netatmo Security receives Netatmo's webhook at `POST /api/netatmo/webhook/{secret}` (anonymous; the secret
+  is the credential; answered at once and handled off the request). With `webhookUrl` and `webhookSecret` it
+  registers the app's one webhook through `webhooks/v1`, leaves another integration's webhook alone unless
+  `webhookTakeover` is set, backs off when Netatmo refuses, and registers again after a deactivation. While the
+  webhook works, refreshes poll every 15 minutes only, to catch missed pushes; pushed and polled events are reported
+  once.
+- Changed: Netatmo Security's templates: per module `<id>|event` for cameras (`NACamera`, `NOC`, `NPC`), the doorbell
+  (`NDB`), door tags, the siren and smoke and CO alarms; `<id>|monitoring`, `<id>|connection`, `<id>|floodlight`
+  (outdoor cameras) and `<id>|battery`; `person|<id>` for named persons; `home|webhook`. Commands: `refresh`,
+  `<camera>|monitoring`, `<outdoor camera>|floodlight` (`on`, `off`, `auto`), `person|<id>` and `home|away`; `set_home`
+  (which set the first person home) is gone. New parameters: `homeId` (default: the home with security modules,
+  before the first home), `webhookUrl`, `webhookSecret`, `webhookTakeover`, `downloadSnapshots` (default `true`).
+- Changed: `SecurityReport` gains `moduleId`, `eventId`, `time` and `personId`, and `SecurityEventType` gains
+  `smokeDetected`, `coDetected`, `doorOpened`, `tagMoved`, `sirenSounding`, `tampered`, `doorbellCallAccepted`,
+  `doorbellCallMissed` and `connectionLost` (existing values unchanged). Netatmo reports carry the event's time.
+  An unknown Netatmo event type is no longer reported as motion, and past events aren't reported again at a start.
+- Changed: Netatmo Weather reports per module what its `data_type` lists, so an outdoor module no longer reports
+  `CO2` and `Noise` as 0, plus wind (`WindStrength`, `WindAngle`, `GustStrength`, `GustAngle`, `max_wind_str`), rain
+  (`Rain`, `sum_rain_1`, `sum_rain_24`) and `min_temp`/`max_temp`, and `<id>|battery`, `<id>|reachable` and
+  `<id>|signal`. A value Netatmo didn't send isn't reported, an upload already reported is skipped, and reports carry
+  the measurement's time. `stationId` is optional (empty: every station); `includeHomeCoach` adds Healthy Home
+  Coaches with `health_idx`. Template names include the module name. The `<id>|<field>` addresses are unchanged.
+- Changed: when Netatmo is unreachable, limits the calls (code 26) or refuses the tokens, a Netatmo device keeps
+  running with the reason as its state message (before: the error state until a restart), waits 15 minutes after a
+  rate limit, and shows "connect again" in its account status. A snapshot that can't be downloaded keeps Netatmo's
+  URL instead of failing the device.
+- Fixed: the Netatmo devices' default refresh schedules ran only between 00:00 and 00:59; both run every 5 minutes.
+- Fixed: a rate limit, an outage or a proxy's error page at Netatmo's token endpoint no longer deletes the stored
+  Netatmo tokens; only a refused grant (`invalid_grant`, `invalid_client`) does.
+
 **Breaking: Eufy Security.** The device no longer needs the eufy-security-ws container; it connects to the eufy
 cloud and the stations itself, through a C# port of part of [eufy-sdk](https://github.com/mega-yfue/eufy-sdk)
 (Apache-2.0, see `NOTICE`). Release as 3.0.0.

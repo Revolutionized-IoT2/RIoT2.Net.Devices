@@ -6,18 +6,21 @@ using RIoT2.Net.Devices.Models;
 namespace RIoT2.Net.Devices.Services
 {
     /// <summary>
-    /// Access and refresh tokens of one Netatmo app (client id). Netatmo rotates the refresh token on every refresh,
-    /// so the latest tokens are persisted and win over the ones in the device configuration. Devices that share a
-    /// client id share one instance, and only one of them refreshes at a time.
+    /// Access and refresh tokens of one Netatmo app (client id). The tokens come from connecting a device in the UI
+    /// (<see cref="ExchangeCodeAsync"/>), or from the device configuration. Netatmo rotates the refresh token on every
+    /// refresh, so the latest tokens are persisted and win over the ones in the device configuration. Devices that
+    /// share a client id share one instance, and only one of them refreshes at a time.
     /// </summary>
     public sealed class NetatmoAuthClient
     {
         internal const string TokenUrl = "https://api.netatmo.com/oauth2/token";
+        internal const string AuthorizeUrl = "https://api.netatmo.com/oauth2/authorize";
 
         private readonly object _lock = new();
         private readonly SemaphoreSlim _refreshGate = new(1, 1);
         private readonly ILogger _logger;
         private readonly Func<string, string, Task<HttpResponseMessage>> _postForm;
+        private readonly SortedSet<string> _scopes = new(StringComparer.Ordinal);
         private string _accessToken = "";
         private string _refreshToken = "";
         private string _clientSecret = "";
@@ -25,6 +28,8 @@ namespace RIoT2.Net.Devices.Services
         private string _configuredAccessToken = null!;
         private string _configuredRefreshToken = null!;
         private bool _loaded;
+        private string? _problem;
+        private string? _account;
 
         internal NetatmoAuthClient(string clientId, string tokenFile, ILogger logger, Func<string, string, Task<HttpResponseMessage>> postForm)
         {
@@ -47,6 +52,157 @@ namespace RIoT2.Net.Devices.Services
         internal string RefreshToken
         {
             get { lock (_lock) return _refreshToken; }
+        }
+
+        /// <summary>Whether there are tokens to call Netatmo with: an access token, or a refresh token to get one.</summary>
+        public bool HasTokens
+        {
+            get { lock (_lock) return _accessToken.Length > 0 || _refreshToken.Length > 0; }
+        }
+
+        /// <summary>Whether the client secret is known, which the sign-in and every refresh need.</summary>
+        public bool HasClientSecret
+        {
+            get { lock (_lock) return _clientSecret.Length > 0; }
+        }
+
+        /// <summary>Why the stored credentials stopped working (refused, or missing a scope); null while they work.</summary>
+        public string? Problem
+        {
+            get { lock (_lock) return _problem; }
+        }
+
+        /// <summary>The account the tokens belong to (its e-mail address), when a device has read it.</summary>
+        public string? Account
+        {
+            get { lock (_lock) return _account; }
+            set { lock (_lock) _account = string.IsNullOrWhiteSpace(value) ? _account : value; }
+        }
+
+        /// <summary>
+        /// The scopes the devices of this app need. Devices sharing a client id share its tokens, so a sign-in asks for
+        /// all of them: connecting one device must not take away what another one needs.
+        /// </summary>
+        public IReadOnlyCollection<string> Scopes
+        {
+            get { lock (_lock) return _scopes.ToArray(); }
+        }
+
+        /// <summary>Adds scopes the next sign-in asks for.</summary>
+        public void RequireScopes(IEnumerable<string> scopes)
+        {
+            lock (_lock)
+            {
+                foreach (var scope in scopes)
+                    if (!string.IsNullOrWhiteSpace(scope))
+                        _scopes.Add(scope.Trim());
+            }
+        }
+
+        /// <summary>Records why Netatmo refused a call with these tokens, for the device's authorization status.</summary>
+        public void ReportProblem(string problem)
+        {
+            lock (_lock) _problem = problem;
+        }
+
+        /// <summary>Netatmo's sign-in page for this app, asking for <see cref="Scopes"/>.</summary>
+        public string BuildAuthorizeUrl(string redirectUri, string state)
+        {
+            var scope = string.Join(" ", Scopes);
+            return $"{AuthorizeUrl}?client_id={Uri.EscapeDataString(ClientId)}&redirect_uri={Uri.EscapeDataString(redirectUri)}" +
+                $"&scope={Uri.EscapeDataString(scope)}&state={Uri.EscapeDataString(state)}&response_type=code";
+        }
+
+        /// <summary>
+        /// Exchanges the code Netatmo's sign-in returned for tokens, stores them like refreshed ones and uses them at once.
+        /// Throws <see cref="InvalidOperationException"/> with Netatmo's reason when it refuses the code.
+        /// </summary>
+        public async Task ExchangeCodeAsync(string code, string redirectUri, CancellationToken cancellationToken)
+        {
+            await _refreshGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                string clientSecret;
+                string scope;
+                lock (_lock)
+                {
+                    clientSecret = _clientSecret;
+                    scope = string.Join(" ", _scopes);
+                }
+
+                var body = $"grant_type=authorization_code&client_id={Uri.EscapeDataString(ClientId)}" +
+                    $"&client_secret={Uri.EscapeDataString(clientSecret)}&code={Uri.EscapeDataString(code)}" +
+                    $"&redirect_uri={Uri.EscapeDataString(redirectUri)}&scope={Uri.EscapeDataString(scope)}";
+
+                HttpResponseMessage? response;
+                try
+                {
+                    response = await _postForm(TokenUrl, body).ConfigureAwait(false);
+                }
+                catch (Exception x) when (x is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+                {
+                    throw new InvalidOperationException("Could not reach Netatmo to finish the sign-in.", x);
+                }
+
+                using (response)
+                {
+                    var content = response?.Content == null ? "" : await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                    var auth = response?.StatusCode == HttpStatusCode.OK ? content.ToObj<NetatmoAuth>() : null;
+                    if (string.IsNullOrEmpty(auth?.access_token))
+                    {
+                        // Netatmo answers {"error":"invalid_grant"} and the like; no secrets in it.
+                        _logger.LogWarning("Netatmo refused the sign-in of client {ClientId}. Status: {Status}", ClientId, response?.StatusCode);
+                        throw new InvalidOperationException($"Netatmo refused the sign-in ({DescribeError(content, response?.StatusCode)}).");
+                    }
+
+                    auth.client_id = ClientId;
+                    Save(auth);
+                    lock (_lock)
+                    {
+                        _accessToken = auth.access_token;
+                        _refreshToken = auth.refresh_token ?? "";
+                        _problem = null;
+                        _loaded = true;
+                    }
+                    _logger.LogInformation("Netatmo client {ClientId} is connected.", ClientId);
+                }
+            }
+            finally
+            {
+                _refreshGate.Release();
+            }
+        }
+
+        // OAuth's answer to a refresh token or client it won't accept: 400 or 401 with invalid_grant or invalid_client.
+        internal static bool IsRefusedGrant(HttpStatusCode status, string content)
+        {
+            if (status != HttpStatusCode.BadRequest && status != HttpStatusCode.Unauthorized)
+                return false;
+            var error = DescribeError(content, status);
+            return error is "invalid_grant" or "invalid_client" or "unauthorized_client";
+        }
+
+        // Netatmo's OAuth errors are {"error":"invalid_grant"}; its API errors {"error":{"code":..,"message":..}}.
+        internal static string DescribeError(string content, HttpStatusCode? status)
+        {
+            try
+            {
+                using var document = System.Text.Json.JsonDocument.Parse(content);
+                if (document.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object
+                    && document.RootElement.TryGetProperty("error", out var error))
+                {
+                    if (error.ValueKind == System.Text.Json.JsonValueKind.String)
+                        return error.GetString()!;
+                    if (error.ValueKind == System.Text.Json.JsonValueKind.Object && error.TryGetProperty("message", out var message)
+                        && message.ValueKind == System.Text.Json.JsonValueKind.String)
+                        return message.GetString()!;
+                }
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                // Not JSON: fall back to the status.
+            }
+            return $"HTTP {(int?)status}";
         }
 
         /// <summary>
@@ -90,6 +246,10 @@ namespace RIoT2.Net.Devices.Services
                     clientSecret = _clientSecret;
                 }
 
+                // Nothing to refresh with: the device isn't connected yet.
+                if (string.IsNullOrEmpty(refreshToken))
+                    return false;
+
                 var body = $"grant_type=refresh_token&refresh_token={Uri.EscapeDataString(refreshToken)}" +
                     $"&client_id={Uri.EscapeDataString(ClientId)}&client_secret={Uri.EscapeDataString(clientSecret)}";
 
@@ -123,9 +283,18 @@ namespace RIoT2.Net.Devices.Services
                         {
                             _accessToken = auth.access_token;
                             _refreshToken = auth.refresh_token ?? refreshToken;
+                            _problem = null;
                         }
                         return true;
                     }
+                }
+
+                // Only a refused grant ends the stored tokens. A rate limit, an outage or a proxy's page keeps them:
+                // after a sign-in from the UI they are the only copy.
+                if (!IsRefusedGrant(response.StatusCode, content))
+                {
+                    _logger.LogWarning("Could not refresh the Netatmo token of client {ClientId}: HTTP {Status}. Keeping the stored tokens.", ClientId, (int)response.StatusCode);
+                    return false;
                 }
 
                 _logger.LogWarning("Netatmo refused to refresh the token of client {ClientId}. Using the configured tokens again. Message: {Message}", ClientId, content);
@@ -134,7 +303,10 @@ namespace RIoT2.Net.Devices.Services
                 {
                     _accessToken = _configuredAccessToken;
                     _refreshToken = _configuredRefreshToken;
-                    return _accessToken != rejectedAccessToken;
+                    var fallback = _accessToken != rejectedAccessToken;
+                    if (!fallback)
+                        _problem = "Netatmo refused the stored token. Connect the device to Netatmo again.";
+                    return fallback;
                 }
             }
             finally

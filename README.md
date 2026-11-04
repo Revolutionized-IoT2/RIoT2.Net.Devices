@@ -65,6 +65,7 @@ Loaded by the Node host:
 | Method | Route | Purpose |
 |---|---|---|
 | `POST` | `/api/webhook/{address}` | Forwards a request body up to 64 KiB to the Web device |
+| `POST` | `/api/netatmo/webhook/{secret}` | Netatmo's webhook pushes for Netatmo Security; the secret is the credential |
 | `GET` | `/api/download/{filename}` | Returns an in-memory or configured stored image file |
 | `GET` | `/api/download/list/files` | Lists in-memory documents |
 
@@ -94,8 +95,8 @@ reason.
 | Messaging | `firebaseProjectName`, `smtp_Server`, `smtp_User`, `smtp_Password` (secret), `smtp_Port` (default `587`); mail needs the server, user and password | Commands `fb` (Firebase topic message) and `mail` (SMTP email). Firebase service account JSON is read from `Data/service_account.json`. |
 | MQTT | `clientId`, `serverUrl`\* (broker host, port 1883), `userName`, `password` (secret), `subscribeTopics` (separated by `;`) | Publishes command payloads to command addresses and reports subscribed topic payloads as text. |
 | myUplink | `clientId`\*, `clientSecret`\* (secret) of an app registered at dev.myuplink.com, `language` (default `en-GB`), `extraParameters` (comma-separated parameter ids), `offsetParameter` (default `47011`), `baseTemperature` (default `20`), `degreesPerStep` (default `1`) | NIBE heat pumps (written for the F750) through the official myUplink API. Per heat pump (address `<deviceId>\|<key>`), reports the curated parameters it has: `outdoorTemperature`, `supplyTemperature`, `returnTemperature`, `hotWaterTop`, `hotWaterCharging`, `exhaustAirTemperature`, `extractAirTemperature`, `calculatedSupplyTemperature` (°C), `degreeMinutes`, `compressorFrequency`, `compressorStarts`, `compressorHours`, `hotWaterCompressorHours`, `additionalHeatPower`, `fanSpeed`, `heatingOffset`, `hotWaterComfortMode`, `hotWaterBoost`, `ventilationSpeed` (enums as their text), `energyHeating` and `energyHotWater` (produced heat, kWh); plus `setTemperature` (the virtual setpoint, °C), `thermostatMode`, `smartHomeMode`, `connected`, `alarm`, `activeAlarms`, `alarmText`, `premiumManage`, `energyToday` (kWh) and `p<id>` for each extra parameter. Commands `setTemperature`, `heatingOffset`, `hotWaterComfortMode`, `hotWaterBoost`, `ventilationSpeed`, `smartHomeMode` (`Default`, `Normal`, `Away`, `Vacation`, `Home`), `setParameter` (`{"parameterId": "47011", "value": 1}`), `p<id>` for writable extra parameters, plus `refresh`. Each heat pump is a Matter thermostat. Polls hourly by default, at most once a minute. |
-| Netatmo Security | `token` (secret), `refresh_token`\* (secret), `clientId`\*, `clientSecret`\* (secret) | Dynamic security camera reports plus `refresh` and `set_home` commands; rotated tokens are persisted per client id (see below). |
-| Netatmo Weather | as Netatmo Security, plus `stationId` | Weather station and module measurements; rotated tokens are persisted per client id (see below). |
+| Netatmo Security | `clientId`\*, `clientSecret`\* (secret), `homeId`, `webhookUrl`, `webhookSecret` (secret), `webhookTakeover`, `downloadSnapshots` | Cameras, doorbell, door tags, siren, smoke and CO alarms: `<id>\|event` reports and their state; presence; monitoring, floodlight and presence commands. Events by webhook and polling. See below. |
+| Netatmo Weather | `clientId`\*, `clientSecret`\* (secret), `stationId`, `includeHomeCoach` | What each module measures (with wind and rain), battery, reachability and signal; Home Coaches. See below. |
 | Timer | No device parameters; uses report-level schedules | Emits the report address whenever the scheduler refreshes that report. |
 | Themo | `email`\*, `password`\* (secret) of the Themo app | Themo smart thermostats through the Themo Public API. Per thermostat (address `<thermostatId>\|<key>`), reports `temperature` (the active sensor), `roomTemperature`, `floorTemperature` (with a floor sensor), `outsideTemperature`, `setTemperature` (°C), `mode` (`off`, `manual`, `sls`), `thermostatMode` (Matter SystemMode: 0 off, 1 auto = SLS, 4 heat = manual), `heating`, `connected`, `lights`, `lock` (`off`, `on`, `hard`, `boost`), `frostProtection`, `frostTemperature`, `schedule`, `energyHour` (kWh of each finished hour, time-stamped to the hour), `energyHourly` (the last 48 hours as a `confirmed` series), `energyToday` (kWh) and `heatingShareToday` (%). Commands `setTemperature`, `mode`, `thermostatMode`, `schedule` (a schedule's name), `lights`, `lock`, `frostProtection`, `frostTemperature`, `boost` (manual mode timer, minutes), plus `refresh`. Each thermostat is a Matter thermostat. Polls hourly by default, at most once a minute. |
 | Virtual | No device parameters | Stores command values by address and reports each one, with its value and type, on the report template with the same address. |
@@ -103,11 +104,9 @@ reason.
 | Weather Forecast | `provider` (`openMeteo`, the default, or `fmi`), `latitude` and `longitude` (degrees), `fmiPlace` (with `fmi`, instead of the coordinates), `forecastHours` (default `48`, at most `240`), `endpoint` (empty for the public API) | Hourly forecast series (`kind` `forecast`) from the current hour on, refreshed every hour and sent when they change: `temperature` °C, `precipitation` mm, `windSpeed` m/s, `cloudCover` %, `solarRadiation` W/m², `humidity` %. FMI takes solar radiation from HARMONIE. Since 2.1.0. |
 | Web Device | No device parameters | Commands perform HTTP GET/POST through the webhook service; `POST /api/webhook/{address}` publishes matching reports. |
 
-Netatmo devices with the same `clientId` share one set of tokens; different client ids are
-separate accounts. Netatmo rotates the refresh token on every refresh, so the latest tokens are
-stored in `Data/netatmoAuth-<clientId>.json` and win over the configured ones. The file of
-earlier versions, `Data/netatmoAuth.json`, stays with the account that uses it first. When
-Netatmo refuses the stored refresh token, the file is deleted and the configured tokens are used.
+Netatmo setup (the app, connecting, the webhook through a Cloudflare Tunnel, scopes): the hub's
+[Netatmo guide](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/guides/netatmo.md). Devices with the same
+`clientId` share its tokens, kept in `Data/netatmoAuth-<clientId>.json`.
 
 Eufy Security is a C# port of part of [eufy-sdk](https://github.com/mega-yfue/eufy-sdk) (Apache-2.0, see
 [NOTICE](NOTICE)): the cloud login and device list, push events over Firebase Cloud Messaging and guard mode and

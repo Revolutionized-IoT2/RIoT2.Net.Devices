@@ -48,7 +48,7 @@ cd .\RIoT2.Net.Devices\EufySdkBridge; npm ci; npm test; npm run build
 | `Plugin.cs` | Entry point derived from Core's `PluginBase`; registers services and devices |
 | `Catalog/` | Device implementations: Web, Timer, Virtual, MQTT, cloud services, EasyPLC, Hue and others |
 | `Controllers/` | Plugin HTTP controllers: webhook and file download |
-| `Services/` | Integration services for webhooks, storage, FTP, Azure Relay, APsystems, Eufy and clients; `Services/Eufy/` is the C# port of eufy-sdk the `EufySecurity` device uses (`Cloud/` HTTP API and login, `Push/` FCM/MCS events, `P2P/` station sessions, guard mode and snapshot), behind `EufySecurityService`; `Services/EufySdk/` runs eufy-sdk itself for the `EufySecuritySdk` device (`EufySdkService`, the Node.js launcher, the bridge protocol client, and the generated `eufy-sdk-bridge.mjs` bundle, embedded); `Services/MelCloud/` has the classic MELCloud and MELCloud Home backends of the `MelCloud` device; `Services/MyUplink/` has the myUplink API client of the `MyUplink` device; `Services/Themo/` has the Themo API client of the `Themo` device; `Services/Miele/` has the Miele login (`MieleAuth`) and API client of the `Miele` device; `Services/DirectHttp.cs` is the HTTP client without redirects or cookies that `MelCloud` and `Miele` use |
+| `Services/` | Integration services for webhooks, storage, FTP, Azure Relay, APsystems, Eufy and clients; `Services/Eufy/` is the C# port of eufy-sdk the `EufySecurity` device uses (`Cloud/` HTTP API and login, `Push/` FCM/MCS events, `P2P/` station sessions, guard mode and snapshot), behind `EufySecurityService`; `Services/EufySdk/` runs eufy-sdk itself for the `EufySecuritySdk` device (`EufySdkService`, the Node.js launcher, the bridge protocol client, and the generated `eufy-sdk-bridge.mjs` bundle, embedded); `Services/MelCloud/` has the classic MELCloud and MELCloud Home backends of the `MelCloud` device; `Services/MyUplink/` has the myUplink API client of the `MyUplink` device; `Services/Themo/` has the Themo API client of the `Themo` device; `Services/Miele/` has the Miele login (`MieleAuth`) and API client of the `Miele` device; `Services/Netatmo/` has the Netatmo API client and the webhook hub; `Services/DirectHttp.cs` is the HTTP client without redirects or cookies that `MelCloud` and `Miele` use |
 | `EufySdkBridge/` | npm project of the eufy-sdk bridge: `src/bridge.mjs` (the JSON lines protocol), `src/main.mjs`, `test/` (node:test, fake SDK), `build.mjs` (esbuild bundle with the bundled packages' licenses) |
 | `Abstracts/` | Shared Netatmo base device logic; `EufySecurityBase`, the templates, reports and commands of both Eufy devices |
 | `Models/` | DTOs for devices and services |
@@ -63,7 +63,8 @@ This repository implements plugin-side pieces of these hub contracts:
   device classes read `DeviceParameters` and many emit `DeviceConfiguration` templates from
   `Catalog/*.cs`.
 - [http-api.md](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/contracts/http-api.md):
-  `Controllers/WebhookController.cs` serves `POST /api/webhook/{address}` and
+  `Controllers/WebhookController.cs` serves `POST /api/webhook/{address}`,
+  `Controllers/NetatmoWebhookController.cs` serves `POST /api/netatmo/webhook/{secret}`, and
   `Controllers/DownloadController.cs` serves plugin download endpoints.
 - [mqtt-topics.md](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/contracts/mqtt-topics.md):
   the generic `Catalog/Mqtt.cs` device bridges arbitrary MQTT topics through Core's MQTT helper.
@@ -100,7 +101,17 @@ This repository implements plugin-side pieces of these hub contracts:
 
 - Netatmo tokens live in `NetatmoAuthClient`, one per client id, from the singleton
   `NetatmoAuthClientFactory`. Netatmo rotates the refresh token, so two clients for the same app
-  would invalidate each other: always get the client from the factory.
+  would invalidate each other: always get the client from the factory. Call Netatmo through
+  `NetatmoApiClient` (refresh-and-retry, typed `NetatmoApiException`) inside `CallNetatmoAsync`, which keeps the
+  device running with the reason as its state message; only configuration errors may put it into the error state.
+- The Netatmo devices are connected from the UI (`IDeviceWithAuthorization`, Core 2.4.0). Devices of one app share
+  its tokens, so a sign-in asks for the union of their scopes (`RequireScopes`); a new device type adds its scopes
+  there.
+- Netatmo allows **one webhook URL per app**, and the URL (`/api/netatmo/webhook/{secret}`) is the only credential:
+  never log it. `NetatmoWebhookHub` registers it through `webhooks/v1`, never replaces another URL unless
+  `webhookTakeover` is set, and doesn't unregister on stop. Answer pushes at once and handle them off the request:
+  Netatmo bans an app's webhook for 24 hours after 5 failed deliveries. Pushed and polled events share one
+  de-duplication key (`NetatmoSecurityEvent.DeduplicationKey`).
 - `FTP.cs` has a storage-configuration path with PascalCase `Storage*` keys. Because
   `deviceParameters` keys are camel-cased on download, those names are a C1-style bug if enabled;
   report it instead of renaming keys only in docs.
@@ -152,7 +163,7 @@ This repository implements plugin-side pieces of these hub contracts:
   stderr, and never logs the password, tokens or thumbnail URLs. The password goes over stdin, never in arguments or
   the environment. Keep `EventKinds` in `EufySdkService` and `SECURITY_EVENTS` in `bridge.mjs` in step with eufy-sdk's
   `DeviceEventMap`. The bridge passes eufy-sdk its own `openudid`, so it doesn't log the C# port's session out.
-- The webhook endpoint is anonymous and caps request bodies at 64 KiB.
+- The webhook endpoints are anonymous and cap request bodies at 64 KiB.
 
 ## Related work
 

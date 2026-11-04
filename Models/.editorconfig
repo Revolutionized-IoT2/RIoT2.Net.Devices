@@ -1,5 +1,5 @@
 # Serializer-populated models (plan M8 step 9, I32). A non-nullable member is one a valid
 # payload carries; optional members, and members the code checks for null, are nullable. The
 # serializers set the members, so CS8618 (non-nullable member not initialized) is off here.
-[{ElectricityModels.cs,EufyEventMessage.cs,EufyMessage.cs,EufyResult.cs,EufyVersionInfo.cs,FirebaseMsg.cs,HueModel.cs,MailMsg.cs,MeterSummary.cs,NetatmoAuth.cs,NetatmoCmd.cs,NetatmoEvent.cs,NetatmoHomesData.cs,NetatmoHomeStatus.cs,NetatmoStationsData.cs,SecurityReport.cs,ServiceAccount.cs}]
+[{ElectricityModels.cs,EufyEventMessage.cs,EufyMessage.cs,EufyResult.cs,EufyVersionInfo.cs,FirebaseMsg.cs,HueModel.cs,MailMsg.cs,MeterSummary.cs,NetatmoAuth.cs,NetatmoEvent.cs,NetatmoHomesData.cs,NetatmoHomeStatus.cs,NetatmoStationsData.cs,SecurityReport.cs,ServiceAccount.cs}]
 dotnet_diagnostic.CS8618.severity = none

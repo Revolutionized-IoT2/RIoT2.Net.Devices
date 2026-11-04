@@ -158,6 +158,24 @@ public class NetatmoAuthenticationTests
     }
 
     [TestMethod]
+    [DataRow(HttpStatusCode.ServiceUnavailable, "<html>Down for maintenance</html>")]
+    [DataRow(HttpStatusCode.TooManyRequests, """{"error":{"code":26,"message":"User usage reached"}}""")]
+    [DataRow(HttpStatusCode.BadRequest, """{"error":"invalid_request"}""")]
+    public async Task AnOutageOrRateLimitKeepsTheOnlyRefreshToken(HttpStatusCode status, string body)
+    {
+        File.WriteAllText(Own("client-a"), """{"access_token":"stored-access","refresh_token":"stored-refresh","client_id":"client-a"}""");
+        _respond = _ => Token(status, body);
+        var client = Factory().Get("client-a");
+        client.Configure("", "", "secret");
+
+        Assert.IsFalse(await client.RefreshAsync("stored-access"));
+
+        Assert.AreEqual(("stored-access", "stored-refresh"), (client.AccessToken, client.RefreshToken));
+        Assert.IsTrue(File.Exists(client.TokenFile), "only a refused grant deletes the tokens a sign-in stored");
+        Assert.IsNull(client.Problem);
+    }
+
+    [TestMethod]
     public async Task NetworkFailureKeepsStoredTokens()
     {
         File.WriteAllText(Own("client-a"), """{"access_token":"stored-access","refresh_token":"stored-refresh","client_id":"client-a"}""");

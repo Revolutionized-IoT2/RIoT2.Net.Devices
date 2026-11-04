@@ -27,6 +27,8 @@ public class DeviceOptionsTests
         [typeof(Themo), "email,password", "password"],
         [typeof(Miele), "clientId,clientSecret,email,password,country,authorizationCode,redirectUri,language", "clientSecret,password,authorizationCode"],
         [typeof(WeatherForecast), "provider,latitude,longitude,fmiPlace,forecastHours,endpoint", ""],
+        [typeof(NetatmoSecurity), "homeId,webhookUrl,webhookSecret,webhookTakeover,downloadSnapshots,clientId,clientSecret,token,refresh_token", "webhookSecret,clientSecret,token,refresh_token"],
+        [typeof(NetatmoWeather), "stationId,includeHomeCoach,clientId,clientSecret,token,refresh_token", "clientSecret,token,refresh_token"],
     ];
 
     // The keys are the ones stored configurations use, so they load unchanged.
@@ -38,7 +40,8 @@ public class DeviceOptionsTests
         var device = host.Devices.Single(d => d.GetType() == deviceType);
         var template = DeviceTemplates.Create(device);
 
-        CollectionAssert.AreEqual(keys.Split(','), template.ParameterDefinitions!.Select(d => d.Key).ToArray());
+        CollectionAssert.AreEqual(keys.Split(','), template.ParameterDefinitions!.Select(d => d.Key).ToArray(),
+            string.Join(",", template.ParameterDefinitions!.Select(d => d.Key)));
         CollectionAssert.AreEquivalent(keys.Split(','), template.DeviceParameters.Keys.ToArray());
         CollectionAssert.AreEqual(secrets.Split(',', StringSplitOptions.RemoveEmptyEntries),
             template.ParameterDefinitions!.Where(d => d.Secret).Select(d => d.Key).ToArray());

@@ -1,94 +1,81 @@
 ﻿namespace RIoT2.Net.Devices.Models
 {
-    internal class Administrative
+    /// <summary>
+    /// The answer of <c>api/getstationsdata</c> (weather stations) and <c>api/gethomecoachsdata</c> (Healthy Home
+    /// Coaches), which share their shape; a coach has no modules.
+    /// </summary>
+    public class NetatmoStationsData
     {
-        public string country { get; set; }
-        public string reg_locale { get; set; }
-        public string lang { get; set; }
-        public int unit { get; set; }
-        public int windunit { get; set; }
-        public int pressureunit { get; set; }
-        public int feel_like_algo { get; set; }
-    }
-
-    internal class Body
-    {
-        public List<Device> devices { get; set; }
-        public User user { get; set; }
-    }
-
-    internal class DashboardData
-    {
-        public int time_utc { get; set; }
-        public double Temperature { get; set; }
-        public int CO2 { get; set; }
-        public int Humidity { get; set; }
-        public int Noise { get; set; }
-        public double Pressure { get; set; }
-        public double AbsolutePressure { get; set; }
-        public string temp_trend { get; set; }
-        public string pressure_trend { get; set; }
-    }
-
-    internal class Device
-    {
-        public string _id { get; set; }
-        public string station_name { get; set; }
-        public int date_setup { get; set; }
-        public int last_setup { get; set; }
-        public string type { get; set; }
-        public int last_status_store { get; set; }
-        public string module_name { get; set; }
-        public int firmware { get; set; }
-        public int last_upgrade { get; set; }
-        public int wifi_status { get; set; }
-        public bool reachable { get; set; }
-        public bool co2_calibrating { get; set; }
-        public List<string> data_type { get; set; }
-        public Place place { get; set; }
-        public string home_id { get; set; }
-        public string home_name { get; set; }
-        public DashboardData dashboard_data { get; set; }
-        public List<Module> modules { get; set; }
-    }
-
-    internal class Module
-    {
-        public string _id { get; set; }
-        public string type { get; set; }
-        public string module_name { get; set; }
-        public int last_setup { get; set; }
-        public List<string> data_type { get; set; }
-        public int battery_percent { get; set; }
-        public bool reachable { get; set; }
-        public int firmware { get; set; }
-        public int last_message { get; set; }
-        public int last_seen { get; set; }
-        public int rf_status { get; set; }
-        public int battery_vp { get; set; }
-        public DashboardData dashboard_data { get; set; }
-    }
-
-    internal class Place
-    {
-        public int altitude { get; set; }
-        public string city { get; set; }
-        public string country { get; set; }
-        public string timezone { get; set; }
-        public List<double> location { get; set; }
-    }
-
-    internal class NetatmoStationsData
-    {
-        public Body body { get; set; }
+        public StationsBody? body { get; set; }
         public string status { get; set; }
         public double time_exec { get; set; }
-        public int time_server { get; set; }
+        public long time_server { get; set; }
     }
 
-    internal class User
+    public class StationsBody
     {
-        public string mail { get; set; }
-        public Administrative administrative { get; set; }
+        public List<StationDevice>? devices { get; set; }
+        public StationsUser? user { get; set; }
+    }
+
+    public class StationsUser
+    {
+        public string? mail { get; set; }
+    }
+
+    /// <summary>A station's main module (<c>NAMain</c>) or a Healthy Home Coach (<c>NHC</c>).</summary>
+    public class StationDevice : StationModule
+    {
+        public string? station_name { get; set; }
+        public string? home_id { get; set; }
+        public string? home_name { get; set; }
+        public int? wifi_status { get; set; }
+        public bool? co2_calibrating { get; set; }
+        public List<StationModule>? modules { get; set; }
+    }
+
+    /// <summary>
+    /// A module of a station: outdoor (<c>NAModule1</c>), wind gauge (<c>NAModule2</c>), rain gauge (<c>NAModule3</c>) or
+    /// indoor (<c>NAModule4</c>).
+    /// </summary>
+    public class StationModule
+    {
+        public string _id { get; set; }
+        public string? type { get; set; }
+        public string? module_name { get; set; }
+        /// <summary>What the module measures: <c>Temperature</c>, <c>CO2</c>, <c>Humidity</c>, <c>Noise</c>, <c>Pressure</c>, <c>Rain</c>, <c>Wind</c>, <c>health_idx</c>.</summary>
+        public List<string>? data_type { get; set; }
+        public bool? reachable { get; set; }
+        public int? battery_percent { get; set; }
+        public int? rf_status { get; set; }
+        public long? last_seen { get; set; }
+        public long? last_message { get; set; }
+        public DashboardData? dashboard_data { get; set; }
+    }
+
+    // The member names are Netatmo's, and the report addresses: <module id>|<member>.
+    public class DashboardData
+    {
+        public long? time_utc { get; set; }
+        public double? Temperature { get; set; }
+        public double? min_temp { get; set; }
+        public double? max_temp { get; set; }
+        public string? temp_trend { get; set; }
+        public int? CO2 { get; set; }
+        public int? Humidity { get; set; }
+        public int? Noise { get; set; }
+        public double? Pressure { get; set; }
+        public double? AbsolutePressure { get; set; }
+        public string? pressure_trend { get; set; }
+        public double? Rain { get; set; }
+        public double? sum_rain_1 { get; set; }
+        public double? sum_rain_24 { get; set; }
+        public int? WindStrength { get; set; }
+        public int? WindAngle { get; set; }
+        public int? GustStrength { get; set; }
+        public int? GustAngle { get; set; }
+        public int? max_wind_str { get; set; }
+        public int? max_wind_angle { get; set; }
+        public int? health_idx { get; set; }
     }
 }

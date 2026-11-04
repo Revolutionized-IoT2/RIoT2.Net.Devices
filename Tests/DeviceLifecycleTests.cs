@@ -128,41 +128,6 @@ public class DeviceLifecycleTests
     }
 
     [TestMethod]
-    public async Task NetatmoWeatherAwaitsTheStationDataAndBuildsItsTemplateWithoutCallingNetatmo()
-    {
-        var http = new FakeHttp();
-        var device = new TestNetatmoWeather(Factory(), http);
-        device.Initialize(Configuration(
-            new() { ["token"] = "access", ["refresh_token"] = "refresh", ["clientId"] = "weather-app", ["clientSecret"] = "secret", ["stationId"] = "70:ee" },
-            reports: [new ReportTemplate { Id = "temperature", Address = "70:ee|temperature", Parameters = [] }]));
-        var reports = Capture(device);
-
-        var start = device.StartAsync(CancellationToken.None);
-        Assert.IsFalse(start.IsCompleted);
-        Assert.AreEqual("access", http.Requests.Single().Request.Headers.Authorization!.Parameter);
-        http.Respond("""{"status":"ok","body":{"devices":[{"_id":"70:ee","dashboard_data":{"Temperature":21.5,"Humidity":40},"modules":[]}]}}""");
-        await start;
-        Assert.AreEqual(21.5, reports.Single().Value.GetValue<double>());
-
-        var template = device.GetConfigurationTemplate();
-        CollectionAssert.Contains(template.ReportTemplates.Select(r => r.Address).ToList(), "70:ee|Temperature");
-        Assert.HasCount(1, http.Requests, "the template comes from the data the last refresh read");
-    }
-
-    [TestMethod]
-    public async Task NetatmoSecurityRejectsSetHomeUntilItsHomeIsLoaded()
-    {
-        // The memory storage isn't reached in this test.
-        var device = new NetatmoSecurity(NullLogger.Instance, null!, Factory());
-        device.Initialize(Configuration(
-            new() { ["token"] = "access", ["refresh_token"] = "refresh", ["clientId"] = "security-app", ["clientSecret"] = "secret" },
-            commands: [new CommandTemplate { Id = "home", Address = "set_home" }, new CommandTemplate { Id = "refresh", Address = "refresh" }]));
-
-        await Assert.ThrowsExactlyAsync<DeviceNotReadyException>(() => device.ExecuteCommandAsync("home", "true", CancellationToken.None));
-        await device.ExecuteCommandAsync("refresh", "true", CancellationToken.None);
-    }
-
-    [TestMethod]
     public async Task HueAwaitsItsLightsForwardsCommandsAndStopsItsListener()
     {
         var device = new TestHue();
@@ -243,9 +208,6 @@ public class DeviceLifecycleTests
         Assert.IsFalse(ftp.Subscribed);
     }
 
-    private NetatmoAuthClientFactory Factory() =>
-        new(NullLogger.Instance, _dataDirectory, (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadRequest)));
-
     private static DeviceConfiguration Configuration(Dictionary<string, string> parameters,
         List<ReportTemplate>? reports = null, List<CommandTemplate>? commands = null) =>
         new() { Id = "device", Name = "Device", DeviceParameters = parameters, ReportTemplates = reports ?? [], CommandTemplates = commands ?? [] };
@@ -287,12 +249,6 @@ public class DeviceLifecycleTests
     }
 
     private sealed class TestElectricityPrice(FakeHttp http) : ElectricityPrice(NullLogger.Instance)
-    {
-        internal override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            http.SendAsync(request, cancellationToken);
-    }
-
-    private sealed class TestNetatmoWeather(NetatmoAuthClientFactory factory, FakeHttp http) : NetatmoWeather(NullLogger.Instance, factory)
     {
         internal override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             http.SendAsync(request, cancellationToken);

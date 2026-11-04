@@ -19,6 +19,7 @@ namespace RIoT2.Net.Devices
             AddService<IEufySecurityService, EufySecurityService>();
             AddService<IEufySdkService, Services.EufySdk.EufySdkService>();
             AddService<INetatmoAuthClientFactory, NetatmoAuthClientFactory>();
+            AddService<INetatmoWebhookHub, Services.Netatmo.NetatmoWebhookHub>();
 
             AddDevice<Web>();
             AddDevice<Catalog.Timer>();
