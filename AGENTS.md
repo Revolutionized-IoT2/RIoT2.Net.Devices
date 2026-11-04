@@ -48,7 +48,7 @@ cd .\RIoT2.Net.Devices\EufySdkBridge; npm ci; npm test; npm run build
 | `Plugin.cs` | Entry point derived from Core's `PluginBase`; registers services and devices |
 | `Catalog/` | Device implementations: Web, Timer, Virtual, MQTT, cloud services, EasyPLC, Hue and others |
 | `Controllers/` | Plugin HTTP controllers: webhook and file download |
-| `Services/` | Integration services for webhooks, storage, FTP, Azure Relay, APsystems, Eufy and clients; `Services/Eufy/` is the C# port of eufy-sdk the `EufySecurity` device uses (`Cloud/` HTTP API and login, `Push/` FCM/MCS events, `P2P/` station sessions, guard mode and snapshot), behind `EufySecurityService`; `Services/EufySdk/` runs eufy-sdk itself for the `EufySecuritySdk` device (`EufySdkService`, the Node.js launcher, the bridge protocol client, and the generated `eufy-sdk-bridge.mjs` bundle, embedded); `Services/MelCloud/` has the classic MELCloud and MELCloud Home backends of the `MelCloud` device; `Services/MyUplink/` has the myUplink API client of the `MyUplink` device; `Services/Themo/` has the Themo API client of the `Themo` device |
+| `Services/` | Integration services for webhooks, storage, FTP, Azure Relay, APsystems, Eufy and clients; `Services/Eufy/` is the C# port of eufy-sdk the `EufySecurity` device uses (`Cloud/` HTTP API and login, `Push/` FCM/MCS events, `P2P/` station sessions, guard mode and snapshot), behind `EufySecurityService`; `Services/EufySdk/` runs eufy-sdk itself for the `EufySecuritySdk` device (`EufySdkService`, the Node.js launcher, the bridge protocol client, and the generated `eufy-sdk-bridge.mjs` bundle, embedded); `Services/MelCloud/` has the classic MELCloud and MELCloud Home backends of the `MelCloud` device; `Services/MyUplink/` has the myUplink API client of the `MyUplink` device; `Services/Themo/` has the Themo API client of the `Themo` device; `Services/Miele/` has the Miele login (`MieleAuth`) and API client of the `Miele` device; `Services/DirectHttp.cs` is the HTTP client without redirects or cookies that `MelCloud` and `Miele` use |
 | `EufySdkBridge/` | npm project of the eufy-sdk bridge: `src/bridge.mjs` (the JSON lines protocol), `src/main.mjs`, `test/` (node:test, fake SDK), `build.mjs` (esbuild bundle with the bundled packages' licenses) |
 | `Abstracts/` | Shared Netatmo base device logic; `EufySecurityBase`, the templates, reports and commands of both Eufy devices |
 | `Models/` | DTOs for devices and services |
@@ -111,8 +111,8 @@ This repository implements plugin-side pieces of these hub contracts:
   or bake that file into images.
 - MELCloud's APIs are not public. Classic MELCloud follows pymelcloud; MELCloud Home follows the
   melcloudhome Home Assistant integration, including its OAuth PKCE login through AWS Cognito's form.
-  `MelCloudHttp` follows no redirects and keeps no cookies (the Home login handles both) and checks
-  the outbound URL policy itself. Logins are kept in `Data/melcloud-<cloud>-<hash>.json`; MELCloud
+  Its requests go through `DirectHttp`, which follows no redirects and keeps no cookies (the Home login
+  handles both) and checks the outbound URL policy itself. Logins are kept in `Data/melcloud-<cloud>-<hash>.json`; MELCloud
   limits logins and polling, so keep the one-minute poll floor. Only `MelCloudAuthenticationException`
   is a configuration error; `MelCloudUnavailableException` (429, 5xx, timeouts) keeps the last state.
 - myUplink uses the official API (swagger at api.myuplink.com/swagger) with the client credentials
@@ -126,6 +126,13 @@ This repository implements plugin-side pieces of these hub contracts:
   A command message carries one field (`CMT`, `CMode`, ...), so `setTemperature` outside manual
   mode sends `CMode` and then `CMT`. `energyHour` uses `SendReport` with the hour's time stamp, not
   `SendReportIfValueChanged`, so equal hours are all kept.
+- Miele's API (api.mcs3.miele.com/v1) is official, but its login without a browser posts Miele's login
+  form (`/oauth/auth`, a 302 whose `Location` has the code), as miele-to-mqtt-gw does; it must go
+  through `DirectHttp`, which follows no redirects. The pasted-code flow is the fallback, and each code
+  is remembered in the token file so it isn't sent twice. Temperatures are 0.01 °C with -32768 for
+  none, times are `[hours, minutes]`. The event stream listener runs from start to stop with its own
+  cancellation and back-off; every state change, from it or a poll, goes through `ApplyDevice`, which
+  follows runs (`MieleRuns`) under one lock.
 - `DownloadController` rejects traversal, absolute paths, encoded slashes and encoded backslashes
   before storage services are called. Keep filename normalization defensive.
 - `Services/Eufy/` is ported from eufy-sdk (Apache-2.0, `NOTICE`) at commit `5f92bea5`; every ported file names its

@@ -25,6 +25,7 @@ public class DeviceOptionsTests
         [typeof(MelCloud), "cloud,email,password", "password"],
         [typeof(MyUplink), "clientId,clientSecret,language,extraParameters,offsetParameter,baseTemperature,degreesPerStep", "clientSecret"],
         [typeof(Themo), "email,password", "password"],
+        [typeof(Miele), "clientId,clientSecret,email,password,country,authorizationCode,redirectUri,language", "clientSecret,password,authorizationCode"],
         [typeof(WeatherForecast), "provider,latitude,longitude,fmiPlace,forecastHours,endpoint", ""],
     ];
 

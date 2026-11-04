@@ -90,6 +90,7 @@ reason.
 | FTP | `ftpUsers` (secret; `user:password` pairs separated by `\|`), `ftpPort` (default `21`) | File uploads become in-memory photo `SecurityReport` values keyed by FTP username. |
 | Hue | `bridgeIpAddress`\*, `apiKey`\* (secret) | Dynamic light command/report templates when running; event-stream updates merge partial state and include Matter endpoint metadata. |
 | MELCloud | `cloud` (`classic`, the default: the MELCloud app; or `home`: the MELCloud Home app), `email`\*, `password`\* (secret) | Mitsubishi Electric air-to-air heat pumps. Per unit (address `<unitId>\|<key>`), reports `roomTemperature` and `setTemperature` (°C), `power`, `mode` (`heat`, `dry`, `cool`, `fan`, `auto`), `thermostatMode` (Matter SystemMode: 0 off, 1 auto, 3 cool, 4 heat, 7 fan, 8 dry), `fanSpeed` (`auto`, `1`-`5`), `vaneVertical`, `vaneHorizontal`, `offline`, and `energyConsumed` (classic meter, kWh) or `energyToday` (Home, kWh). Commands `setTemperature`, `power`, `mode`, `thermostatMode`, `fanSpeed`, `vaneVertical`, `vaneHorizontal`, plus `refresh`. Each unit is a Matter thermostat. Polls hourly by default, at most once a minute. |
+| Miele | `clientId`\*, `clientSecret`\* (secret) of an app registered at developer.miele.com; `email`, `password` (secret) and `country` (default `fi-FI`) of the Miele account, or `authorizationCode` (secret) with `redirectUri` (default `http://localhost/miele`); `language` (default `en`) | Miele appliances through the Miele 3rd Party API, with live updates from its event stream. Per appliance (address `<fabNumber>\|<key>`), reports `status` (`off`, `on`, `programmed`, `waitingToStart`, `running`, `pause`, `programEnded`, `failure`, `programInterrupted`, `idle`, `rinseHold`, `service`, `notConnected`, ...), `statusCode`, `program`, `programId`, `programPhase`, `remainingTime`, `elapsedTime`, `startDelay` (min), `finishTime` (ISO local time), `door`, `failure`, `info`, `remoteStart`, `connected`, `programEvent` (`started`, `finished`, `interrupted`, `failed`) and `lastRun` (program, start, end, duration, kWh, litres). Ovens add `temperature` and `targetTemperature` (°C), and `coreTemperature` and `coreTargetTemperature` with a food probe; washing machines add `targetTemperature`, `spinningSpeed` (rpm) and `twinDos1Level`/`twinDos2Level` (%); washers, dryers and dishwashers add `energyLastRun` (kWh), `waterLastRun` (l), `energyToday`, `waterToday`, `energyForecast` and `waterForecast` (%). Commands `start`, `stop`, `pause`, `startDelay` (min), `startAt` (ISO time), `power`, `program` (a name or id, or `{"program", "temperature", "duration"}`), `targetTemperature`, plus `refresh`. Oven temperatures are Matter temperature sensors. Polls hourly as a safety net, at most once a minute. |
 | Messaging | `firebaseProjectName`, `smtp_Server`, `smtp_User`, `smtp_Password` (secret), `smtp_Port` (default `587`); mail needs the server, user and password | Commands `fb` (Firebase topic message) and `mail` (SMTP email). Firebase service account JSON is read from `Data/service_account.json`. |
 | MQTT | `clientId`, `serverUrl`\* (broker host, port 1883), `userName`, `password` (secret), `subscribeTopics` (separated by `;`) | Publishes command payloads to command addresses and reports subscribed topic payloads as text. |
 | myUplink | `clientId`\*, `clientSecret`\* (secret) of an app registered at dev.myuplink.com, `language` (default `en-GB`), `extraParameters` (comma-separated parameter ids), `offsetParameter` (default `47011`), `baseTemperature` (default `20`), `degreesPerStep` (default `1`) | NIBE heat pumps (written for the F750) through the official myUplink API. Per heat pump (address `<deviceId>\|<key>`), reports the curated parameters it has: `outdoorTemperature`, `supplyTemperature`, `returnTemperature`, `hotWaterTop`, `hotWaterCharging`, `exhaustAirTemperature`, `extractAirTemperature`, `calculatedSupplyTemperature` (°C), `degreeMinutes`, `compressorFrequency`, `compressorStarts`, `compressorHours`, `hotWaterCompressorHours`, `additionalHeatPower`, `fanSpeed`, `heatingOffset`, `hotWaterComfortMode`, `hotWaterBoost`, `ventilationSpeed` (enums as their text), `energyHeating` and `energyHotWater` (produced heat, kWh); plus `setTemperature` (the virtual setpoint, °C), `thermostatMode`, `smartHomeMode`, `connected`, `alarm`, `activeAlarms`, `alarmText`, `premiumManage`, `energyToday` (kWh) and `p<id>` for each extra parameter. Commands `setTemperature`, `heatingOffset`, `hotWaterComfortMode`, `hotWaterBoost`, `ventilationSpeed`, `smartHomeMode` (`Default`, `Normal`, `Away`, `Vacation`, `Home`), `setParameter` (`{"parameterId": "47011", "value": 1}`), `p<id>` for writable extra parameters, plus `refresh`. Each heat pump is a Matter thermostat. Polls hourly by default, at most once a minute. |
@@ -173,6 +174,27 @@ document the rated power's unit; the device reads a value up to 1 as MW, up to 1
 one as W. Without the hourly data, the state and commands still work and the energy reports wait.
 The `boost` command needs thermostat software 4.2 or later, and the `boost` lock 4.4.0. The Matter
 thermostat has no Auto mode, so a thermostat in `sls` shows its setpoints but not its mode there.
+
+Miele uses the Miele 3rd Party API with your own app: register one at
+[developer.miele.com](https://www.miele.com/f/com/en/register_api.aspx) and enter its client id and
+secret. The device signs in with the account's e-mail, password and country through Miele's login
+form, as several open-source gateways do; if that fails or isn't configured, open the login address
+the device's error shows (`https://api.mcs3.miele.com/thirdparty/login?...`, with the app's redirect
+URI as `redirectUri`), log in, and paste the code (or the whole address you are sent to) into
+`authorizationCode`. Each code is used once. The tokens are kept in
+`Data/miele-auth-<hash of the client id>.json` and refreshed before they expire, so a login lasts
+months. Miele pushes changes on an event stream that the device keeps open, reconnecting after 5 s
+up to 5 minutes; the hourly poll reads everything again. Remote start, a delayed start
+(`startDelay`, or `startAt` with a time, e.g. a cheap price slot's start) and choosing a program need
+remote start (MobileStart) switched on at the appliance, and a washing machine needs its program
+chosen on the machine; a command Miele doesn't allow now fails with the reason. Washing machines
+usually don't let their program be chosen remotely, so they get no `program` command. A run starts
+when the appliance starts running and ends when the program ends, fails or is interrupted;
+`programEvent`, `lastRun`, `energyLastRun` and `waterLastRun` are sent then, time-stamped at the
+run's end. The energy and water come from Miele's eco feedback, which only newer appliances have.
+Day totals and an open run are kept in `Data/miele-<hash of the fabrication number>.json`, so a
+restart in the middle of a run still reports it. Core has no appliance device types for Matter, so
+only oven temperatures are bridged, as temperature sensors.
 
 Devices and plugin controllers use the platform configuration and HTTP contracts:
 

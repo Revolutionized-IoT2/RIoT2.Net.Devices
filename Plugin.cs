@@ -1,4 +1,4 @@
-﻿using RIoT2.Core.Abstracts;
+using RIoT2.Core.Abstracts;
 using RIoT2.Net.Devices.Catalog;
 using RIoT2.Net.Devices.Services;
 using RIoT2.Net.Devices.Services.FTP;
@@ -40,6 +40,7 @@ namespace RIoT2.Net.Devices
             AddDevice<MelCloud>();
             AddDevice<MyUplink>();
             AddDevice<Themo>();
+            AddDevice<Miele>();
         }
     }
 }

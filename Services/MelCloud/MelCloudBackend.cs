@@ -4,7 +4,6 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
-using RIoT2.Core.Security;
 using RIoT2.Net.Devices.Models;
 
 namespace RIoT2.Net.Devices.Services.MelCloud
@@ -29,44 +28,13 @@ namespace RIoT2.Net.Devices.Services.MelCloud
     internal sealed class MelCloudUnavailableException(string message, Exception? inner = null) : Exception(message, inner);
 
     /// <summary>
-    /// The HTTP client of the MELCloud backends. It follows no redirects and keeps no cookies, because the MELCloud
-    /// Home login handles both itself, and it checks every request against the node's outbound URL policy.
+    /// The HTTP helpers of the MELCloud backends. Requests go through <see cref="DirectHttp"/>, which follows no
+    /// redirects and keeps no cookies, because the MELCloud Home login handles both itself.
     /// </summary>
     internal static class MelCloudHttp
     {
-        internal static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
-
-        private static readonly HttpClient _client = new(new PolicyHandler(new SocketsHttpHandler
-        {
-            AllowAutoRedirect = false,
-            UseCookies = false,
-            AutomaticDecompression = DecompressionMethods.All,
-            PooledConnectionLifetime = TimeSpan.FromMinutes(15)
-        }))
-        { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
-
-        public static async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeout.CancelAfter(Timeout);
-            try
-            {
-                return await _client.SendAsync(request, timeout.Token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException error) when (!cancellationToken.IsCancellationRequested)
-            {
-                throw new TimeoutException($"MELCloud did not answer in {Timeout.TotalSeconds:0} seconds.", error);
-            }
-        }
-
-        private sealed class PolicyHandler(HttpMessageHandler inner) : DelegatingHandler(inner)
-        {
-            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            {
-                OutboundUrlPolicyHandler.Check(Core.Utils.Web.OutboundUrlPolicy, request.RequestUri, OutboundPurposes.Device);
-                return base.SendAsync(request, cancellationToken);
-            }
-        }
+        public static Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            DirectHttp.SendAsync(request, "MELCloud", cancellationToken);
 
         /// <summary>Sends <paramref name="request"/>; a failure to connect or a timeout is <see cref="MelCloudUnavailableException"/>.</summary>
         internal static async Task<HttpResponseMessage> SendAsync(MelCloudSend send, HttpRequestMessage request, CancellationToken cancellationToken)

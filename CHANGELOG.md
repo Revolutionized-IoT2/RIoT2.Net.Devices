@@ -53,6 +53,16 @@ cloud and the stations itself, through a C# port of part of [eufy-sdk](https://g
   `heatingShareToday`. Its commands set the target temperature (switching to manual mode, so the heat pump
   workflow templates can drive it), the mode, the schedule, the backlight, the child lock, frost protection and
   the timer boost. Each thermostat is a Matter thermostat.
+- Added: the `Miele` device for Miele appliances through the Miele 3rd Party API, with the `clientId` and
+  `clientSecret` of an app registered at developer.miele.com. It signs in with the account's `email`, `password`
+  and `country`, or a pasted `authorizationCode`, and keeps and refreshes the tokens. Miele's event stream brings
+  changes as they happen. It reports each appliance's status, program, phase, times and finish time, signals,
+  temperatures, spinning speed and TwinDos levels, program events, each run's energy and water (`lastRun`) and the
+  day's totals. Its commands start, stop and pause, delay the start (`startDelay`, `startAt`), switch on or off,
+  choose a program and set the temperature, checked against what Miele allows at the time. Oven temperatures are
+  Matter temperature sensors.
+- Changed: the HTTP client without redirects and cookies that `MelCloud` used is now `DirectHttp`, shared with
+  `Miele`.
 
 ## [2.1.0] - 2026-11-04
 
