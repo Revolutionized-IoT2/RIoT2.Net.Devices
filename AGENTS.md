@@ -46,7 +46,7 @@ dotnet test .\RIoT2.Net.Devices\Tests\RIoT2.Net.Devices.Tests.csproj -c Release
 | `Plugin.cs` | Entry point derived from Core's `PluginBase`; registers services and devices |
 | `Catalog/` | Device implementations: Web, Timer, Virtual, MQTT, cloud services, EasyPLC, Hue and others |
 | `Controllers/` | Plugin HTTP controllers: webhook and file download |
-| `Services/` | Integration services for webhooks, storage, FTP, Azure Relay, APsystems, Eufy and clients; `Services/MelCloud/` has the classic MELCloud and MELCloud Home backends of the `MelCloud` device; `Services/MyUplink/` has the myUplink API client of the `MyUplink` device |
+| `Services/` | Integration services for webhooks, storage, FTP, Azure Relay, APsystems, Eufy and clients; `Services/MelCloud/` has the classic MELCloud and MELCloud Home backends of the `MelCloud` device; `Services/MyUplink/` has the myUplink API client of the `MyUplink` device; `Services/Themo/` has the Themo API client of the `Themo` device |
 | `Abstracts/` | Shared Netatmo base device logic |
 | `Models/` | DTOs for devices and services |
 | `Tests/` | MSTest hardware-free regression tests and the shared conformance test (`PluginConformanceTests`) |
@@ -118,6 +118,11 @@ This repository implements plugin-side pieces of these hub contracts:
   multiplied by `scaleValue`, the value and step are not. Writes need Premium Manage: a 403 is
   reported as that, not as a configuration error. `MyUplinkRefusedException` (400, 403, 404, 409)
   isn't retried; `MyUplinkUnavailableException` (429, 5xx, timeouts) keeps the last state.
+- Themo uses the public API (swagger at connect.themo.io/swagger) pinned to `api-version=2.1`:
+  v2.2 dropped the hourly `/data` endpoint. Its "Price data" series' "Consumption" column is in MWh.
+  A command message carries one field (`CMT`, `CMode`, ...), so `setTemperature` outside manual
+  mode sends `CMode` and then `CMT`. `energyHour` uses `SendReport` with the hour's time stamp, not
+  `SendReportIfValueChanged`, so equal hours are all kept.
 - `DownloadController` rejects traversal, absolute paths, encoded slashes and encoded backslashes
   before storage services are called. Keep filename normalization defensive.
 - The webhook endpoint is anonymous and caps request bodies at 64 KiB.

@@ -95,6 +95,7 @@ reason.
 | Netatmo Security | `token` (secret), `refresh_token`\* (secret), `clientId`\*, `clientSecret`\* (secret) | Dynamic security camera reports plus `refresh` and `set_home` commands; rotated tokens are persisted per client id (see below). |
 | Netatmo Weather | as Netatmo Security, plus `stationId` | Weather station and module measurements; rotated tokens are persisted per client id (see below). |
 | Timer | No device parameters; uses report-level schedules | Emits the report address whenever the scheduler refreshes that report. |
+| Themo | `email`\*, `password`\* (secret) of the Themo app | Themo smart thermostats through the Themo Public API. Per thermostat (address `<thermostatId>\|<key>`), reports `temperature` (the active sensor), `roomTemperature`, `floorTemperature` (with a floor sensor), `outsideTemperature`, `setTemperature` (°C), `mode` (`off`, `manual`, `sls`), `thermostatMode` (Matter SystemMode: 0 off, 1 auto = SLS, 4 heat = manual), `heating`, `connected`, `lights`, `lock` (`off`, `on`, `hard`, `boost`), `frostProtection`, `frostTemperature`, `schedule`, `energyHour` (kWh of each finished hour, time-stamped to the hour), `energyHourly` (the last 48 hours as a `confirmed` series), `energyToday` (kWh) and `heatingShareToday` (%). Commands `setTemperature`, `mode`, `thermostatMode`, `schedule` (a schedule's name), `lights`, `lock`, `frostProtection`, `frostTemperature`, `boost` (manual mode timer, minutes), plus `refresh`. Each thermostat is a Matter thermostat. Polls hourly by default, at most once a minute. |
 | Virtual | No device parameters | Stores command values by address and reports each one, with its value and type, on the report template with the same address. |
 | Water Consumption | `securityToken`\* (secret), `endpoint` (default the WRM Systems API) | Scheduled latest water meter reading at address `watermeter`, with `unit` and `precision` report parameters. |
 | Weather Forecast | `provider` (`openMeteo`, the default, or `fmi`), `latitude` and `longitude` (degrees), `fmiPlace` (with `fmi`, instead of the coordinates), `forecastHours` (default `48`, at most `240`), `endpoint` (empty for the public API) | Hourly forecast series (`kind` `forecast`) from the current hour on, refreshed every hour and sent when they change: `temperature` °C, `precipitation` mm, `windSpeed` m/s, `cloudCover` %, `solarRadiation` W/m², `humidity` %. FMI takes solar radiation from HARMONIE. Since 2.1.0. |
@@ -136,6 +137,21 @@ electricity it used; `energyToday` is their increase since the day's first poll,
 produced between midnight and that poll. The day's starting point is kept in
 `Data/myuplink-<hash of the device id>.json`, so a restart keeps it. While myUplink is unavailable or
 limits requests (429), the device keeps the last state and polls again at the next refresh.
+
+Themo uses the Themo Public API (connect.themo.io) with the Themo app's e-mail and password; the
+login's token is kept in memory only. The device asks for API version 2.1, the last one with hourly
+device data. Only manual mode follows a target temperature, so `setTemperature` first switches a
+thermostat in `sls` (Themo's schedule and price optimization) or `off` mode to `manual`; send `mode`
+`sls` or a `schedule` to hand control back to Themo. A Matter setpoint change does the same. Commands
+are reported at once; the thermostat applies them with a delay. `energyHour` reports every finished
+hour once, at the hour's own time; the last reported hour is kept in
+`Data/themo-<hash of the thermostat id>.json`, so after a restart or an outage the device reports the
+hours it missed, at most 48. `energyToday` sums the finished hours since local midnight, and
+`heatingShareToday` divides it by the thermostat's rated power over those hours. Themo doesn't
+document the rated power's unit; the device reads a value up to 1 as MW, up to 100 as kW and a larger
+one as W. Without the hourly data, the state and commands still work and the energy reports wait.
+The `boost` command needs thermostat software 4.2 or later, and the `boost` lock 4.4.0. The Matter
+thermostat has no Auto mode, so a thermostat in `sls` shows its setpoints but not its mode there.
 
 Devices and plugin controllers use the platform configuration and HTTP contracts:
 

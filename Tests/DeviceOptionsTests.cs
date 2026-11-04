@@ -22,6 +22,7 @@ public class DeviceOptionsTests
         [typeof(Messaging), "firebaseProjectName,smtp_Server,smtp_Port,smtp_User,smtp_Password", "smtp_Password"],
         [typeof(MelCloud), "cloud,email,password", "password"],
         [typeof(MyUplink), "clientId,clientSecret,language,extraParameters,offsetParameter,baseTemperature,degreesPerStep", "clientSecret"],
+        [typeof(Themo), "email,password", "password"],
         [typeof(WeatherForecast), "provider,latitude,longitude,fmiPlace,forecastHours,endpoint", ""],
     ];
 

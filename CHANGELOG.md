@@ -19,6 +19,13 @@ uploads a plugin zip as a GitHub release asset.
   sensor, `setTemperature` is a virtual setpoint that becomes a heating offset (`baseTemperature`,
   `degreesPerStep`), so the heat pump workflow templates can drive it. Each heat pump is a Matter thermostat.
   Changes need a myUplink Premium Manage subscription.
+- Added: the `Themo` device for Themo smart thermostats through the Themo Public API, with the Themo app's `email`
+  and `password`. It reports each thermostat's temperatures, target, mode, heating state, backlight, child lock,
+  frost protection and active schedule, and its energy: every finished hour (`energyHour`, time-stamped to the
+  hour, missed hours caught up after a restart), the last 48 hours as a series, `energyToday` and
+  `heatingShareToday`. Its commands set the target temperature (switching to manual mode, so the heat pump
+  workflow templates can drive it), the mode, the schedule, the backlight, the child lock, frost protection and
+  the timer boost. Each thermostat is a Matter thermostat.
 
 ## [2.1.0] - 2026-11-04
 
