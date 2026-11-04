@@ -103,6 +103,17 @@ cloud and the stations itself, through a C# port of part of [eufy-sdk](https://g
   Matter temperature sensors.
 - Changed: the HTTP client without redirects and cookies that `MelCloud` used is now `DirectHttp`, shared with
   `Miele`.
+- Added: the `DefaPower` device for DEFA Power EV chargers through the CloudCharge API that the DEFA Power app
+  uses, with the account's `phoneNumber`. It logs in with an SMS code (the `requestSmsCode` and `login` commands,
+  reported in `loginState`) as the CloudCharge app, so the DEFA Power app stays logged in, and keeps the login in
+  `Data/`. It reports each connector's status, charging state, power, current limit, connection, error code, meter
+  and session energy, eco mode and what pauses the charging. From the meter it works out the energy of every
+  quarter-hour and hour (time-stamped to their start, missed ones caught up after a restart), the last 48 hours as
+  a 15-minute series, `energyToday`, and a `session` record when a car is unplugged; with ElectricityPrice's prices
+  sent to its `prices` command, the cost of each quarter, of the day and of each session. Its commands start and
+  stop the charging, set the current limit, eco mode and its hours to charge and the manual schedules, charge now
+  and restart the charger. It polls every 15 seconds while charging and every minute otherwise. It shares
+  `DirectHttp`.
 
 ## [2.1.0] - 2026-11-04
 

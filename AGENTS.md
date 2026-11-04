@@ -48,7 +48,7 @@ cd .\RIoT2.Net.Devices\EufySdkBridge; npm ci; npm test; npm run build
 | `Plugin.cs` | Entry point derived from Core's `PluginBase`; registers services and devices |
 | `Catalog/` | Device implementations: Web, Timer, Virtual, MQTT, cloud services, EasyPLC, Hue and others |
 | `Controllers/` | Plugin HTTP controllers: webhook and file download |
-| `Services/` | Integration services for webhooks, storage, FTP, Azure Relay, APsystems, Eufy and clients; `Services/Eufy/` is the C# port of eufy-sdk the `EufySecurity` device uses (`Cloud/` HTTP API and login, `Push/` FCM/MCS events, `P2P/` station sessions, guard mode and snapshot), behind `EufySecurityService`; `Services/EufySdk/` runs eufy-sdk itself for the `EufySecuritySdk` device (`EufySdkService`, the Node.js launcher, the bridge protocol client, and the generated `eufy-sdk-bridge.mjs` bundle, embedded); `Services/MelCloud/` has the classic MELCloud and MELCloud Home backends of the `MelCloud` device; `Services/MyUplink/` has the myUplink API client of the `MyUplink` device; `Services/Themo/` has the Themo API client of the `Themo` device; `Services/Miele/` has the Miele login (`MieleAuth`) and API client of the `Miele` device; `Services/Netatmo/` has the Netatmo API client and the webhook hub; `Services/DirectHttp.cs` is the HTTP client without redirects or cookies that `MelCloud` and `Miele` use |
+| `Services/` | Integration services for webhooks, storage, FTP, Azure Relay, APsystems, Eufy and clients; `Services/Eufy/` is the C# port of eufy-sdk the `EufySecurity` device uses (`Cloud/` HTTP API and login, `Push/` FCM/MCS events, `P2P/` station sessions, guard mode and snapshot), behind `EufySecurityService`; `Services/EufySdk/` runs eufy-sdk itself for the `EufySecuritySdk` device (`EufySdkService`, the Node.js launcher, the bridge protocol client, and the generated `eufy-sdk-bridge.mjs` bundle, embedded); `Services/MelCloud/` has the classic MELCloud and MELCloud Home backends of the `MelCloud` device; `Services/MyUplink/` has the myUplink API client of the `MyUplink` device; `Services/Themo/` has the Themo API client of the `Themo` device; `Services/Miele/` has the Miele login (`MieleAuth`) and API client of the `Miele` device; `Services/DefaPower/` has the CloudCharge API client and the energy and cost accounting of the `DefaPower` device; `Services/Netatmo/` has the Netatmo API client and the webhook hub; `Services/DirectHttp.cs` is the HTTP client without redirects or cookies that `MelCloud`, `Miele` and `DefaPower` use |
 | `EufySdkBridge/` | npm project of the eufy-sdk bridge: `src/bridge.mjs` (the JSON lines protocol), `src/main.mjs`, `test/` (node:test, fake SDK), `build.mjs` (esbuild bundle with the bundled packages' licenses) |
 | `Abstracts/` | Shared Netatmo base device logic; `EufySecurityBase`, the templates, reports and commands of both Eufy devices |
 | `Models/` | DTOs for devices and services |
@@ -144,6 +144,18 @@ This repository implements plugin-side pieces of these hub contracts:
   none, times are `[hours, minutes]`. The event stream listener runs from start to stop with its own
   cancellation and back-off; every state change, from it or a poll, goes through `ApplyDevice`, which
   follows runs (`MieleRuns`) under one lock.
+- DEFA Power's CloudCharge API (prod.cloudcharge.se/services/user) isn't public; `CloudChargeClient`
+  follows the ha-defa-power Home Assistant integration. The login is SMS-only (`/prelogin`, then `/login`
+  with the code), so it is done with the device's `requestSmsCode` and `login` commands; the code is only
+  known to the server that sent it, picked by the `INGRESSCOOKIE` cookie, so the client keeps the cookies
+  itself over `DirectHttp`. The `devToken` is the CloudCharge app's public id (one login per app: the
+  DEFA Power app stays logged in). A 401 is a lost login (`CloudChargeAuthenticationException`): the
+  login file is deleted and the device waits for a new SMS login, still running. CloudCharge limits
+  requests per token, so keep the one-second `RequestInterval`. The device polls in its own loop
+  (`NextDelay`: 15 s while charging, 60 s otherwise, and just after each quarter-hour) and has no
+  refresh schedule. There is no history endpoint: `DefaPowerEnergy` shares the meter's increase between
+  quarter-hours by time, and the reported periods, the open session and the prices are kept in the
+  state file. Units follow ha-defa-power: `meterValue` and `transactionMeterValue` kWh, `powerConsumption` kW.
 - `DownloadController` rejects traversal, absolute paths, encoded slashes and encoded backslashes
   before storage services are called. Keep filename normalization defensive.
 - `Services/Eufy/` is ported from eufy-sdk (Apache-2.0, `NOTICE`) at commit `5f92bea5`; every ported file names its

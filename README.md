@@ -84,6 +84,7 @@ reason.
 |---|---|---|
 | AP Systems | `appId`\*, `appSecret`\* (secret), `sid`\*, `ecuId`\* | Hourly energy summaries: `today`, `month`, `year`, `lifetime` with `unit` and `precision` report parameters. |
 | Azure Relay | `relayNamespace`\*, `connectionName`\*, `keyName`\*, `key`\* (secret) | Starts/stops an Azure Relay listener. Message handling is not implemented in code. |
+| DEFA Power | `phoneNumber`\* of the DEFA Power account (international format) | DEFA Power EV chargers through the CloudCharge API. Device report `loginState` (`loggedIn`, `loginRequired`, `codeSent`); commands `requestSmsCode`, `login` (the code from the SMS), `prices` (ElectricityPrice's `prices` series) and `refresh`. Per connector (address `<connectorId>\|<key>`), reports `status` (OCPP: `available`, `preparing`, `charging`, `suspendedEv`, `suspendedEvse`, `finishing`, ...), `chargingState` (`idle`, `evConnected`, `charging`, `suspendedEv`, `suspendedEvse`), `charging`, `power` (kW), `currentLimit` (A), `online`, `errorCode`, `meter` and `sessionEnergy` (kWh), `energyQuarter` and `energyHour` (kWh of each finished quarter-hour and hour, time-stamped to its start), `energyQuarterly` (the last 48 hours as a `confirmed` `PT15M` series), `energyToday`, `session` (start, end, duration, kWh, cost and its unit, when a car is unplugged), `costQuarter` and `costToday` (with prices), and with eco mode or manual schedules `ecoMode`, `ecoHoursToCharge`, `manualSchedules`, `pausedBy` (`none`, `ecoMode`, `manualSchedules`), `pausedUntil` (ISO local time) and `scheduleOverridden`. Commands `charging` (start/stop), `currentLimit`, `ecoMode`, `ecoHoursToCharge` (1-23), `manualSchedules`, `chargeNow` and `restart` (`soft`, `hard`). Polls every 15 s while charging, every minute otherwise. See below. |
 | EasyPLC | `ipAddress`\*, `port` (default `10001`) | Async/cancellable PLC marker read/write driver. Marker command addresses are `M-{netId}-{expansion}-{marker}`; `refresh` reads markers. Non-zero write expansions are rejected. |
 | Electricity Price | `securityToken`\* (secret), `domain` (default `10YFI-1--------U`), `endpoint` (default the ENTSO-E API), `vat` (percent) | Scheduled current price report at address `price`, with `unit=c/kWh` and `precision`. Since 2.1.0 also `prices`: today's and, once ENTSO-E publishes them (around 12:00 UTC), tomorrow's prices as a forecast series (`kind` `confirmed`), sent when they change. Prices are cached in `Data/priceData.json`. |
 | Eufy Security | `email`\*, `password`\* (secret) of the eufy account, `countryCode` (default `US`; selects the cloud region), `ffmpegPath` (default `ffmpeg`) | Connects to the eufy cloud and the stations itself (since 3.0.0; no eufy-security-ws container). Reports `eufy\|status` (account state; a pending captcha with its image or a pending verification code), per station `<stationSn>\|guardMode` (eufy value: 0 away, 1 home, 2 schedule, 3-5 custom, 6 off, 47 geofence, 63 disarmed) and `<stationSn>\|alarm` (`phase` triggered, delayed or stopped), and per camera `<deviceSn>` (`SecurityReport` with the push thumbnail: motion, person or a known person's name, stranger, pet or dog, sound, crying, vehicle, doorbell press, package delivered, taken or left). Commands `eufy\|verify` (answers the captcha or verification code), `<stationSn>\|guardMode` and `<deviceSn>\|snapshot` (a still from the live stream, needs ffmpeg). See below. |
@@ -194,6 +195,32 @@ run's end. The energy and water come from Miele's eco feedback, which only newer
 Day totals and an open run are kept in `Data/miele-<hash of the fabrication number>.json`, so a
 restart in the middle of a run still reports it. Core has no appliance device types for Matter, so
 only oven temperatures are bridged, as temperature sensors.
+
+DEFA Power uses the CloudCharge API (prod.cloudcharge.se) that the DEFA Power and CloudCharge apps
+use. It isn't public or supported by DEFA; the device follows the
+[ha-defa-power](https://github.com/Bebbssos/ha-defa-power) Home Assistant integration. To log in, set
+`phoneNumber` with the country code and without the national number's
+leading zero (`+358401234567`, not `+358 040...`), add the device from its template and start it, send
+`requestSmsCode`, then send `login` with the code from the SMS; send both while the device runs, as
+the code is only valid on the CloudCharge server that sent it. Then load the template again to get the
+connectors' reports and commands. The login is kept in `Data/defapower-auth-<hash of the phone
+number>.json` and lasts until CloudCharge refuses it; then `loginState` becomes `loginRequired` and
+the device waits for a new SMS login. The device logs in as the CloudCharge app (the API allows one
+login per app), so the DEFA Power app on your phone stays logged in, but the CloudCharge app, if you
+use it, is logged out. CloudCharge limits requests per login, so the device waits a second between
+requests. There is no charging history in the API, so the device works out the energy from the meter:
+the increase between two readings is shared by time between the quarter-hours they span, and every
+quarter-hour's reading is taken a few seconds after it ends. `energyQuarter`, `energyHour` and
+`costQuarter` report each finished period once, at its own start; the state is kept in
+`Data/defapower-<hash of the phone number>.json`, so after a restart the device shares the energy used
+while it was down and reports the periods it missed, at most 48 hours back. The first period after the
+first start, which the device saw only in part, isn't reported. A session starts when a car is plugged
+in and ends when it is unplugged; its energy is the meter's increase. For the costs, forward
+ElectricityPrice's `prices` report to the `prices` command with a workflow (when the report changes);
+the device keeps three days of prices. Prices in c/kWh (ElectricityPrice's unit, with its `vat`) give
+costs in euros. They are spot prices: the transfer fee and margins aren't included. Quarter-hours that
+ended before the prices came get their cost when they come. Core has no EV charger device type for
+Matter, so the chargers aren't bridged.
 
 Devices and plugin controllers use the platform configuration and HTTP contracts:
 

@@ -42,6 +42,7 @@ namespace RIoT2.Net.Devices
             AddDevice<MyUplink>();
             AddDevice<Themo>();
             AddDevice<Miele>();
+            AddDevice<DefaPower>();
         }
     }
 }
