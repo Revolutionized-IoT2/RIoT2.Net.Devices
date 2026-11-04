@@ -20,6 +20,7 @@ namespace RIoT2.Net.Devices
             AddService<IEufySdkService, Services.EufySdk.EufySdkService>();
             AddService<INetatmoAuthClientFactory, NetatmoAuthClientFactory>();
             AddService<INetatmoWebhookHub, Services.Netatmo.NetatmoWebhookHub>();
+            AddService<ICastAudioCache, Services.GoogleCast.CastAudioCache>();
 
             AddDevice<Web>();
             AddDevice<Catalog.Timer>();
@@ -43,6 +44,7 @@ namespace RIoT2.Net.Devices
             AddDevice<Themo>();
             AddDevice<Miele>();
             AddDevice<DefaPower>();
+            AddDevice<GoogleCast>();
         }
     }
 }

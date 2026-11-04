@@ -14,6 +14,8 @@
     <PackageVersion Include="RIoT2.Core.Devices.Testing" Version="2.4.0" />
     <PackageVersion Include="RIoT2.Core.Http" Version="2.4.0" />
     <PackageVersion Include="RIoT2.Core.Mqtt" Version="2.4.0" />
+    <!-- The Google Cast protocol of the GoogleCast device. -->
+    <PackageVersion Include="Sharpcaster" Version="3.0.0" />
     <PackageVersion Include="Zhaobang.FtpServer" Version="2.2.0" />
   </ItemGroup>
 </Project>

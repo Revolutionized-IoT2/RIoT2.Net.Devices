@@ -5,6 +5,20 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+**New: Google Cast speaker** (additive).
+
+- Added: **Google Cast speaker** (`GoogleCast`), for voice announcements on Google Home, Nest and other Cast
+  speakers and speaker groups from workflows ("Sauna is ready"). Parameters `ipAddress`, `port` (default `8009`),
+  `ttsEngine` (`googleTranslate` or `googleCloud`), `language` (default `en-GB`), `voice`, `cloudTtsApiKey`,
+  `nodeBaseUrl` (default the node's `RIOT2_NODE_URL`), `announcementVolume` and `restoreVolume`. Commands `speak`,
+  `playUrl`, `setVolume` and `stop`. Each command connects to the speaker; `speak` and `playUrl` set the announcement
+  volume and set it back afterwards, also after a failure. A failed command fails with the reason, which the device
+  shows while it keeps running. Uses SharpCaster 3.0.0 (MIT; with Google.Protobuf, Zeroconf and System.Reactive in
+  the zip). Guide: [google-cast.md](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/guides/google-cast.md).
+- Added: `GET /api/cast/audio/{token}` (anonymous; the random token is the credential) serves the Google Cloud
+  Text-to-Speech audio the speaker downloads, kept in memory for an hour.
+- Changed: the device catalog moved from the README to `docs/devices.md` and `docs/cloud-devices.md`.
+
 **Breaking: Netatmo Security and Netatmo Weather** (needs Node with Core 2.4.0). They follow the current Netatmo
 Connect API: security events arrive through Netatmo's webhook, both devices can be connected to Netatmo from the UI,
 and their templates change, so add them again from their templates. Guide:

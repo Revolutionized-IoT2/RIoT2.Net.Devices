@@ -28,6 +28,7 @@
     <PackageReference Include="RIoT2.Core.Devices.Build" PrivateAssets="all" />
     <PackageReference Include="RIoT2.Core.Http" />
     <PackageReference Include="RIoT2.Core.Mqtt" />
+    <PackageReference Include="Sharpcaster" />
     <PackageReference Include="Zhaobang.FtpServer" />
 	<FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
