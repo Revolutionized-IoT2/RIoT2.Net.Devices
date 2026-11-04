@@ -20,6 +20,7 @@ public class DeviceOptionsTests
         [typeof(FTP), "ftpUsers,ftpPort", "ftpUsers"],
         [typeof(Mqtt), "clientId,serverUrl,userName,password,subscribeTopics", "password"],
         [typeof(Messaging), "firebaseProjectName,smtp_Server,smtp_Port,smtp_User,smtp_Password", "smtp_Password"],
+        [typeof(MelCloud), "cloud,email,password", "password"],
         [typeof(WeatherForecast), "provider,latitude,longitude,fmiPlace,forecastHours,endpoint", ""],
     ];
 

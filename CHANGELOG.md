@@ -5,6 +5,13 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+- Added: the `MelCloud` device for Mitsubishi Electric air-to-air heat pumps through MELCloud: classic MELCloud
+  (`cloud` `classic`, the default) or MELCloud Home (`home`), with the account's `email` and `password`. It reports
+  each unit's room and target temperature, power, mode, fan speed, vanes, connection and energy, and its commands
+  set them; `setTemperature` takes the bare number a Command Plan sends, so the heat pump workflow templates can
+  drive it. Each unit is a Matter thermostat on the Control Bridge. The login is kept in
+  `Data/melcloud-<cloud>-<account>.json`.
+
 ## [2.1.0] - 2026-11-04
 
 Forecasts ([ADR 0019](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/adr/0019-forecasts-and-command-plans.md)).

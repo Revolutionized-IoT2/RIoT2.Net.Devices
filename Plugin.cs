@@ -35,6 +35,7 @@ namespace RIoT2.Net.Devices
             AddDevice<AzureRelay>();
             AddDevice<ApSystems>();
             AddDevice<EufySecurity>();
+            AddDevice<MelCloud>();
         }
     }
 }
