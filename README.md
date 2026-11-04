@@ -86,6 +86,7 @@ reason.
 | EasyPLC | `ipAddress`\*, `port` (default `10001`) | Async/cancellable PLC marker read/write driver. Marker command addresses are `M-{netId}-{expansion}-{marker}`; `refresh` reads markers. Non-zero write expansions are rejected. |
 | Electricity Price | `securityToken`\* (secret), `domain` (default `10YFI-1--------U`), `endpoint` (default the ENTSO-E API), `vat` (percent) | Scheduled current price report at address `price`, with `unit=c/kWh` and `precision`. Since 2.1.0 also `prices`: today's and, once ENTSO-E publishes them (around 12:00 UTC), tomorrow's prices as a forecast series (`kind` `confirmed`), sent when they change. Prices are cached in `Data/priceData.json`. |
 | Eufy Security | `email`\*, `password`\* (secret) of the eufy account, `countryCode` (default `US`; selects the cloud region), `ffmpegPath` (default `ffmpeg`) | Connects to the eufy cloud and the stations itself (since 3.0.0; no eufy-security-ws container). Reports `eufy\|status` (account state; a pending captcha with its image or a pending verification code), per station `<stationSn>\|guardMode` (eufy value: 0 away, 1 home, 2 schedule, 3-5 custom, 6 off, 47 geofence, 63 disarmed) and `<stationSn>\|alarm` (`phase` triggered, delayed or stopped), and per camera `<deviceSn>` (`SecurityReport` with the push thumbnail: motion, person or a known person's name, stranger, pet or dog, sound, crying, vehicle, doorbell press, package delivered, taken or left). Commands `eufy\|verify` (answers the captcha or verification code), `<stationSn>\|guardMode` and `<deviceSn>\|snapshot` (a still from the live stream, needs ffmpeg). See below. |
+| Eufy Security (eufy-sdk) | as Eufy Security | The same reports and commands as Eufy Security, through eufy-sdk itself (`@mega-yfue/eufy-sdk`) in a Node.js child process instead of the C# port. Needs Node.js 24.5 or newer on the PATH, which the Node images include. See below. |
 | FTP | `ftpUsers` (secret; `user:password` pairs separated by `\|`), `ftpPort` (default `21`) | File uploads become in-memory photo `SecurityReport` values keyed by FTP username. |
 | Hue | `bridgeIpAddress`\*, `apiKey`\* (secret) | Dynamic light command/report templates when running; event-stream updates merge partial state and include Matter endpoint metadata. |
 | MELCloud | `cloud` (`classic`, the default: the MELCloud app; or `home`: the MELCloud Home app), `email`\*, `password`\* (secret) | Mitsubishi Electric air-to-air heat pumps. Per unit (address `<unitId>\|<key>`), reports `roomTemperature` and `setTemperature` (°C), `power`, `mode` (`heat`, `dry`, `cool`, `fan`, `auto`), `thermostatMode` (Matter SystemMode: 0 off, 1 auto, 3 cool, 4 heat, 7 fan, 8 dry), `fanSpeed` (`auto`, `1`-`5`), `vaneVertical`, `vaneHorizontal`, `offline`, and `energyConsumed` (classic meter, kWh) or `energyToday` (Home, kWh). Commands `setTemperature`, `power`, `mode`, `thermostatMode`, `fanSpeed`, `vaneVertical`, `vaneHorizontal`, plus `refresh`. Each unit is a Matter thermostat. Polls hourly by default, at most once a minute. |
@@ -117,6 +118,15 @@ is a hash of the e-mail), so later starts don't ask again; keep the data folder 
 the cloud ask for a captcha or hold logins off. Stations of models T9000 and T8N00 (and devices on them) and
 T8223/T8224 doorbells use WebRTC in eufy-sdk, so their guard mode and snapshot commands are refused; their events
 still arrive. The station's guard mode is re-read from the cloud after a mode change push and on a scheduled refresh.
+
+Eufy Security (eufy-sdk) runs eufy-sdk 0.5.0 itself, the same eufy-sdk version the C# port follows, so the two can be
+compared. The plugin embeds a bundle of eufy-sdk and a small bridge (built from `EufySdkBridge/`), writes it to
+`Data/eufy-sdk/` and runs it with `node`; the device talks to it over stdin and stdout, and starts it again when it
+stops. Its parameters, templates, status, captcha and verification flow are those of Eufy Security. Its session and
+push registration are separate files (`Data/eufy-sdk-session-<account>.json`, `Data/eufy-sdk-push-<account>.json`), and it
+reports its own install id to the cloud, so both devices can be logged in to one account at the same time. The WebRTC
+stations (T9000, T8N00, T8223/T8224) need eufy-sdk's native `node-datachannel` module, which isn't included, so
+their guard mode and snapshots fail as with Eufy Security.
 
 MELCloud has no public API; the device uses the apps' APIs, like the pymelcloud library and the
 MELCloud Home integration for Home Assistant, so a MELCloud change can break it. It keeps its login in

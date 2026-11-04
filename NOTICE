@@ -20,5 +20,9 @@ licensed under the Apache License, Version 2.0:
 The ported files are under Services/Eufy/. Each starts with a "Ported from eufy-sdk" comment that
 names its upstream files; all of them were translated from TypeScript to C# and modified for RIoT2.
 
+Services/EufySdk/eufy-sdk-bridge.mjs, embedded in the plugin, is a bundle of @mega-yfue/eufy-sdk 0.5.0
+(Apache-2.0) and the packages it uses, among them mqtt (MIT), protobufjs (BSD-3-Clause), jpeg-js
+(BSD-3-Clause) and ws (MIT). The bundle ends with the full license text of every package in it.
+
 eufy-sdk is independent and unofficial, and so is this port: not affiliated with, endorsed by, or
 sponsored by Anker Innovations or Anker eufy. "eufy" and "Anker" are trademarks of their owners.

@@ -20,6 +20,8 @@ Run from the workspace root (`C:\Src\RIoT2`), in PowerShell:
 dotnet build .\RIoT2.Net.Devices\RIoT2.Net.Devices.csproj
 dotnet build .\RIoT2.Net.Devices\RIoT2.Net.Devices.csproj -c Release
 dotnet test .\RIoT2.Net.Devices\Tests\RIoT2.Net.Devices.Tests.csproj -c Release
+# The eufy-sdk bridge (Node.js 24.5+): tests, and the bundle the plugin embeds. Commit the rebuilt bundle.
+cd .\RIoT2.Net.Devices\EufySdkBridge; npm ci; npm test; npm run build
 ```
 
 - This is not a standalone executable. To run it, load the built package through
@@ -46,8 +48,9 @@ dotnet test .\RIoT2.Net.Devices\Tests\RIoT2.Net.Devices.Tests.csproj -c Release
 | `Plugin.cs` | Entry point derived from Core's `PluginBase`; registers services and devices |
 | `Catalog/` | Device implementations: Web, Timer, Virtual, MQTT, cloud services, EasyPLC, Hue and others |
 | `Controllers/` | Plugin HTTP controllers: webhook and file download |
-| `Services/` | Integration services for webhooks, storage, FTP, Azure Relay, APsystems, Eufy and clients; `Services/Eufy/` is the C# port of eufy-sdk the `EufySecurity` device uses (`Cloud/` HTTP API and login, `Push/` FCM/MCS events, `P2P/` station sessions, guard mode and snapshot), behind `EufySecurityService`; `Services/MelCloud/` has the classic MELCloud and MELCloud Home backends of the `MelCloud` device; `Services/MyUplink/` has the myUplink API client of the `MyUplink` device; `Services/Themo/` has the Themo API client of the `Themo` device |
-| `Abstracts/` | Shared Netatmo base device logic |
+| `Services/` | Integration services for webhooks, storage, FTP, Azure Relay, APsystems, Eufy and clients; `Services/Eufy/` is the C# port of eufy-sdk the `EufySecurity` device uses (`Cloud/` HTTP API and login, `Push/` FCM/MCS events, `P2P/` station sessions, guard mode and snapshot), behind `EufySecurityService`; `Services/EufySdk/` runs eufy-sdk itself for the `EufySecuritySdk` device (`EufySdkService`, the Node.js launcher, the bridge protocol client, and the generated `eufy-sdk-bridge.mjs` bundle, embedded); `Services/MelCloud/` has the classic MELCloud and MELCloud Home backends of the `MelCloud` device; `Services/MyUplink/` has the myUplink API client of the `MyUplink` device; `Services/Themo/` has the Themo API client of the `Themo` device |
+| `EufySdkBridge/` | npm project of the eufy-sdk bridge: `src/bridge.mjs` (the JSON lines protocol), `src/main.mjs`, `test/` (node:test, fake SDK), `build.mjs` (esbuild bundle with the bundled packages' licenses) |
+| `Abstracts/` | Shared Netatmo base device logic; `EufySecurityBase`, the templates, reports and commands of both Eufy devices |
 | `Models/` | DTOs for devices and services |
 | `Tests/` | MSTest hardware-free regression tests and the shared conformance test (`PluginConformanceTests`) |
 | `.github/workflows/ci.yml`, `release.yml` | CI on every push; plugin zip release on a tag |
@@ -133,6 +136,15 @@ This repository implements plugin-side pieces of these hub contracts:
   files (`Data/eufy-session-*.json`, `Data/eufy-push-*.json`) are credentials. Repeated logins trigger captchas: the
   cloud client holds re-logins off, and nothing retries a captcha or verification code on its own. Guard mode and
   snapshots go over P2P only; T9000/T8N00 stations and T8223/T8224 doorbells (WebRTC upstream) are refused.
+- `EufySecuritySdk` runs the bundle `Services/EufySdk/eufy-sdk-bridge.mjs`, which is generated: change
+  `EufySdkBridge/` and run `npm run build`, never edit the bundle. CI (`eufy-sdk-bridge` job) runs the bridge tests,
+  rebuilds and fails when the committed bundle differs, so a Renovate bump of eufy-sdk or esbuild needs the rebuilt
+  bundle committed. `build.mjs` turns eufy-sdk's `createRequire(...)("protobufjs")` into a bundled require and fails
+  when the bundle would load anything but Node built-ins and `node-datachannel` (native, left out: WebRTC stations
+  only). The protocol is JSON lines over stdio; stdout carries only protocol lines, so the bridge sends every log to
+  stderr, and never logs the password, tokens or thumbnail URLs. The password goes over stdin, never in arguments or
+  the environment. Keep `EventKinds` in `EufySdkService` and `SECURITY_EVENTS` in `bridge.mjs` in step with eufy-sdk's
+  `DeviceEventMap`. The bridge passes eufy-sdk its own `openudid`, so it doesn't log the C# port's session out.
 - The webhook endpoint is anonymous and caps request bodies at 64 KiB.
 
 ## Related work

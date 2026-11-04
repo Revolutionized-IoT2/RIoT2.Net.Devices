@@ -24,6 +24,13 @@ cloud and the stations itself, through a C# port of part of [eufy-sdk](https://g
   `EufyEventMessage`, `EufyResult`, `EufyVersionInfo`).
 - Not supported: guard mode and snapshots on T9000 and T8N00 stations and T8223/T8224 doorbells (WebRTC in
   eufy-sdk). The snapshot needs ffmpeg, which the Node images include from their next release.
+- Added: the `EufySecuritySdk` device ("Eufy Security (eufy-sdk)"), a parallel Eufy Security device that runs eufy-sdk
+  itself (`@mega-yfue/eufy-sdk` 0.5.0) in a Node.js child process instead of the C# port. Its parameters, templates,
+  reports and commands are those of Eufy Security (both derive from `EufySecurityBase`). The plugin embeds the bundled
+  bridge (`EufySdkBridge/`, built into `Services/EufySdk/eufy-sdk-bridge.mjs`); it needs Node.js 24.5 or newer, which the
+  Node images include from their next release. It keeps its own session and push files
+  (`Data/eufy-sdk-session-<account>.json`, `Data/eufy-sdk-push-<account>.json`) and install id, so it can run next to
+  Eufy Security on one account.
 
 - Added: the `MelCloud` device for Mitsubishi Electric air-to-air heat pumps through MELCloud: classic MELCloud
   (`cloud` `classic`, the default) or MELCloud Home (`home`), with the account's `email` and `password`. It reports

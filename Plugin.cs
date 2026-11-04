@@ -17,6 +17,7 @@ namespace RIoT2.Net.Devices
             AddService<IMemoryStorageService, MemoryStorageService>();
             AddService<IApSystemsClientService, ApSystemsClientService>();
             AddService<IEufySecurityService, EufySecurityService>();
+            AddService<IEufySdkService, Services.EufySdk.EufySdkService>();
             AddService<INetatmoAuthClientFactory, NetatmoAuthClientFactory>();
 
             AddDevice<Web>();
@@ -35,6 +36,7 @@ namespace RIoT2.Net.Devices
             AddDevice<AzureRelay>();
             AddDevice<ApSystems>();
             AddDevice<EufySecurity>();
+            AddDevice<EufySecuritySdk>();
             AddDevice<MelCloud>();
             AddDevice<MyUplink>();
             AddDevice<Themo>();

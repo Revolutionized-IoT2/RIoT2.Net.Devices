@@ -6,11 +6,15 @@
 	<EnableDynamicLoading>true</EnableDynamicLoading>
     <!-- "name" in PluginManifest.json; the zip is RIoT2.Net.Devices_<version>.zip. -->
     <RIoT2PluginName>Devices plugin</RIoT2PluginName>
+    <!-- The eufy-sdk bridge's npm project (node_modules too) isn't part of the .NET build; its bundle is embedded. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);EufySdkBridge\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Remove="Tests\**\*.cs" />
     <InternalsVisibleTo Include="RIoT2.Net.Devices.Tests" />
+    <!-- Built by EufySdkBridge (npm run build); the EufySecuritySdk device runs it with Node.js. -->
+    <EmbeddedResource Include="Services\EufySdk\eufy-sdk-bridge.mjs" LogicalName="RIoT2.Net.Devices.EufySdk.eufy-sdk-bridge.mjs" />
   </ItemGroup>
 
   <ItemGroup>

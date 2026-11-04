@@ -30,5 +30,14 @@ jobs:
       package: RIoT2.Net.Devices
     secrets: inherit
 
+  # The eufy-sdk bridge: its tests, and the committed bundle the plugin embeds must be what the build makes.
+  eufy-sdk-bridge:
+    uses: Revolutionized-IoT2/.github/.github/workflows/node-validate.yml@main
+    with:
+      working-directory: EufySdkBridge
+      node-version: "24"
+      scripts: "test build"
+      verify-generated: true
+
   secret-scan:
     uses: Revolutionized-IoT2/.github/.github/workflows/secret-scan.yml@main

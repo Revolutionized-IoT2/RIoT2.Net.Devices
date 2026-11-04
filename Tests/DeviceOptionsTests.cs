@@ -18,6 +18,7 @@ public class DeviceOptionsTests
         [typeof(AzureRelay), "relayNamespace,connectionName,keyName,key", "key"],
         [typeof(EasyPLC), "ipAddress,port", ""],
         [typeof(EufySecurity), "email,password,countryCode,ffmpegPath", "password"],
+        [typeof(EufySecuritySdk), "email,password,countryCode,ffmpegPath", "password"],
         [typeof(FTP), "ftpUsers,ftpPort", "ftpUsers"],
         [typeof(Mqtt), "clientId,serverUrl,userName,password,subscribeTopics", "password"],
         [typeof(Messaging), "firebaseProjectName,smtp_Server,smtp_Port,smtp_User,smtp_Password", "smtp_Password"],
