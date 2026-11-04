@@ -27,6 +27,7 @@ public class DeviceOptionsTests
         [typeof(Themo), "email,password", "password"],
         [typeof(DefaPower), "phoneNumber", ""],
         [typeof(Miele), "clientId,clientSecret,email,password,country,authorizationCode,redirectUri,language", "clientSecret,password,authorizationCode"],
+        [typeof(Harvia), "email,password,heaterPower,readyTemperature", "password"],
         [typeof(WeatherForecast), "provider,latitude,longitude,fmiPlace,forecastHours,endpoint", ""],
         [typeof(GoogleCast), "ipAddress,port,ttsEngine,language,voice,cloudTtsApiKey,nodeBaseUrl,announcementVolume,restoreVolume", "cloudTtsApiKey"],
         [typeof(NetatmoSecurity), "homeId,webhookUrl,webhookSecret,webhookTakeover,downloadSnapshots,clientId,clientSecret,token,refresh_token", "webhookSecret,clientSecret,token,refresh_token"],

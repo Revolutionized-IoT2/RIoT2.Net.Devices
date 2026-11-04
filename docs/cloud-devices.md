@@ -1,6 +1,6 @@
 # Cloud device notes
 
-Applies to: the MELCloud, myUplink, Themo, Miele and DEFA Power devices of RIoT2.Net.Devices: how they sign in, what
+Applies to: the MELCloud, myUplink, Themo, Miele, DEFA Power and Harvia devices of RIoT2.Net.Devices: how they sign in, what
 they keep in `Data/`, and their limits. Their parameters, reports and commands are in the [device catalog](devices.md).
 
 MELCloud has no public API; the device uses the apps' APIs, like the pymelcloud library and the
@@ -95,4 +95,33 @@ the device keeps three days of prices. Prices in c/kWh (ElectricityPrice's unit,
 costs in euros. They are spot prices: the transfer fee and margins aren't included. Quarter-hours that
 ended before the prices came get their cost when they come. Core has no EV charger device type for
 Matter, so the chargers aren't bridged.
+
+Harvia has no public API; the device uses the MyHarvia cloud of Xenio WiFi panels (CX110, CX170,
+CX001WIFI) as the MyHarvia app does, following the Home Assistant integrations
+[ha-harvia-sauna](https://github.com/WiesiDeluxe/ha-harvia-sauna) and
+[ha-harvia-xenio-wifi](https://github.com/RubenHarms/ha-harvia-xenio-wifi), so a MyHarvia change can
+break it. Fenix panels (the MyHarvia 2 app, harvia.io) aren't supported. The device signs in with the
+account's e-mail and password through AWS Cognito's Secure Remote Password login, so the password never
+leaves the node; the refresh token is kept in `Data/harvia-auth-<hash of the e-mail>.json`. A wrong
+password puts the device into the error state. MyHarvia pushes changes over AppSync WebSockets; the
+device renews them every 5 minutes, because a connection stops getting pushes after 12-14 minutes while
+its keep-alives go on (measured by the integration's author), and the 5-minute poll reads everything
+again. If the measurements say the heater is on while the state says off for a minute, the device reads
+the state again, as a push was probably lost. The panel refuses a remote start while the door or safety
+circuit is open, so `power` on fails with the reason then; switching off always works. A session starts
+when the sauna is switched on and ends when it is switched off; it is ready when the panel reports the
+target reached (or the temperature reaches it), or at `readyTemperature` if set. `timeToReady` comes
+from the temperature's rise over the last 10 minutes and is left out while it rises less than
+0.05 °C a minute. Day totals and an open session are kept in `Data/harvia-<hash of the device id>.json`,
+so a restart keeps them. No MyHarvia value reports the heating element, so the energy is an estimate:
+`heaterPower` while the panel reports heat demand and the target is not yet reached (the heat-up),
+integrated between updates (at most 10 minutes per gap). It misses the element cycling while the
+temperature is held; the integration's author measured 11.9 kWh estimated against 12.8-13.1 kWh on a
+meter for one session. For real figures, meter the heater. The schedule reports show the panel's own
+one-shot timed start: the heater ignites a heat-up time (set in the app) before the ready time; a used
+schedule stays in the panel and counts as not armed. Each sauna is a Matter thermostat whose setpoint
+range is 40-110 °C (the Control Bridge takes it from the setpoint command's range); some controller
+apps show at most about 30 °C on a thermostat, so the temperature is also a separate temperature
+sensor. The thermostat's heat mode switches the sauna on, so a controller or voice assistant can start
+it.
 

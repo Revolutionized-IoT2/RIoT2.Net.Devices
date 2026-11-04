@@ -48,12 +48,12 @@ cd .\RIoT2.Net.Devices\EufySdkBridge; npm ci; npm test; npm run build
 | `Plugin.cs` | Entry point derived from Core's `PluginBase`; registers services and devices |
 | `Catalog/` | Device implementations: Web, Timer, Virtual, MQTT, cloud services, EasyPLC, Hue and others |
 | `Controllers/` | Plugin HTTP controllers: webhook and file download |
-| `Services/` | Integration services for webhooks, storage, FTP, Azure Relay, APsystems, Eufy and clients; `Services/Eufy/` is the C# port of eufy-sdk the `EufySecurity` device uses (`Cloud/` HTTP API and login, `Push/` FCM/MCS events, `P2P/` station sessions, guard mode and snapshot), behind `EufySecurityService`; `Services/EufySdk/` runs eufy-sdk itself for the `EufySecuritySdk` device (`EufySdkService`, the Node.js launcher, the bridge protocol client, and the generated `eufy-sdk-bridge.mjs` bundle, embedded); `Services/MelCloud/` has the classic MELCloud and MELCloud Home backends of the `MelCloud` device; `Services/MyUplink/` has the myUplink API client of the `MyUplink` device; `Services/Themo/` has the Themo API client of the `Themo` device; `Services/Miele/` has the Miele login (`MieleAuth`) and API client of the `Miele` device; `Services/DefaPower/` has the CloudCharge API client and the energy and cost accounting of the `DefaPower` device; `Services/Netatmo/` has the Netatmo API client and the webhook hub; `Services/GoogleCast/` has the Cast session (`ICastSession`, `SharpCasterSession`), the speech engines (`CastSpeech`) and the audio cache of the `GoogleCast` device; `Services/DirectHttp.cs` is the HTTP client without redirects or cookies that `MelCloud`, `Miele` and `DefaPower` use |
+| `Services/` | Integration services for webhooks, storage, FTP, Azure Relay, APsystems, Eufy and clients; `Services/Eufy/` is the C# port of eufy-sdk the `EufySecurity` device uses (`Cloud/` HTTP API and login, `Push/` FCM/MCS events, `P2P/` station sessions, guard mode and snapshot), behind `EufySecurityService`; `Services/EufySdk/` runs eufy-sdk itself for the `EufySecuritySdk` device (`EufySdkService`, the Node.js launcher, the bridge protocol client, and the generated `eufy-sdk-bridge.mjs` bundle, embedded); `Services/MelCloud/` has the classic MELCloud and MELCloud Home backends of the `MelCloud` device; `Services/MyUplink/` has the myUplink API client of the `MyUplink` device; `Services/Themo/` has the Themo API client of the `Themo` device; `Services/Miele/` has the Miele login (`MieleAuth`) and API client of the `Miele` device; `Services/Harvia/` has the Cognito SRP login (`CognitoSrp`), the MyHarvia GraphQL client (`HarviaClient`) and the AppSync push connections (`HarviaPush`) of the `Harvia` device; `Services/DefaPower/` has the CloudCharge API client and the energy and cost accounting of the `DefaPower` device; `Services/Netatmo/` has the Netatmo API client and the webhook hub; `Services/GoogleCast/` has the Cast session (`ICastSession`, `SharpCasterSession`), the speech engines (`CastSpeech`) and the audio cache of the `GoogleCast` device; `Services/DirectHttp.cs` is the HTTP client without redirects or cookies that `MelCloud`, `Miele`, `DefaPower` and `Harvia` use |
 | `EufySdkBridge/` | npm project of the eufy-sdk bridge: `src/bridge.mjs` (the JSON lines protocol), `src/main.mjs`, `test/` (node:test, fake SDK), `build.mjs` (esbuild bundle with the bundled packages' licenses) |
 | `Abstracts/` | Shared Netatmo base device logic; `EufySecurityBase`, the templates, reports and commands of both Eufy devices |
 | `Models/` | DTOs for devices and services |
 | `Tests/` | MSTest hardware-free regression tests and the shared conformance test (`PluginConformanceTests`) |
-| `docs/` | `devices.md`, the device catalog (parameters, reports, commands; Netatmo and Eufy notes), and `cloud-devices.md` (MELCloud, myUplink, Themo, Miele and DEFA Power notes); a new or changed device updates its row there |
+| `docs/` | `devices.md`, the device catalog (parameters, reports, commands; Netatmo and Eufy notes), and `cloud-devices.md` (MELCloud, myUplink, Themo, Miele, DEFA Power and Harvia notes); a new or changed device updates its row there |
 | `.github/workflows/ci.yml`, `release.yml` | CI on every push; plugin zip release on a tag |
 
 ## Contracts consumed here
@@ -158,6 +158,19 @@ This repository implements plugin-side pieces of these hub contracts:
   refresh schedule. There is no history endpoint: `DefaPowerEnergy` shares the meter's increase between
   quarter-hours by time, and the reported periods, the open session and the prices are kept in the
   state file. Units follow ha-defa-power: `meterValue` and `transactionMeterValue` kWh, `powerConsumption` kW.
+- Harvia's MyHarvia cloud (Xenio WiFi panels) isn't public; `HarviaClient` follows the ha-harvia-sauna and
+  ha-harvia-xenio-wifi Home Assistant integrations. Read the endpoints and the Cognito pool from discovery
+  (`prod.myharvia-cloud.net/<service>/endpoint`), never hard-code them. The app client allows only
+  `USER_SRP_AUTH` (`USER_PASSWORD_AUTH` is disabled, checked 2026-11-04), so `CognitoSrp` does Amazon's SRP by
+  hand; `TheSrpProofMatchesAmazonsHelper` pins it to a pycognito vector, and the fake pool in `HarviaTests` checks
+  the proof as Cognito does. Bring `B - k·g^x` into `[0, N)` before `ModPow` (.NET keeps the sign), and pad the
+  salt as the string Cognito sent. AppSync takes the ID token as `authorization` without `Bearer`. Pushes are
+  partial, so `HarviaSauna` merges them; the push connections are renewed every 5 minutes, as a connection goes
+  quiet after 12-14 minutes. `statusCodes` is a bit field (1 door, 5 target reached, 8 heat demand, 11 light,
+  17 session, 18 stopped) and `timedStart` 8 bytes (enabled, 15-minute units, °C, 0, ready time as uint32 LE).
+  A value built in code (`JsonValue.Create(1)`) doesn't convert with `TryGetValue<double>`; `HarviaJson` reads by
+  value kind. The Matter thermostat's 40-110 °C range comes from the setpoint command's schema, which the
+  Orchestrator uses as the thermostat's limits.
 - `DownloadController` rejects traversal, absolute paths, encoded slashes and encoded backslashes
   before storage services are called. Keep filename normalization defensive.
 - `Services/Eufy/` is ported from eufy-sdk (Apache-2.0, `NOTICE`) at commit `5f92bea5`; every ported file names its

@@ -5,8 +5,8 @@ namespace RIoT2.Net.Devices.Services
 {
     /// <summary>
     /// An HTTP client for cloud logins that handle redirects and cookies themselves: it follows no redirects, keeps no
-    /// cookies, and checks every request against the node's outbound URL policy. Used by the MELCloud, Miele and DEFA Power
-    /// devices.
+    /// cookies, and checks every request against the node's outbound URL policy. Used by the MELCloud, Miele, DEFA Power
+    /// and Harvia devices.
     /// </summary>
     internal static class DirectHttp
     {

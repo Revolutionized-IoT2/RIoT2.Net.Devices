@@ -128,6 +128,16 @@ cloud and the stations itself, through a C# port of part of [eufy-sdk](https://g
   stop the charging, set the current limit, eco mode and its hours to charge and the manual schedules, charge now
   and restart the charger. It polls every 15 seconds while charging and every minute otherwise. It shares
   `DirectHttp`.
+- Added: the `Harvia` device for Harvia saunas with a Xenio WiFi panel through the MyHarvia cloud that the MyHarvia
+  app uses, with the account's `email` and `password` (AWS Cognito SRP login; the refresh token is kept in
+  `Data/`). MyHarvia pushes changes over AppSync WebSockets, renewed every 5 minutes, and a poll every 5 minutes
+  reads everything again. It reports each sauna's state, temperature, humidity, target, remaining time, heating,
+  door, light and connection, its sessions (`sessionEvent`, `lastSession`, `sessionsToday`, `bathingMinutesToday`),
+  readiness (`ready`, `timeToReady`, `readyAt`) and the panel's own schedule, and with `heaterPower` an energy
+  estimate (`heaterPowerNow`, `energyLastSession`, `energyToday`). Its commands switch the sauna on or off (refused
+  while the door is open), set the target temperature (40-110 °C, a bare number too) and switch the light. Each
+  sauna is a Matter thermostat (setpoint 40-110 °C, needs the Orchestrator that takes thermostat limits from the
+  setpoint command's range) with temperature, humidity and door sensors and an on/off light.
 
 ## [2.1.0] - 2026-11-04
 

@@ -43,6 +43,7 @@ namespace RIoT2.Net.Devices
             AddDevice<MyUplink>();
             AddDevice<Themo>();
             AddDevice<Miele>();
+            AddDevice<Harvia>();
             AddDevice<DefaPower>();
             AddDevice<GoogleCast>();
         }
