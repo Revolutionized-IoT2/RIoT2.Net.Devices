@@ -46,7 +46,7 @@ dotnet test .\RIoT2.Net.Devices\Tests\RIoT2.Net.Devices.Tests.csproj -c Release
 | `Plugin.cs` | Entry point derived from Core's `PluginBase`; registers services and devices |
 | `Catalog/` | Device implementations: Web, Timer, Virtual, MQTT, cloud services, EasyPLC, Hue and others |
 | `Controllers/` | Plugin HTTP controllers: webhook and file download |
-| `Services/` | Integration services for webhooks, storage, FTP, Azure Relay, APsystems, Eufy and clients; `Services/MelCloud/` has the classic MELCloud and MELCloud Home backends of the `MelCloud` device; `Services/MyUplink/` has the myUplink API client of the `MyUplink` device; `Services/Themo/` has the Themo API client of the `Themo` device |
+| `Services/` | Integration services for webhooks, storage, FTP, Azure Relay, APsystems, Eufy and clients; `Services/Eufy/` is the C# port of eufy-sdk the `EufySecurity` device uses (`Cloud/` HTTP API and login, `Push/` FCM/MCS events, `P2P/` station sessions, guard mode and snapshot), behind `EufySecurityService`; `Services/MelCloud/` has the classic MELCloud and MELCloud Home backends of the `MelCloud` device; `Services/MyUplink/` has the myUplink API client of the `MyUplink` device; `Services/Themo/` has the Themo API client of the `Themo` device |
 | `Abstracts/` | Shared Netatmo base device logic |
 | `Models/` | DTOs for devices and services |
 | `Tests/` | MSTest hardware-free regression tests and the shared conformance test (`PluginConformanceTests`) |
@@ -125,6 +125,14 @@ This repository implements plugin-side pieces of these hub contracts:
   `SendReportIfValueChanged`, so equal hours are all kept.
 - `DownloadController` rejects traversal, absolute paths, encoded slashes and encoded backslashes
   before storage services are called. Keep filename normalization defensive.
+- `Services/Eufy/` is ported from eufy-sdk (Apache-2.0, `NOTICE`) at commit `5f92bea5`; every ported file names its
+  upstream files in its first line. The eufy protocols are reverse-engineered: change wire formats only from a newer
+  eufy-sdk, re-porting its spec vectors into `Tests/Eufy/`, and record the new commit here and in `NOTICE`. Keep the
+  contracts in `EufyContracts.cs` stable; `EufySecurityService` composes the clients through
+  `IEufyComponentFactory`, which the tests replace. Never log the password, tokens or keys. The session and push
+  files (`Data/eufy-session-*.json`, `Data/eufy-push-*.json`) are credentials. Repeated logins trigger captchas: the
+  cloud client holds re-logins off, and nothing retries a captcha or verification code on its own. Guard mode and
+  snapshots go over P2P only; T9000/T8N00 stations and T8223/T8224 doorbells (WebRTC upstream) are refused.
 - The webhook endpoint is anonymous and caps request bodies at 64 KiB.
 
 ## Related work

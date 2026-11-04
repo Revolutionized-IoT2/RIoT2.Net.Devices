@@ -73,6 +73,13 @@ namespace RIoT2.Net.Devices.Models
         animalDetected = 3,
         soundDetected = 4,
         strangerPersonDetected = 5,
-        vehicleDetected = 6
+        vehicleDetected = 6,
+        doorbellPressed = 7,
+        packageDelivered = 8,
+        packageTaken = 9,
+        packageStranded = 10,
+        cryingDetected = 11,
+        /// <summary>A still taken on request, not an event.</summary>
+        snapshot = 12
     }
 }

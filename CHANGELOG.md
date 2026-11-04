@@ -5,6 +5,26 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+**Breaking: Eufy Security.** The device no longer needs the eufy-security-ws container; it connects to the eufy
+cloud and the stations itself, through a C# port of part of [eufy-sdk](https://github.com/mega-yfue/eufy-sdk)
+(Apache-2.0, see `NOTICE`). Release as 3.0.0.
+
+- Changed: Eufy Security's parameters are `email`, `password` (secret), `countryCode` (default `US`) and `ffmpegPath`
+  (default `ffmpeg`); `serviceIp` and `port` are gone, so a configured device fails to start until it is set up
+  again. Its templates: per station `<stationSn>|guardMode` (report and command, eufy values as before) and the new
+  `<stationSn>|alarm`; per camera `<deviceSn>` and the new `<deviceSn>|snapshot` command; `eufy|status` and the
+  `eufy|verify` command for the first login's captcha or verification code. Several stations are supported (before:
+  the first one). The session and push registration are kept in `Data/eufy-session-<account>.json` and
+  `Data/eufy-push-<account>.json`.
+- Added: Eufy Security reports crying, dog, doorbell press and package delivered, taken and left events, a known
+  person's name, and the event's thumbnail; `SecurityEventType` gains `doorbellPressed`, `packageDelivered`,
+  `packageTaken`, `packageStranded`, `cryingDetected` and `snapshot` (existing values unchanged).
+- Fixed: a Eufy pet detection no longer throws (`petDetected` isn't a `SecurityEventType`; it is `animalDetected`).
+- Removed: the eufy-security-ws WebSocket client and its message models (`EufyCommand`, `EufyMessage`,
+  `EufyEventMessage`, `EufyResult`, `EufyVersionInfo`).
+- Not supported: guard mode and snapshots on T9000 and T8N00 stations and T8223/T8224 doorbells (WebRTC in
+  eufy-sdk). The snapshot needs ffmpeg, which the Node images include from their next release.
+
 - Added: the `MelCloud` device for Mitsubishi Electric air-to-air heat pumps through MELCloud: classic MELCloud
   (`cloud` `classic`, the default) or MELCloud Home (`home`), with the account's `email` and `password`. It reports
   each unit's room and target temperature, power, mode, fan speed, vanes, connection and energy, and its commands
