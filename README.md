@@ -91,6 +91,7 @@ reason.
 | MELCloud | `cloud` (`classic`, the default: the MELCloud app; or `home`: the MELCloud Home app), `email`\*, `password`\* (secret) | Mitsubishi Electric air-to-air heat pumps. Per unit (address `<unitId>\|<key>`), reports `roomTemperature` and `setTemperature` (°C), `power`, `mode` (`heat`, `dry`, `cool`, `fan`, `auto`), `thermostatMode` (Matter SystemMode: 0 off, 1 auto, 3 cool, 4 heat, 7 fan, 8 dry), `fanSpeed` (`auto`, `1`-`5`), `vaneVertical`, `vaneHorizontal`, `offline`, and `energyConsumed` (classic meter, kWh) or `energyToday` (Home, kWh). Commands `setTemperature`, `power`, `mode`, `thermostatMode`, `fanSpeed`, `vaneVertical`, `vaneHorizontal`, plus `refresh`. Each unit is a Matter thermostat. Polls hourly by default, at most once a minute. |
 | Messaging | `firebaseProjectName`, `smtp_Server`, `smtp_User`, `smtp_Password` (secret), `smtp_Port` (default `587`); mail needs the server, user and password | Commands `fb` (Firebase topic message) and `mail` (SMTP email). Firebase service account JSON is read from `Data/service_account.json`. |
 | MQTT | `clientId`, `serverUrl`\* (broker host, port 1883), `userName`, `password` (secret), `subscribeTopics` (separated by `;`) | Publishes command payloads to command addresses and reports subscribed topic payloads as text. |
+| myUplink | `clientId`\*, `clientSecret`\* (secret) of an app registered at dev.myuplink.com, `language` (default `en-GB`), `extraParameters` (comma-separated parameter ids), `offsetParameter` (default `47011`), `baseTemperature` (default `20`), `degreesPerStep` (default `1`) | NIBE heat pumps (written for the F750) through the official myUplink API. Per heat pump (address `<deviceId>\|<key>`), reports the curated parameters it has: `outdoorTemperature`, `supplyTemperature`, `returnTemperature`, `hotWaterTop`, `hotWaterCharging`, `exhaustAirTemperature`, `extractAirTemperature`, `calculatedSupplyTemperature` (°C), `degreeMinutes`, `compressorFrequency`, `compressorStarts`, `compressorHours`, `hotWaterCompressorHours`, `additionalHeatPower`, `fanSpeed`, `heatingOffset`, `hotWaterComfortMode`, `hotWaterBoost`, `ventilationSpeed` (enums as their text), `energyHeating` and `energyHotWater` (produced heat, kWh); plus `setTemperature` (the virtual setpoint, °C), `thermostatMode`, `smartHomeMode`, `connected`, `alarm`, `activeAlarms`, `alarmText`, `premiumManage`, `energyToday` (kWh) and `p<id>` for each extra parameter. Commands `setTemperature`, `heatingOffset`, `hotWaterComfortMode`, `hotWaterBoost`, `ventilationSpeed`, `smartHomeMode` (`Default`, `Normal`, `Away`, `Vacation`, `Home`), `setParameter` (`{"parameterId": "47011", "value": 1}`), `p<id>` for writable extra parameters, plus `refresh`. Each heat pump is a Matter thermostat. Polls hourly by default, at most once a minute. |
 | Netatmo Security | `token` (secret), `refresh_token`\* (secret), `clientId`\*, `clientSecret`\* (secret) | Dynamic security camera reports plus `refresh` and `set_home` commands; rotated tokens are persisted per client id (see below). |
 | Netatmo Weather | as Netatmo Security, plus `stationId` | Weather station and module measurements; rotated tokens are persisted per client id (see below). |
 | Timer | No device parameters; uses report-level schedules | Emits the report address whenever the scheduler refreshes that report. |
@@ -115,6 +116,26 @@ the unit takes it from MELCloud within about a minute. Use one MELCloud Home dev
 two would rotate each other's refresh token and log in again on every refresh. The Matter thermostat
 has no Auto mode, so a unit in `auto` shows its setpoints but not its mode there. Air-to-water
 (Ecodan) units are skipped.
+
+myUplink uses the official API with the OAuth client credentials of your own app: register one at
+[dev.myuplink.com](https://dev.myuplink.com) with the account that owns the heat pump and enter its
+client id and secret. The device reads the heat pump's parameter list once at start, then polls only
+the parameters it reports. The parameter ids are NIBE's and depend on the model and firmware; a
+curated id the heat pump doesn't have is skipped. With debug logging, the device logs every parameter
+it finds with its id, name and value; add the ones you want to `extraParameters`. Changing settings
+through the API needs a myUplink Premium Manage subscription: without it myUplink refuses changes,
+and the command fails with an error that says so (`premiumManage` reports whether the subscription is
+active). Without a room sensor, the F750 has no target temperature, only the heating curve's offset.
+`setTemperature` is a virtual setpoint that a Command Plan or the heat pump workflow templates can
+drive: the offset becomes `round((target - baseTemperature) / degreesPerStep)`, and the reported
+`setTemperature` is the offset turned back into °C. Tune `degreesPerStep` to how much one offset step
+changes your room temperature. The Matter thermostat shows the exhaust air temperature (BT20), which
+follows the room temperature with a delay, as its current temperature. `energyHeating` and
+`energyHotWater` are heat meters (the heat the pump produced, including additional heat), not the
+electricity it used; `energyToday` is their increase since the day's first poll, so it misses what was
+produced between midnight and that poll. The day's starting point is kept in
+`Data/myuplink-<hash of the device id>.json`, so a restart keeps it. While myUplink is unavailable or
+limits requests (429), the device keeps the last state and polls again at the next refresh.
 
 Devices and plugin controllers use the platform configuration and HTTP contracts:
 

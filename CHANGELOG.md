@@ -11,6 +11,14 @@ uploads a plugin zip as a GitHub release asset.
   set them; `setTemperature` takes the bare number a Command Plan sends, so the heat pump workflow templates can
   drive it. Each unit is a Matter thermostat on the Control Bridge. The login is kept in
   `Data/melcloud-<cloud>-<account>.json`.
+- Added: the `MyUplink` device for NIBE heat pumps (written for the F750) through the official myUplink API, with
+  the `clientId` and `clientSecret` of an app registered at dev.myuplink.com. It reports a curated set of
+  parameters (temperatures, degree minutes, compressor, ventilation, hot water and produced heat), parameters
+  added with `extraParameters`, alarms, the smart home mode and `energyToday`. Its commands set the heating
+  offset, hot water, ventilation, the smart home mode and any writable parameter (`setParameter`). Without a room
+  sensor, `setTemperature` is a virtual setpoint that becomes a heating offset (`baseTemperature`,
+  `degreesPerStep`), so the heat pump workflow templates can drive it. Each heat pump is a Matter thermostat.
+  Changes need a myUplink Premium Manage subscription.
 
 ## [2.1.0] - 2026-11-04
 

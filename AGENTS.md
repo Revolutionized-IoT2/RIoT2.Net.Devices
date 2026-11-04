@@ -46,7 +46,7 @@ dotnet test .\RIoT2.Net.Devices\Tests\RIoT2.Net.Devices.Tests.csproj -c Release
 | `Plugin.cs` | Entry point derived from Core's `PluginBase`; registers services and devices |
 | `Catalog/` | Device implementations: Web, Timer, Virtual, MQTT, cloud services, EasyPLC, Hue and others |
 | `Controllers/` | Plugin HTTP controllers: webhook and file download |
-| `Services/` | Integration services for webhooks, storage, FTP, Azure Relay, APsystems, Eufy and clients; `Services/MelCloud/` has the classic MELCloud and MELCloud Home backends of the `MelCloud` device |
+| `Services/` | Integration services for webhooks, storage, FTP, Azure Relay, APsystems, Eufy and clients; `Services/MelCloud/` has the classic MELCloud and MELCloud Home backends of the `MelCloud` device; `Services/MyUplink/` has the myUplink API client of the `MyUplink` device |
 | `Abstracts/` | Shared Netatmo base device logic |
 | `Models/` | DTOs for devices and services |
 | `Tests/` | MSTest hardware-free regression tests and the shared conformance test (`PluginConformanceTests`) |
@@ -112,6 +112,12 @@ This repository implements plugin-side pieces of these hub contracts:
   the outbound URL policy itself. Logins are kept in `Data/melcloud-<cloud>-<hash>.json`; MELCloud
   limits logins and polling, so keep the one-minute poll floor. Only `MelCloudAuthenticationException`
   is a configuration error; `MelCloudUnavailableException` (429, 5xx, timeouts) keeps the last state.
+- myUplink uses the official API (swagger at api.myuplink.com/swagger) with the client credentials
+  grant. The curated F750 parameter ids in `MyUplinkCatalog` are NIBE register ids, not checked
+  against every model or firmware; add fallback ids rather than replacing them. Min and max are
+  multiplied by `scaleValue`, the value and step are not. Writes need Premium Manage: a 403 is
+  reported as that, not as a configuration error. `MyUplinkRefusedException` (400, 403, 404, 409)
+  isn't retried; `MyUplinkUnavailableException` (429, 5xx, timeouts) keeps the last state.
 - `DownloadController` rejects traversal, absolute paths, encoded slashes and encoded backslashes
   before storage services are called. Keep filename normalization defensive.
 - The webhook endpoint is anonymous and caps request bodies at 64 KiB.
