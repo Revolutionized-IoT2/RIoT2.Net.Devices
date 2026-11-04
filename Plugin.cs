@@ -27,6 +27,7 @@ namespace RIoT2.Net.Devices
             AddDevice<Messaging>();
             AddDevice<FTP>();
             AddDevice<ElectricityPrice>();
+            AddDevice<WeatherForecast>();
             AddDevice<EasyPLC>();
             AddDevice<NetatmoWeather>();
             AddDevice<NetatmoSecurity>();

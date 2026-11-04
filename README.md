@@ -84,7 +84,7 @@ reason.
 | AP Systems | `appId`\*, `appSecret`\* (secret), `sid`\*, `ecuId`\* | Hourly energy summaries: `today`, `month`, `year`, `lifetime` with `unit` and `precision` report parameters. |
 | Azure Relay | `relayNamespace`\*, `connectionName`\*, `keyName`\*, `key`\* (secret) | Starts/stops an Azure Relay listener. Message handling is not implemented in code. |
 | EasyPLC | `ipAddress`\*, `port` (default `10001`) | Async/cancellable PLC marker read/write driver. Marker command addresses are `M-{netId}-{expansion}-{marker}`; `refresh` reads markers. Non-zero write expansions are rejected. |
-| Electricity Price | `securityToken`\* (secret), `domain` (default `10YFI-1--------U`), `endpoint` (default the ENTSO-E API), `vat` (percent) | Scheduled current price report at address `price`, with `unit=c/kWh` and `precision`. Cached XML is stored at `Data/priceData.xml`. |
+| Electricity Price | `securityToken`\* (secret), `domain` (default `10YFI-1--------U`), `endpoint` (default the ENTSO-E API), `vat` (percent) | Scheduled current price report at address `price`, with `unit=c/kWh` and `precision`. Since 2.1.0 also `prices`: today's and, once ENTSO-E publishes them (around 12:00 UTC), tomorrow's prices as a forecast series (`kind` `confirmed`), sent when they change. Prices are cached in `Data/priceData.json`. |
 | Eufy Security | `serviceIp`\*, `port` (default `3000`) | Dynamic camera/security reports and a station `guardMode` command after the external eufy-security-ws service is connected. |
 | FTP | `ftpUsers` (secret; `user:password` pairs separated by `\|`), `ftpPort` (default `21`) | File uploads become in-memory photo `SecurityReport` values keyed by FTP username. |
 | Hue | `bridgeIpAddress`\*, `apiKey`\* (secret) | Dynamic light command/report templates when running; event-stream updates merge partial state and include Matter endpoint metadata. |
@@ -95,6 +95,7 @@ reason.
 | Timer | No device parameters; uses report-level schedules | Emits the report address whenever the scheduler refreshes that report. |
 | Virtual | No device parameters | Stores command values by address and reports each one, with its value and type, on the report template with the same address. |
 | Water Consumption | `securityToken`\* (secret), `endpoint` (default the WRM Systems API) | Scheduled latest water meter reading at address `watermeter`, with `unit` and `precision` report parameters. |
+| Weather Forecast | `provider` (`openMeteo`, the default, or `fmi`), `latitude` and `longitude` (degrees), `fmiPlace` (with `fmi`, instead of the coordinates), `forecastHours` (default `48`, at most `240`), `endpoint` (empty for the public API) | Hourly forecast series (`kind` `forecast`) from the current hour on, refreshed every hour and sent when they change: `temperature` °C, `precipitation` mm, `windSpeed` m/s, `cloudCover` %, `solarRadiation` W/m², `humidity` %. FMI takes solar radiation from HARMONIE. Since 2.1.0. |
 | Web Device | No device parameters | Commands perform HTTP GET/POST through the webhook service; `POST /api/webhook/{address}` publishes matching reports. |
 
 Netatmo devices with the same `clientId` share one set of tokens; different client ids are

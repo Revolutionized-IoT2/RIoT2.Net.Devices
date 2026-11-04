@@ -75,7 +75,7 @@ public class DeviceLifecycleTests
         var device = new TestElectricityPrice(http);
         device.Initialize(Configuration(new() { ["endpoint"] = "https://prices.invalid/api", ["domain"] = "d", ["securityToken"] = "t", ["vat"] = "0" },
             reports: [new ReportTemplate { Id = "price", Address = "price" }]));
-        var priceFile = Path.Combine("Data", "priceData.xml");
+        var priceFile = Path.Combine("Data", "priceData.json");
         if (File.Exists(priceFile))
             Assert.Inconclusive($"{priceFile} exists in the test folder; the device would read it instead of downloading.");
 

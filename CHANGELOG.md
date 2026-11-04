@@ -5,6 +5,22 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-04
+
+Forecasts ([ADR 0019](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/adr/0019-forecasts-and-command-plans.md)).
+Built on `RIoT2.Core.Devices` 2.3.0: **needs Node 2.1.0**. Stored configurations load unchanged.
+
+- Added: the `WeatherForecast` device. It gets an hourly forecast from Open-Meteo (`provider` `openMeteo`, no key)
+  or FMI open data (`fmi`; the edited forecast, and HARMONIE for solar radiation), and reports `temperature`,
+  `precipitation`, `windSpeed`, `cloudCover`, `solarRadiation` and `humidity` as forecast series (`ForecastSeries`).
+- Added (Electricity Price): the `prices` report, today's and tomorrow's prices as a confirmed forecast series in
+  c/kWh with VAT. Add the report template to an existing device to get it. Tomorrow's prices are asked for once
+  today's run out within 13 hours, at most every 30 minutes; a failed request keeps the prices the device has.
+- Changed (Electricity Price): it requests yesterday to the day after tomorrow (UTC) and reads every `TimeSeries` and
+  `Period`, curve A03 (a missing position repeats the price before it), and both PT15M and PT60M (the finer wins).
+  The current price is the slot that contains the current UTC time. It used to assume the node's clock was one hour
+  ahead of CET, which was wrong in summer time. The `price` report is otherwise unchanged. The cache is now
+  `Data/priceData.json`; the old `Data/priceData.xml` is no longer read.
 ## [2.0.0] - 2026-11-03
 
 Core 2.0 ([I45](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/increments/phase-3-4.md#i45-core-20-remove-compatibility-layers-m); backlog item 23 done). **Needs Node 2.0.0**, which refuses the 1.x plugins.
