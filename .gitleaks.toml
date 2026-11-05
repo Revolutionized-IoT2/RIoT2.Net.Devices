@@ -1,0 +1,42 @@
+# Secret scanning (gitleaks) for RIoT2.Net.Devices. Extends the default rules and allowlists only reviewed false
+# positives, each by rule, path and exact value. Do not add real keys here; rotate them instead. Reviewed 2026-11-05.
+title = "RIoT2.Net.Devices"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Synthetic test fixtures: the Netatmo webhook secret of NetatmoTestKit and the eufy share keys, ECDH shared key and echoed tokens of the Eufy tests. Made-up values, not credentials."
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^Tests/(NetatmoTestKit\.cs|Eufy/Cloud/(EufySessionStoreAndDeviceTests|EufyCryptoTests|EufyCloudClientTests)\.cs)$''']
+regexes = [
+    '''^s3cr3t-0123456789-abcdefghij-KLMNOP$''',
+    '''^00112233445566778899aabbccddeeff$''',
+    '''^(0123456789abcdef){4}$''',
+    '''^0123456789abcdef0123$''',
+]
+
+[[allowlists]]
+description = "False positive: the class declaration 'EufyStationKeyUnavailableException : EufyP2PException'."
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^Services/Eufy/P2P/EufyP2PExceptions\.cs$''']
+regexes = ['''^EufyP2PException$''']
+
+# The eufy app's public constants, not RIoT2 credentials: they ship in the eufy Android app and in eufy-sdk
+# (Apache-2.0; src/transport/push/fcm.ts and src/core/crypto.ts), which Services/Eufy ports and Services/EufySdk
+# bundles, and can't be rotated. The values are escaped (\x2D is '-', [2] is '2') so this file doesn't match itself.
+[[allowlists]]
+description = "Public constant: the Firebase API key of the eufy app (FcmConstants.ApiKey), used for its push registration; in the C# port, its test and the generated eufy-sdk bundle. Both rules match it."
+targetRules = ["gcp-api-key", "generic-api-key"]
+condition = "AND"
+paths = ['''^(Services/Eufy/Push/Fcm\.cs|Tests/Eufy/Push/FcmRegistrarTests\.cs|Services/EufySdk/eufy-sdk-bridge\.mjs)$''']
+regexes = ['''^AIzaSyCSz1uxGrHXsEktm7O3_wv\x2DuLGpC9BvXR8$''']
+
+[[allowlists]]
+description = "Public constant: the eufy_mega app's localKey that bootstraps the eufy cloud key exchange (EufyCrypto.EufyMegaLocalKeyHex)."
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^Services/Eufy/Cloud/EufyCrypto\.cs$''']
+regexes = ['''^[2]500a7d5617812f9d52515b2c8f20a3d$''']

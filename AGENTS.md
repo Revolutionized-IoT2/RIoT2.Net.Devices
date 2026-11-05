@@ -55,6 +55,7 @@ cd .\RIoT2.Net.Devices\EufySdkBridge; npm ci; npm test; npm run build
 | `Tests/` | MSTest hardware-free regression tests and the shared conformance test (`PluginConformanceTests`) |
 | `docs/` | `devices.md`, the device catalog (parameters, reports, commands; Netatmo and Eufy notes), and `cloud-devices.md` (MELCloud, myUplink, Themo, Miele, DEFA Power and Harvia notes); a new or changed device updates its row there |
 | `.github/workflows/ci.yml`, `release.yml` | CI on every push; plugin zip release on a tag |
+| `.gitleaks.toml` | The secret scan's reviewed allowlist: synthetic test fixtures, one false positive and the eufy app's public constants, each by rule, path and exact value |
 
 ## Contracts consumed here
 
