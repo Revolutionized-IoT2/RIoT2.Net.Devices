@@ -1,6 +1,6 @@
 # Cloud device notes
 
-Applies to: the MELCloud, myUplink, Themo, Miele, DEFA Power and Harvia devices of RIoT2.Net.Devices: how they sign in, what
+Applies to: the MELCloud, myUplink, Themo, Miele, DEFA Power, Harvia and Govee devices of RIoT2.Net.Devices: how they sign in, what
 they keep in `Data/`, and their limits. Their parameters, reports and commands are in the [device catalog](devices.md).
 
 MELCloud has no public API; the device uses the apps' APIs, like the pymelcloud library and the
@@ -124,4 +124,22 @@ range is 40-110 °C (the Control Bridge takes it from the setpoint command's ran
 apps show at most about 30 °C on a thermostat, so the temperature is also a separate temperature
 sensor. The thermostat's heat mode switches the sauna on, so a controller or voice assistant can start
 it.
+
+Govee uses the official Govee Open API (openapi.api.govee.com, in beta at Govee) with an API key: in
+the Govee Home app, open Profile, Settings, Apply for API Key; the key comes by e-mail. The device
+reads the account's device list at start, then once a day and on `refresh`, and keeps every device whose
+list entry has a `sensorTemperature` or `sensorHumidity` property or that is a thermometer. Govee only
+lists the models its Open API supports, and sensors behind a Govee gateway may be missing; with debug
+logging the device logs every device it finds with its id, model, type and properties, and with none it
+warns with the devices it found. Name a device in `devices` (its id or model) to read it even when its
+list entry doesn't say what it measures; its state shows it. The Open API sends temperatures in °F: the
+device turns them into °C (to a tenth), unless `temperatureUnit` is `celsius`. Battery is reported
+from any property whose name contains `battery`; Govee doesn't document one. While Govee says a sensor
+is offline, its values are history, so only `online` is reported and the hour gets no sample.
+`temperatureHourly` sums up the polls of each finished hour (four at the default 15 minutes); the open
+hour's samples and the last reported hour are kept in `Data/govee-<hash of the device id>.json`, so a
+restart neither loses the samples nor repeats the hour. Govee allows 30 device list requests a minute
+per account and 30 state requests a minute per device. A wrong key (401, 403) puts the device into
+the error state; while Govee is unavailable or limits requests (429), the device keeps the last state
+and polls again at the next refresh.
 

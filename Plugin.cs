@@ -46,6 +46,7 @@ namespace RIoT2.Net.Devices
             AddDevice<Harvia>();
             AddDevice<DefaPower>();
             AddDevice<GoogleCast>();
+            AddDevice<Govee>();
         }
     }
 }

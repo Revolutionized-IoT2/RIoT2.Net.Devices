@@ -5,6 +5,15 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+**New: Govee thermometers and hygrometers** (additive).
+
+- Added: **Govee** (`Govee`), Govee Wi-Fi thermometers and hygrometers, such as a pool thermometer, through the
+  official Govee Open API. Parameters `apiKey` (secret), `devices`, `temperatureUnit` (default `fahrenheit`) and
+  `endpoint`. Per sensor reports `temperature` (°C), `humidity`, `battery`, `online` and `temperatureHourly` (each
+  finished hour's average, minimum and maximum, time-stamped to the hour); command `refresh`. Each sensor is a Matter
+  temperature (and humidity) sensor. Polls every 15 minutes by default; the hourly samples are kept in
+  `Data/govee-<hash>.json`.
+
 **New: Google Cast speaker** (additive).
 
 - Added: **Google Cast speaker** (`GoogleCast`), for voice announcements on Google Home, Nest and other Cast

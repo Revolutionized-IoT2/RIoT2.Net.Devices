@@ -25,6 +25,7 @@ public class DeviceOptionsTests
         [typeof(MelCloud), "cloud,email,password", "password"],
         [typeof(MyUplink), "clientId,clientSecret,language,extraParameters,offsetParameter,baseTemperature,degreesPerStep", "clientSecret"],
         [typeof(Themo), "email,password", "password"],
+        [typeof(Govee), "apiKey,devices,temperatureUnit,endpoint", "apiKey"],
         [typeof(DefaPower), "phoneNumber", ""],
         [typeof(Miele), "clientId,clientSecret,email,password,country,authorizationCode,redirectUri,language", "clientSecret,password,authorizationCode"],
         [typeof(Harvia), "email,password,heaterPower,readyTemperature", "password"],
