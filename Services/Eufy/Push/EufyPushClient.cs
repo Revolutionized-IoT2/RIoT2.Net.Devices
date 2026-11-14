@@ -255,9 +255,10 @@ namespace RIoT2.Net.Devices.Services.Eufy.Push
                 _connected = true;
                 waiter = _connectWaiter;
             }
-            waiter.TrySetResult();
             _logger.LogInformation("[push] connected");
+            // Before the waiter, so StartAsync returns only after subscribers have heard about it.
             RaiseConnectionChanged(true);
+            waiter.TrySetResult();
         }
 
         private void OnDisconnected()
