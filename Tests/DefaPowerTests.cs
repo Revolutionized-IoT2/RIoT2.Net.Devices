@@ -387,7 +387,8 @@ public class DefaPowerTests
         await device.StartAsync(CancellationToken.None);
         var stopped = device.StopAsync(CancellationToken.None);
 
-        Assert.AreSame(stopped, await Task.WhenAny(stopped, Task.Delay(TimeSpan.FromSeconds(5))), "the loop's wait is cancelled");
+        // Times out unless the loop's wait is cancelled.
+        await stopped.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.AreEqual(DeviceState.Stopped, device.State, device.StateMessage);
     }
 
