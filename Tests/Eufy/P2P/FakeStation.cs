@@ -69,7 +69,7 @@ internal sealed class FakeUdpSocket(FakeP2PNetwork network, int port, bool broad
 internal sealed record StationCommand(FakeUdpSocket From, byte DataType, int Seq, int Cmd, int Channel, int SignCode, byte Magic0, byte Magic1, int StreamId, byte[] Body, byte[]? Plain, byte[] Datagram)
 {
     public string Text => Plain is null ? "" : TestCrypto.TrimZeros(Plain);
-    public JsonElement Json => JsonDocument.Parse(Text).RootElement.Clone();
+    public JsonElement Json => JsonElement.Parse(Text);
 }
 
 /// <summary>
@@ -239,7 +239,7 @@ internal sealed class FakeP2PCloud : IEufyCloudApi
         lock (gate) cipherRequests.Add(request);
         var id = request.GetProperty("cipher_ids")[0].GetInt32();
         var answer = EccPrivateKeyHex is null ? "[]" : $"[{{\"cipher_id\":{id},\"ecc_private_key\":\"{EccPrivateKeyHex}\"}}]";
-        return Task.FromResult(JsonDocument.Parse(answer).RootElement.Clone());
+        return Task.FromResult(JsonElement.Parse(answer));
     }
 
     public Task<IReadOnlyDictionary<string, (string DskKey, long Expiration)>> GetDskKeysAsync(IReadOnlyCollection<string> stationSerials, CancellationToken cancellationToken) =>

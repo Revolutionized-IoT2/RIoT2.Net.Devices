@@ -116,7 +116,7 @@ public class NetatmoSecurityTests
         var (device, reports) = await StartAsync(WithWebhook());
 
         Assert.AreEqual(WebhookUrl, device.WebhookUrl);
-        Assert.AreEqual(WebhookUrl, System.Text.Json.JsonDocument.Parse(_kit.Api.Calls.Single(c => c.Key == "POST webhooks/v1").Body).RootElement.GetProperty("url").GetString());
+        Assert.AreEqual(WebhookUrl, System.Text.Json.JsonElement.Parse(_kit.Api.Calls.Single(c => c.Key == "POST webhooks/v1").Body).GetProperty("url").GetString());
         Assert.IsTrue(reports.At("home|webhook")!.Value.GetValue<bool>());
 
         var push = $$"""{"user_id":"u1","event_type":"movement","home_id":"{{HomeId}}","camera_id":"{{IndoorCamera}}","device_id":"{{IndoorCamera}}","event_id":"evt-1","message":"Motion in the hall","snapshot_url":"{{Snapshot}}","push_type":"NACamera-movement","time":1793800100}""";

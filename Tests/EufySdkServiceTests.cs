@@ -225,10 +225,10 @@ public class EufySdkServiceTests
     {
         foreach (var kind in Enum.GetValues<EufyEventKind>())
             Assert.IsTrue(EufySdkService.EventKinds.Values.Contains(kind), $"{kind} has an eufy-sdk event");
-        var alarm = EufySdkService.ToSecurityEvent(JsonDocument.Parse("""{"name":"alarm","stationSn":"S1"}""").RootElement);
+        var alarm = EufySdkService.ToSecurityEvent(JsonElement.Parse("""{"name":"alarm","stationSn":"S1"}"""));
         Assert.AreEqual(EufyAlarmPhase.Triggered, alarm!.Value.Event.AlarmPhase, "an alarm without a phase was triggered");
-        Assert.IsNull(EufySdkService.ToSecurityEvent(JsonDocument.Parse("""{"name":"propertyChanged"}""").RootElement));
-        Assert.IsNull(EufySdkService.ToRecord(JsonDocument.Parse("""{"name":"no serial"}""").RootElement));
+        Assert.IsNull(EufySdkService.ToSecurityEvent(JsonElement.Parse("""{"name":"propertyChanged"}""")));
+        Assert.IsNull(EufySdkService.ToRecord(JsonElement.Parse("""{"name":"no serial"}""")));
     }
 
     [TestMethod]
