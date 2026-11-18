@@ -70,6 +70,7 @@ Loaded by the Node host:
 | `GET` | `/api/download/{filename}` | Returns an in-memory or configured stored image file |
 | `GET` | `/api/download/list/files` | Lists in-memory documents |
 | `GET` | `/api/cast/audio/{token}` | The Google Cloud speech a Google Cast speaker device made, for the speaker to download; the random token is the credential, kept an hour |
+| `GET` | `/api/voice/audio/{token}` | A Voice satellite's reply or announcement (ESPHome protocol), as WAV, for the satellite to download; the random token is the credential, kept an hour |
 
 These routes are anonymous. Keep the node behind a trusted network, reverse proxy or gateway when
 exposing webhooks.

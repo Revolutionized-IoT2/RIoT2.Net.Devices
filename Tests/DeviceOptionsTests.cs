@@ -31,7 +31,7 @@ public class DeviceOptionsTests
         [typeof(Harvia), "email,password,heaterPower,readyTemperature", "password"],
         [typeof(WeatherForecast), "provider,latitude,longitude,fmiPlace,forecastHours,endpoint", ""],
         [typeof(GoogleCast), "ipAddress,port,ttsEngine,language,voice,cloudTtsApiKey,nodeBaseUrl,announcementVolume,restoreVolume", "cloudTtsApiKey"],
-        [typeof(VoiceSatellite), "host,port,language,sttEngine,sttUrl,sttModel,sttApiKey,ttsEngine,ttsUrl,ttsModel,ttsVoice,ttsApiKey,replyTimeoutSeconds,maxRequestSeconds,silenceMs,speechThresholdDb", "sttApiKey,ttsApiKey"],
+        [typeof(VoiceSatellite), "host,protocol,port,encryptionKey,nodeBaseUrl,language,sttEngine,sttUrl,sttModel,sttApiKey,ttsEngine,ttsUrl,ttsModel,ttsVoice,ttsApiKey,replyTimeoutSeconds,maxRequestSeconds,silenceMs,speechThresholdDb", "encryptionKey,sttApiKey,ttsApiKey"],
         [typeof(NetatmoSecurity), "homeId,webhookUrl,webhookSecret,webhookTakeover,downloadSnapshots,clientId,clientSecret,token,refresh_token", "webhookSecret,clientSecret,token,refresh_token"],
         [typeof(NetatmoWeather), "stationId,includeHomeCoach,clientId,clientSecret,token,refresh_token", "clientSecret,token,refresh_token"],
     ];

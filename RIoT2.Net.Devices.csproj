@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="BouncyCastle.Cryptography" />
     <PackageReference Include="FluentFTP" />
     <PackageReference Include="Google.Apis.Auth" />
     <PackageReference Include="Microsoft.Azure.Relay" />

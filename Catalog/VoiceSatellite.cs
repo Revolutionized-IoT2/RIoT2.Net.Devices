@@ -1,12 +1,14 @@
+using System.Globalization;
 using System.Net.Sockets;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using RIoT2.Core.Abstracts;
 using RIoT2.Core.Interfaces;
+using RIoT2.Core.Interfaces.Services;
 using RIoT2.Core.Models;
 using RIoT2.Core.Plugins;
 using RIoT2.Net.Devices.Services.GoogleCast;
+using RIoT2.Net.Devices.Services.Interfaces;
 using RIoT2.Net.Devices.Services.Voice;
 using RIoT2.Net.Devices.Services.Wyoming;
 using ValueType = RIoT2.Core.ValueType;
@@ -17,15 +19,27 @@ namespace RIoT2.Net.Devices.Catalog
     public sealed class VoiceSatelliteOptions
     {
         public const string Wyoming = "wyoming";
+        public const string EspHome = "esphome";
         public const string OpenAiCompatible = "openAiCompatible";
         public const string GoogleCloud = "googleCloud";
         public const string OpenAiUrl = "https://api.openai.com/v1";
+        public const int WyomingPort = 16700;
+        public const int EspHomePort = 26053;
 
-        [DeviceParameter("host", Required = true, Description = "IP address or host name of the voice satellite, for example the Echo running hassmic in Wyoming mode")]
+        [DeviceParameter("host", Required = true, Description = "IP address or host name of the voice satellite, for example the Echo running hassmic")]
         public string Host { get; set; } = "";
 
-        [DeviceParameter("port", Default = "16700", Description = "The satellite's Wyoming port: 16700 for hassmic")]
-        public int Port { get; set; } = 16700;
+        [DeviceParameter("protocol", Default = Wyoming, Description = "wyoming (hassmic with PROTO=wyoming) or esphome (hassmic's default, the ESPHome native API: also the light ring, buttons, volume, timers and announcements)")]
+        public string Protocol { get; set; } = Wyoming;
+
+        [DeviceParameter("port", Description = "The satellite's port; empty: 16700 for wyoming, 26053 for esphome")]
+        public int? Port { get; set; }
+
+        [DeviceParameter("encryptionKey", Secret = true, Description = "esphome: the encryption key, 32 bytes in base64 (for example from openssl rand -base64 32); the device gives it to a satellite that has none. Empty: no encryption")]
+        public string EncryptionKey { get; set; } = "";
+
+        [DeviceParameter("nodeBaseUrl", Description = "esphome: URL the satellite fetches the speech from this node at, for example http://192.168.1.10:8081; empty: the node's RIOT2_NODE_URL")]
+        public string NodeBaseUrl { get; set; } = "";
 
         [DeviceParameter("language", Default = "en-US", Description = "Language spoken to the satellite, for example en-US, en-GB or fi-FI")]
         public string Language { get; set; } = "en-US";
@@ -71,18 +85,31 @@ namespace RIoT2.Net.Devices.Catalog
     }
 
     /// <summary>
-    /// A voice satellite on the Wyoming protocol, such as an Amazon Echo running echo-dot-assist's hassmic with
-    /// <c>PROTO=wyoming</c>. The satellite hears its wake word; the node finds the end of the request, turns it into
+    /// A voice satellite, such as an Amazon Echo running echo-dot-assist's hassmic, over the Wyoming protocol or the
+    /// ESPHome native API. The satellite hears its wake word; the node finds the end of the request, turns it into
     /// text and reports it as <c>transcript</c>. A workflow answers with the <c>speak</c> command, whose speech the
-    /// satellite plays. The node keeps one connection to the satellite and connects again when it drops.
+    /// satellite plays. The node keeps one connection to the satellite and connects again when it drops. Over the
+    /// ESPHome API the satellite's volume, microphone mute, do not disturb, light ring, buttons, wake word and timers
+    /// are reports and commands too.
     /// </summary>
-    [RequiresHardware("Wyoming voice satellite on the network")]
-    public class VoiceSatellite : AsyncDeviceBase<VoiceSatelliteOptions>, IAsyncCommandDevice, IDeviceWithConfiguration
+    [RequiresHardware("Voice satellite on the network (Wyoming or the ESPHome native API)")]
+    public partial class VoiceSatellite : AsyncDeviceBase<VoiceSatelliteOptions>, IAsyncCommandDevice, IDeviceWithConfiguration
     {
         public const string StateAddress = "state";
         public const string TranscriptAddress = "transcript";
         public const string SpeakAddress = "speak";
         public const string CancelAddress = "cancel";
+
+        // The ESPHome API's: a report and a command share an address where both exist.
+        public const string VolumeAddress = "volume";
+        public const string MuteAddress = "mute";
+        public const string DoNotDisturbAddress = "doNotDisturb";
+        public const string LightAddress = "light";
+        public const string WakeWordAddress = "wakeWord";
+        public const string ButtonAddress = "button";
+        public const string TimerRingingAddress = "timerRinging";
+        public const string TimerAddress = "timer";
+        public const string StopRingingAddress = "stopRinging";
 
         public const string Idle = "idle";
         public const string Listening = "listening";
@@ -99,7 +126,7 @@ namespace RIoT2.Net.Devices.Catalog
         /// <summary>How often the node pings the satellite.</summary>
         internal TimeSpan PingInterval { get; set; } = TimeSpan.FromSeconds(15);
 
-        /// <summary>A connection without any event for this long is dead.</summary>
+        /// <summary>A connection without any message for this long is dead.</summary>
         internal TimeSpan DeadAfter { get; set; } = TimeSpan.FromSeconds(45);
 
         /// <summary>The waits before connecting again, the last one repeated.</summary>
@@ -117,9 +144,15 @@ namespace RIoT2.Net.Devices.Catalog
         private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(10);
 
         private readonly object _gate = new();
+        private readonly IVoiceAudioCache _audioCache;
+        private readonly INodeConfigurationService? _node;
         private ISpeechToText? _stt;
         private ITextToSpeech? _tts;
         private string _host = "";
+        private int _port;
+        private string _protocol = VoiceSatelliteOptions.Wyoming;
+        private byte[]? _key;
+        private string? _baseUrl;
         private string _language = "en-US";
         private Session? _session;
         private CancellationTokenSource? _stop;
@@ -127,7 +160,17 @@ namespace RIoT2.Net.Devices.Catalog
         private string _state = "";
         private bool _wakeWarned;
 
-        public VoiceSatellite(ILogger logger) : base(logger) { }
+        public VoiceSatellite(ILogger logger, IVoiceAudioCache audioCache, INodeConfigurationService nodeConfiguration) : base(logger)
+        {
+            _audioCache = audioCache;
+            _node = nodeConfiguration;
+        }
+
+        // The tests' constructor: no node, so nodeBaseUrl must be set for esphome.
+        internal VoiceSatellite(ILogger logger, IVoiceAudioCache? audioCache = null) : base(logger)
+        {
+            _audioCache = audioCache ?? new VoiceAudioCache();
+        }
 
         /// <summary>The satellite's state now: <see cref="Idle"/>, <see cref="Listening"/>, … or <see cref="Offline"/>.</summary>
         public string SatelliteState { get { lock (_gate) return _state; } }
@@ -135,13 +178,22 @@ namespace RIoT2.Net.Devices.Catalog
         // The connections and the HTTP calls; the tests replace them.
         internal virtual async Task<WyomingConnection> ConnectAsync(string host, int port, CancellationToken cancellationToken)
         {
+            var client = await OpenTcpAsync(host, port, cancellationToken).ConfigureAwait(false);
+            return new WyomingConnection(client.GetStream(), client);
+        }
+
+        internal virtual Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Core.Utils.Web.SendAsync(request, (int)EngineTimeout.TotalMilliseconds, cancellationToken);
+
+        private static async Task<TcpClient> OpenTcpAsync(string host, int port, CancellationToken cancellationToken)
+        {
             var client = new TcpClient { NoDelay = true };
             try
             {
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 timeout.CancelAfter(ConnectTimeout);
                 await client.ConnectAsync(host, port, timeout.Token).ConfigureAwait(false);
-                return new WyomingConnection(client.GetStream(), client);
+                return client;
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
@@ -155,12 +207,14 @@ namespace RIoT2.Net.Devices.Catalog
             }
         }
 
-        internal virtual Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Core.Utils.Web.SendAsync(request, (int)EngineTimeout.TotalMilliseconds, cancellationToken);
-
         public override void ConfigureDevice()
         {
             _host = (Options.Host ?? "").Trim();
+            _protocol = (Options.Protocol ?? "").Trim();
+            _port = Options.Port ?? (_protocol == VoiceSatelliteOptions.EspHome ? VoiceSatelliteOptions.EspHomePort : VoiceSatelliteOptions.WyomingPort);
+            _key = null;
+            var baseUrl = string.IsNullOrWhiteSpace(Options.NodeBaseUrl) ? NodeUrl() : Options.NodeBaseUrl;
+            _baseUrl = string.IsNullOrWhiteSpace(baseUrl) ? null : baseUrl.Trim().TrimEnd('/');
             _language = (Options.Language ?? "").Trim();
             _stt = null;
             _tts = null;
@@ -172,6 +226,7 @@ namespace RIoT2.Net.Devices.Catalog
             var problem = Problem();
             if (problem != null)
                 throw new InvalidOperationException(problem);
+            _key = string.IsNullOrWhiteSpace(Options.EncryptionKey) ? null : Convert.FromBase64String(Options.EncryptionKey.Trim());
             _stt = CreateSpeechToText();
             _tts = CreateTextToSpeech();
 
@@ -188,6 +243,7 @@ namespace RIoT2.Net.Devices.Catalog
             var loop = _loop;
             _stop = null;
             _loop = null;
+            CancelAllTimers();
             if (stop == null)
                 return;
             await stop.CancelAsync().ConfigureAwait(false);
@@ -219,25 +275,75 @@ namespace RIoT2.Net.Devices.Catalog
                     if (CommandBool(value))
                         await CancelRunAsync().ConfigureAwait(false);
                     break;
+                case VolumeAddress:
+                    await EspHome(command.Address).SetVolumeAsync(CommandPercent(value, VolumeAddress), cancellationToken).ConfigureAwait(false);
+                    break;
+                case MuteAddress:
+                    await EspHome(command.Address).SetSwitchAsync(EspHomeSession.MuteSwitch, CommandBool(value), cancellationToken).ConfigureAwait(false);
+                    break;
+                case DoNotDisturbAddress:
+                    await EspHome(command.Address).SetSwitchAsync(EspHomeSession.DoNotDisturbSwitch, CommandBool(value), cancellationToken).ConfigureAwait(false);
+                    break;
+                case LightAddress:
+                    await EspHome(command.Address).SetLightAsync(LightChange.Parse(CommandJson(value ?? "")), cancellationToken).ConfigureAwait(false);
+                    break;
+                case WakeWordAddress:
+                    await EspHome(command.Address).SetWakeWordAsync(CommandText(value ?? "").Trim(), cancellationToken).ConfigureAwait(false);
+                    break;
+                case StopRingingAddress:
+                    if (CommandBool(value))
+                        await EspHome(command.Address).PressButtonAsync(EspHomeSession.StopRingingButton, cancellationToken).ConfigureAwait(false);
+                    break;
+                case TimerAddress:
+                    RequireEspHome(command.Address);
+                    await TimerCommandAsync(CommandJson(value ?? ""), cancellationToken).ConfigureAwait(false);
+                    break;
                 default:
-                    throw new ArgumentException($"The command address '{command.Address}' is not one of {SpeakAddress} or {CancelAddress}.");
+                    throw new ArgumentException($"The command address '{command.Address}' isn't one of the voice satellite's.");
             }
+        }
+
+        private void RequireEspHome(string address)
+        {
+            if (_protocol != VoiceSatelliteOptions.EspHome)
+                throw new InvalidOperationException($"The {address} command needs the satellite's protocol to be {VoiceSatelliteOptions.EspHome}.");
+        }
+
+        // The connected ESPHome session, for a command that needs one.
+        private EspHomeSession EspHome(string address)
+        {
+            RequireEspHome(address);
+            lock (_gate)
+                return _session as EspHomeSession ?? throw new InvalidOperationException($"The voice satellite at {_host}:{_port} isn't connected.");
         }
 
         private async Task RunAsync(CancellationToken stop)
         {
             var failures = 0;
+            var provisioned = false;
             while (!stop.IsCancellationRequested)
             {
                 var started = DateTime.UtcNow;
                 var answered = false;
+                var again = false;
                 try
                 {
-                    var connection = await ConnectAsync(_host, Options.Port, stop).ConfigureAwait(false);
-                    await SessionAsync(connection, stop, () => answered = true).ConfigureAwait(false);
+                    var session = _protocol == VoiceSatelliteOptions.EspHome
+                        ? await OpenEspHomeAsync(stop).ConfigureAwait(false)
+                        : new WyomingSession(this, await ConnectAsync(_host, _port, stop).ConfigureAwait(false), stop);
+                    if (session == null)
+                    {
+                        // The satellite was given its key: connect with it at once, but only once.
+                        if (provisioned)
+                            throw new InvalidOperationException("The satellite took the encryption key, but doesn't let it in.");
+                        provisioned = again = true;
+                        continue;
+                    }
+                    provisioned = false;
+                    await SessionAsync(session, () => answered = true).ConfigureAwait(false);
                     if (!answered)
                         throw new IOException("The satellite closed the connection without answering.");
-                    Logger.LogInformation("The voice satellite at {Host}:{Port} closed the connection.", _host, Options.Port);
+                    Logger.LogInformation("The voice satellite at {Host}:{Port} closed the connection.", _host, _port);
                 }
                 catch (OperationCanceledException) when (stop.IsCancellationRequested)
                 {
@@ -246,13 +352,19 @@ namespace RIoT2.Net.Devices.Catalog
                 catch (Exception error)
                 {
                     if (failures == 0)
-                        Logger.LogWarning("The voice satellite at {Host}:{Port} isn't connected: {Reason}", _host, Options.Port, error.Message);
+                        Logger.LogWarning("The voice satellite at {Host}:{Port} isn't connected: {Reason}", _host, _port, error.Message);
                     else
-                        Logger.LogDebug("The voice satellite at {Host}:{Port} isn't connected: {Reason}", _host, Options.Port, error.Message);
+                        Logger.LogDebug("The voice satellite at {Host}:{Port} isn't connected: {Reason}", _host, _port, error.Message);
                     if (State == Core.DeviceState.Running)
-                        SetState(Core.DeviceState.Running, $"Not connected to the satellite at {_host}:{Options.Port}: {error.Message}");
+                        SetState(Core.DeviceState.Running, $"Not connected to the satellite at {_host}:{_port}: {error.Message}");
                 }
-                SetSatelliteState(Offline);
+                finally
+                {
+                    if (!again)
+                        SetSatelliteState(Offline);
+                }
+                if (again)
+                    continue;
 
                 // Only a connection that lasted starts the waits over: a satellite that answers and drops at once
                 // is tried less and less often.
@@ -264,44 +376,31 @@ namespace RIoT2.Net.Devices.Catalog
             }
         }
 
-        private async Task SessionAsync(WyomingConnection connection, CancellationToken stop, Action answered)
+        // Runs one connection until it closes, goes silent or the device stops.
+        private async Task SessionAsync(Session session, Action answered)
         {
-            await using var _ = connection.ConfigureAwait(false);
-            using var session = new Session(connection, stop);
-            await connection.WriteAsync("describe", null, session.Token).ConfigureAwait(false);
-            await connection.WriteAsync("run-satellite", null, session.Token).ConfigureAwait(false);
-
-            var pinger = Task.Run(() => PingAsync(session), CancellationToken.None);
-            using var alive = CancellationTokenSource.CreateLinkedTokenSource(session.Token);
+            using var _ = session;
+            session.OnAnswered = answered;
+            var pinger = Task.CompletedTask;
             try
             {
+                await session.StartAsync().ConfigureAwait(false);
+                pinger = Task.Run(() => PingAsync(session), CancellationToken.None);
+                using var alive = CancellationTokenSource.CreateLinkedTokenSource(session.Token);
                 while (true)
                 {
                     alive.CancelAfter(DeadAfter);
-                    WyomingEvent? message;
+                    bool open;
                     try
                     {
-                        message = await connection.ReadAsync(alive.Token).ConfigureAwait(false);
+                        open = await session.ReceiveAsync(alive.Token).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException) when (!session.Token.IsCancellationRequested)
                     {
                         throw new TimeoutException($"No answer from the satellite in {DeadAfter.TotalSeconds} s.");
                     }
-                    if (message == null)
+                    if (!open)
                         return;
-                    if (!session.Answered)
-                    {
-                        // The satellite's first event (its answer to describe) shows the connection works.
-                        session.Answered = true;
-                        answered();
-                        lock (_gate)
-                            _session = session;
-                        SetSatelliteState(Idle);
-                        if (State == Core.DeviceState.Running)
-                            SetState(Core.DeviceState.Running);
-                        Logger.LogInformation("Connected to the voice satellite at {Host}:{Port}.", _host, Options.Port);
-                    }
-                    await HandleAsync(session, message).ConfigureAwait(false);
                 }
             }
             finally
@@ -314,9 +413,20 @@ namespace RIoT2.Net.Devices.Catalog
                 }
                 await session.CancelAsync().ConfigureAwait(false);
                 // Closing the connection aborts a write the pinger may still be in.
-                await connection.DisposeAsync().ConfigureAwait(false);
+                await session.CloseAsync().ConfigureAwait(false);
                 await pinger.ConfigureAwait(false);
             }
+        }
+
+        // The satellite answered: its connection is the one commands use from now on.
+        private void Connected(Session session, string how)
+        {
+            lock (_gate)
+                _session = session;
+            SetSatelliteState(Idle);
+            if (State == Core.DeviceState.Running)
+                SetState(Core.DeviceState.Running);
+            Logger.LogInformation("Connected to the voice satellite at {Host}:{Port} ({How}).", _host, _port, how);
         }
 
         private async Task PingAsync(Session session)
@@ -326,7 +436,7 @@ namespace RIoT2.Net.Devices.Catalog
                 while (true)
                 {
                     await Task.Delay(PingInterval, session.Token).ConfigureAwait(false);
-                    await session.Connection.WriteAsync("ping", null, session.Token).ConfigureAwait(false);
+                    await session.PingAsync().ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException) { }
@@ -338,45 +448,13 @@ namespace RIoT2.Net.Devices.Catalog
             }
         }
 
-        private async Task HandleAsync(Session session, WyomingEvent message)
+        // A request starts: the satellite heard its wake word, or its action button was pressed. A new request
+        // replaces one still open.
+        private void BeginRun(Session session)
         {
-            switch (message.Type)
-            {
-                case "run-pipeline":
-                    StartRun(session, message);
-                    break;
-                case "audio-chunk":
-                    await AudioAsync(session, message).ConfigureAwait(false);
-                    break;
-                case "played":
-                    session.Played?.TrySetResult();
-                    break;
-                case "ping":
-                    await session.Connection.WriteAsync("pong", null, session.Token).ConfigureAwait(false);
-                    break;
-                case "info":
-                    if (message.Data["satellite"] is JsonObject satellite && satellite["name"] is JsonValue name)
-                        Logger.LogInformation("The voice satellite at {Host} is {Name}.", _host, name.ToString());
-                    break;
-            }
-        }
-
-        private void StartRun(Session session, WyomingEvent message)
-        {
-            var stage = message.GetString("start_stage") ?? "";
             lock (_gate)
             {
-                // A new request (the wake word again, or the button) replaces one still open.
                 session.Run?.End();
-                session.Run = null;
-                if (stage != "asr")
-                {
-                    if (!_wakeWarned)
-                        Logger.LogWarning("The voice satellite asks for the wake word to be heard on the server (start_stage {Stage}); " +
-                            "pick a wake word engine on the satellite itself (on hassmic's settings page).", stage);
-                    _wakeWarned = true;
-                    return;
-                }
                 session.Run = new Run(new EndpointSettings
                 {
                     SilenceMs = Options.SilenceMs,
@@ -387,7 +465,16 @@ namespace RIoT2.Net.Devices.Catalog
             SetSatelliteState(Listening);
         }
 
-        private async Task AudioAsync(Session session, WyomingEvent message)
+        private void WarnWakeWordOnServer(object? stage)
+        {
+            if (!_wakeWarned)
+                Logger.LogWarning("The voice satellite asks for the wake word to be heard on the server ({Stage}); " +
+                    "pick a wake word engine on the satellite itself (on hassmic's settings page).", stage);
+            _wakeWarned = true;
+        }
+
+        // The request's 16-bit mono audio, until the end of speech.
+        private async Task AudioAsync(Session session, int rate, byte[] pcm)
         {
             Run? run;
             EndpointResult result;
@@ -396,18 +483,9 @@ namespace RIoT2.Net.Devices.Catalog
                 run = session.Run;
                 if (run == null || run.Phase != RunPhase.Listening)
                     return;
-                if (message.GetInt("width") is int width && width != 2 || message.GetInt("channels") is int channels && channels != 1)
-                {
-                    Logger.LogWarning("The voice satellite sends audio that isn't 16-bit mono; the request is dropped.");
-                    run.Phase = RunPhase.Done;
-                    result = EndpointResult.NoSpeech;
-                }
-                else
-                {
-                    result = run.Add(message.GetInt("rate") ?? 16000, message.Payload);
-                    if (result != EndpointResult.Listening)
-                        run.Phase = result == EndpointResult.Ended ? RunPhase.Recognizing : RunPhase.Done;
-                }
+                result = run.Add(rate, pcm);
+                if (result != EndpointResult.Listening)
+                    run.Phase = result == EndpointResult.Ended ? RunPhase.Recognizing : RunPhase.Done;
             }
             if (result == EndpointResult.Ended)
                 _ = Task.Run(() => RecognizeAsync(session, run), CancellationToken.None);
@@ -415,11 +493,45 @@ namespace RIoT2.Net.Devices.Catalog
                 await EndQuietlyAsync(session, run, "Nothing was said.").ConfigureAwait(false);
         }
 
+        // The satellite heard the request end itself (the ESPHome API): what was said is recognized now.
+        private async Task AudioEndedAsync(Session session)
+        {
+            Run? run;
+            bool speech;
+            lock (_gate)
+            {
+                run = session.Run;
+                if (run == null || run.Phase != RunPhase.Listening)
+                    return;
+                speech = run.HeardSpeech;
+                run.Phase = speech ? RunPhase.Recognizing : RunPhase.Done;
+            }
+            if (speech)
+                _ = Task.Run(() => RecognizeAsync(session, run), CancellationToken.None);
+            else
+                await EndQuietlyAsync(session, run, "Nothing was said.").ConfigureAwait(false);
+        }
+
+        // The satellite gave the request up itself (the ESPHome API): nothing more is said to it about it.
+        private void AbortRun(Session session)
+        {
+            lock (_gate)
+            {
+                var run = session.Run;
+                if (run == null)
+                    return;
+                session.Run = null;
+                run.End();
+            }
+            if (SatelliteState is Listening or Thinking)
+                SetSatelliteState(Idle);
+        }
+
         private async Task RecognizeAsync(Session session, Run run)
         {
             try
             {
-                await session.Connection.WriteAsync("voice-stopped", null, session.Token).ConfigureAwait(false);
+                await session.SpeechEndedAsync().ConfigureAwait(false);
                 SetSatelliteState(Thinking);
 
                 string text;
@@ -447,7 +559,7 @@ namespace RIoT2.Net.Devices.Catalog
                         return;
                     run.Phase = RunPhase.AwaitingReply;
                 }
-                await session.Connection.WriteAsync("transcript", new JsonObject { ["text"] = text }, session.Token).ConfigureAwait(false);
+                await session.TranscriptAsync(text).ConfigureAwait(false);
                 Logger.LogDebug("The voice satellite heard: {Text}", text);
                 Report(TranscriptAddress, JsonSerializer.SerializeToElement(text));
 
@@ -483,7 +595,7 @@ namespace RIoT2.Net.Devices.Catalog
             Run? run;
             lock (_gate)
             {
-                session = _session ?? throw new InvalidOperationException($"The voice satellite at {_host}:{Options.Port} isn't connected.");
+                session = _session ?? throw new InvalidOperationException($"The voice satellite at {_host}:{_port} isn't connected.");
                 // The answer to the open request; without one the speech is an announcement.
                 run = session.Run is { Phase: RunPhase.AwaitingReply } open ? open : null;
                 if (run != null)
@@ -508,7 +620,7 @@ namespace RIoT2.Net.Devices.Catalog
                         throw new SpeechEngineException($"Text to speech took longer than {EngineTimeout.TotalSeconds} s.");
                     }
                 }
-                await PlayAsync(session, audio, cancellationToken).ConfigureAwait(false);
+                await PlayAsync(session, audio, text, run != null, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception error)
             {
@@ -534,48 +646,42 @@ namespace RIoT2.Net.Devices.Catalog
                 SetState(Core.DeviceState.Running);
         }
 
-        private async Task PlayAsync(Session session, PcmAudio audio, CancellationToken cancellationToken)
+        private async Task PlayAsync(Session session, PcmAudio audio, string text, bool reply, CancellationToken cancellationToken)
         {
-            var played = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             lock (_gate)
             {
                 // The connection may have dropped while the speech was made.
                 if (_session != session)
-                    throw new InvalidOperationException($"The voice satellite at {_host}:{Options.Port} isn't connected.");
-                session.Played = played;
+                    throw new InvalidOperationException($"The voice satellite at {_host}:{_port} isn't connected.");
             }
             SetSatelliteState(Speaking);
             try
             {
-                // Written on the connection's token: a cancelled command doesn't cut the speech off mid-event.
-                var format = WyomingEvent.AudioFormat(audio.Rate, audio.Channels);
-                await session.Connection.WriteAsync("audio-start", format, session.Token).ConfigureAwait(false);
-                foreach (var chunk in SpeechEngines.Chunks(audio))
-                    await session.Connection.WriteAsync(new WyomingEvent("audio-chunk", WyomingEvent.AudioFormat(audio.Rate, audio.Channels), chunk), session.Token).ConfigureAwait(false);
-                await session.Connection.WriteAsync("audio-stop", null, session.Token).ConfigureAwait(false);
-
-                using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, session.Token);
-                try
-                {
-                    await played.Task.WaitAsync(audio.Duration + PlayedGrace, linked.Token).ConfigureAwait(false);
-                }
-                catch (TimeoutException)
-                {
-                    Logger.LogDebug("The voice satellite didn't say the speech was played.");
-                }
+                await session.PlayAsync(audio, text, reply, cancellationToken).ConfigureAwait(false);
             }
             finally
             {
                 bool current;
                 lock (_gate)
-                {
-                    if (session.Played == played)
-                        session.Played = null;
                     current = _session == session;
-                }
                 // A dropped connection reports offline itself; only the current one goes back to idle here.
                 if (current && SatelliteState == Speaking)
                     SetSatelliteState(Idle);
+            }
+        }
+
+        // Waits until the satellite says the speech was played, at most its length and the grace: an older
+        // satellite may not say so.
+        private async Task WaitPlayedAsync(Session session, Task played, PcmAudio audio, CancellationToken cancellationToken)
+        {
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, session.Token);
+            try
+            {
+                await played.WaitAsync(audio.Duration + PlayedGrace, linked.Token).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                Logger.LogDebug("The voice satellite didn't say the speech was played.");
             }
         }
 
@@ -607,7 +713,7 @@ namespace RIoT2.Net.Devices.Catalog
             }
             try
             {
-                await session.Connection.WriteAsync("error", new JsonObject { ["code"] = code, ["text"] = text }, session.Token).ConfigureAwait(false);
+                await session.EndRunAsync(code, text).ConfigureAwait(false);
             }
             catch (Exception error) when (error is OperationCanceledException or IOException or ObjectDisposedException or SocketException)
             {
@@ -637,6 +743,9 @@ namespace RIoT2.Net.Devices.Catalog
             SendReport(this, new Report { Id = template.Id, TimeStamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), Value = new ValueModel(value), Filter = "" });
         }
 
+        // The URL the satellite downloads speech from: kept as a WAV file for an hour.
+        private string AudioUrl(PcmAudio audio) => $"{_baseUrl}/api/voice/audio/{_audioCache.Add(Wav.Encode(audio))}";
+
         // The engines the options name; the tests replace them.
         internal virtual ISpeechToText CreateSpeechToText()
         {
@@ -665,12 +774,22 @@ namespace RIoT2.Net.Devices.Catalog
 
         private static string HttpBase(string? url) => Default(url, VoiceSatelliteOptions.OpenAiUrl).TrimEnd('/');
 
+        private string? NodeUrl()
+        {
+            try { return _node?.Configuration?.Url; }
+            catch (Exception) { return null; }
+        }
+
         private string? Problem()
         {
             if (!IsHost(_host))
                 return "The host must be the satellite's IP address or host name.";
-            if (Options.Port is < 1 or > 65535)
+            if (_protocol is not (VoiceSatelliteOptions.Wyoming or VoiceSatelliteOptions.EspHome))
+                return $"The protocol must be {VoiceSatelliteOptions.Wyoming} or {VoiceSatelliteOptions.EspHome}.";
+            if (_port is < 1 or > 65535)
                 return "The port must be 1-65535.";
+            if (_protocol == VoiceSatelliteOptions.EspHome && EspHomeProblem() is string espHomeProblem)
+                return espHomeProblem;
             if (_language.Length is 0 or > 35 || !_language.All(x => char.IsAsciiLetterOrDigit(x) || x == '-'))
                 return "The language must be a language code, for example en-US or fi-FI.";
 
@@ -702,6 +821,25 @@ namespace RIoT2.Net.Devices.Catalog
                 return "The silenceMs must be 200-3000.";
             if (double.IsNaN(Options.SpeechThresholdDb) || Options.SpeechThresholdDb is < -80 or > -10)
                 return "The speechThresholdDb must be -80 to -10.";
+            return null;
+        }
+
+        private string? EspHomeProblem()
+        {
+            var key = (Options.EncryptionKey ?? "").Trim();
+            if (key.Length > 0)
+            {
+                Span<byte> bytes = stackalloc byte[64];
+                if (!Convert.TryFromBase64String(key, bytes, out var length) || length != 32)
+                    return "The encryptionKey must be 32 bytes in base64, for example from openssl rand -base64 32.";
+                if (!bytes[..32].ContainsAnyExcept((byte)0))
+                    return "The encryptionKey must not be all zeros.";
+            }
+            if (!Uri.TryCreate(_baseUrl, UriKind.Absolute, out var url) || url.Scheme is not ("http" or "https") ||
+                url.UserInfo.Length > 0 || url.Query.Length > 0 || url.Fragment.Length > 0)
+                return "esphome needs the nodeBaseUrl: an http or https URL the satellite reaches this node at, for example http://192.168.1.10:8081.";
+            if (url.IsLoopback)
+                return "The nodeBaseUrl must be an address the satellite can reach, not localhost.";
             return null;
         }
 
@@ -777,6 +915,19 @@ namespace RIoT2.Net.Devices.Catalog
             };
         }
 
+        private static int CommandPercent(string value, string address)
+        {
+            var json = CommandJson(value ?? "");
+            double number;
+            if (json.ValueKind == JsonValueKind.Number)
+                number = json.GetDouble();
+            else if (json.ValueKind != JsonValueKind.String || !double.TryParse(json.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out number))
+                throw new ArgumentException($"The {address} must be a number 0-100.", nameof(value));
+            if (double.IsNaN(number) || number is < 0 or > 100)
+                throw new ArgumentException($"The {address} must be 0-100.", nameof(value));
+            return (int)Math.Round(number);
+        }
+
         public DeviceConfiguration GetConfigurationTemplate()
         {
             return new DeviceConfiguration
@@ -787,74 +938,137 @@ namespace RIoT2.Net.Devices.Catalog
                 // The node adds the parameters from VoiceSatelliteOptions.
                 ReportTemplates =
                 [
-                    new ReportTemplate
+                    ReportTemplate(StateAddress, "State", ValueType.Text, Idle, new ValueSchema
                     {
-                        Id = Guid.NewGuid().ToString(),
-                        Address = StateAddress,
-                        Name = "State",
-                        Type = ValueType.Text,
-                        Model = Idle,
-                        Schema = new ValueSchema
-                        {
-                            Type = "string",
-                            Title = "Satellite state",
-                            Enum = [Idle, Listening, Thinking, Speaking, Offline],
-                            ReadOnly = true
-                        }
-                    },
-                    new ReportTemplate
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        Address = TranscriptAddress,
-                        Name = "Transcript",
-                        Type = ValueType.Text,
-                        Model = "What is the temperature in the living room?",
-                        Schema = new ValueSchema { Type = "string", Semantic = ValueSemantics.Text, Title = "What was said", ReadOnly = true }
-                    }
+                        Type = "string",
+                        Title = "Satellite state",
+                        Enum = [Idle, Listening, Thinking, Speaking, Offline],
+                        ReadOnly = true
+                    }),
+                    ReportTemplate(TranscriptAddress, "Transcript", ValueType.Text, "What is the temperature in the living room?",
+                        new ValueSchema { Type = "string", Semantic = ValueSemantics.Text, Title = "What was said", ReadOnly = true }),
+                    ReportTemplate(VolumeAddress, "Volume", ValueType.Number, 50,
+                        Described(ValueSchema.Integer("%", minimum: 0, maximum: 100), "Volume (esphome)", readOnly: true)),
+                    ReportTemplate(MuteAddress, "Microphone muted", ValueType.Boolean, false,
+                        Described(ValueSchema.Boolean(), "Microphone muted (esphome)", readOnly: true)),
+                    ReportTemplate(DoNotDisturbAddress, "Do not disturb", ValueType.Boolean, false,
+                        Described(ValueSchema.Boolean(), "Do not disturb (esphome)", readOnly: true)),
+                    ReportTemplate(LightAddress, "Light ring", ValueType.Entity, LightModel(), LightSchema(readOnly: true)),
+                    ReportTemplate(WakeWordAddress, "Wake word", ValueType.Text, "alexa",
+                        Described(ValueSchema.Text(), "Wake word in use (esphome)", readOnly: true)),
+                    ReportTemplate(ButtonAddress, "Button", ValueType.Text, "action_press",
+                        Described(ValueSchema.Text(), "Button event (esphome)", readOnly: true)),
+                    ReportTemplate(TimerRingingAddress, "Timer ringing", ValueType.Boolean, false,
+                        Described(ValueSchema.Boolean(), "A timer rings (esphome)", readOnly: true))
                 ],
                 CommandTemplates =
                 [
-                    new CommandTemplate
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        Address = SpeakAddress,
-                        Name = "Speak",
-                        Type = ValueType.Text,
-                        Model = "It is 21 degrees in the living room.",
-                        Schema = new ValueSchema { Type = "string", Semantic = ValueSemantics.Text, Title = "Text to speak", Description = $"The answer to the open request, or an announcement; at most {MaxTextLength} characters" }
-                    },
-                    new CommandTemplate
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        Address = CancelAddress,
-                        Name = "Cancel request",
-                        Type = ValueType.Boolean,
-                        Model = true
-                    }
+                    CommandTemplate(SpeakAddress, "Speak", ValueType.Text, "It is 21 degrees in the living room.",
+                        new ValueSchema { Type = "string", Semantic = ValueSemantics.Text, Title = "Text to speak", Description = $"The answer to the open request, or an announcement; at most {MaxTextLength} characters" }),
+                    CommandTemplate(CancelAddress, "Cancel request", ValueType.Boolean, true, null),
+                    CommandTemplate(VolumeAddress, "Set volume", ValueType.Number, 50,
+                        Described(ValueSchema.Integer("%", minimum: 0, maximum: 100), "Volume (esphome)")),
+                    CommandTemplate(MuteAddress, "Mute microphone", ValueType.Boolean, true,
+                        Described(ValueSchema.Boolean(ValueSemantics.Switch), "Microphone muted (esphome)")),
+                    CommandTemplate(DoNotDisturbAddress, "Do not disturb", ValueType.Boolean, true,
+                        Described(ValueSchema.Boolean(ValueSemantics.Switch), "Do not disturb (esphome)")),
+                    CommandTemplate(LightAddress, "Set light ring", ValueType.Entity, LightModel(), LightSchema(readOnly: false)),
+                    CommandTemplate(WakeWordAddress, "Set wake word", ValueType.Text, "alexa",
+                        Described(ValueSchema.Text(), "Wake word (esphome)", "A wake word the satellite lists, by its id or name")),
+                    CommandTemplate(TimerAddress, "Timer", ValueType.Entity, new Dictionary<string, object> { ["seconds"] = 300, ["name"] = "Pasta" },
+                        Described(ValueSchema.Entity(new Dictionary<string, ValueSchema>
+                        {
+                            ["seconds"] = ValueSchema.Integer("s", minimum: 1, maximum: MaxTimerSeconds),
+                            ["name"] = ValueSchema.Text(),
+                            ["cancel"] = ValueSchema.Boolean()
+                        }), "Timer (esphome)", "{seconds, name} starts a timer the satellite rings; {cancel: true, name} cancels it, without a name all")),
+                    CommandTemplate(StopRingingAddress, "Stop ringing", ValueType.Boolean, true, null)
                 ]
             };
         }
 
+        private static ValueSchema Described(ValueSchema schema, string title, string? description = null, bool readOnly = false)
+        {
+            schema.Title = title;
+            schema.Description = description;
+            if (readOnly)
+                schema.ReadOnly = true;
+            return schema;
+        }
+
+        private static ReportTemplate ReportTemplate(string address, string name, ValueType type, object model, ValueSchema schema) => new()
+        {
+            Id = Guid.NewGuid().ToString(),
+            Address = address,
+            Name = name,
+            Type = type,
+            Model = model,
+            Schema = schema
+        };
+
+        private static CommandTemplate CommandTemplate(string address, string name, ValueType type, object model, ValueSchema? schema) => new()
+        {
+            Id = Guid.NewGuid().ToString(),
+            Address = address,
+            Name = name,
+            Type = type,
+            Model = model,
+            Schema = schema
+        };
+
+        private static Dictionary<string, object> LightModel() =>
+            new() { ["on"] = true, ["brightness"] = 80, ["color"] = "#ff8800", ["effect"] = "None" };
+
+        private static ValueSchema LightSchema(bool readOnly) =>
+            Described(ValueSchema.Entity(new Dictionary<string, ValueSchema>
+            {
+                ["on"] = ValueSchema.Boolean(ValueSemantics.Switch),
+                ["brightness"] = ValueSchema.Integer("%", ValueSemantics.Brightness, 0, 100),
+                ["color"] = ValueSchema.Text(ValueSemantics.Color),
+                ["effect"] = ValueSchema.Text()
+            }, ValueSemantics.Light), "Light ring (esphome)", "on, brightness 0-100, color #rrggbb, effect; a command sets what it names", readOnly);
+
         private enum RunPhase { Listening, Recognizing, AwaitingReply, Replying, Done }
 
-        // One connection to the satellite. Its token is kept, so it can still be read once the session is disposed
-        // (cancelled first): a command that outlives its session fails as cancelled.
-        private sealed class Session : IDisposable
+        // One connection to the satellite, whichever protocol. Its token is kept, so it can still be read once the
+        // session is disposed (cancelled first): a command that outlives its session fails as cancelled.
+        private abstract class Session : IDisposable
         {
             private readonly CancellationTokenSource _cancel;
 
-            public Session(WyomingConnection connection, CancellationToken stop)
+            protected Session(CancellationToken stop)
             {
-                Connection = connection;
                 _cancel = CancellationTokenSource.CreateLinkedTokenSource(stop);
                 Token = _cancel.Token;
             }
 
-            public WyomingConnection Connection { get; }
             public CancellationToken Token { get; }
-            public bool Answered { get; set; }
             public Run? Run { get; set; }
-            public TaskCompletionSource? Played { get; set; }
+
+            /// <summary>Called once, when the satellite first answers.</summary>
+            public Action? OnAnswered { get; set; }
+
+            /// <summary>What the client says first.</summary>
+            public abstract Task StartAsync();
+
+            /// <summary>Reads and handles one message; false when the satellite closed the connection.</summary>
+            public abstract Task<bool> ReceiveAsync(CancellationToken cancellationToken);
+
+            public abstract Task PingAsync();
+
+            /// <summary>The node heard the request end: the satellite's microphone goes off.</summary>
+            public abstract Task SpeechEndedAsync();
+
+            /// <summary>What speech to text understood; the request awaits its answer.</summary>
+            public abstract Task TranscriptAsync(string text);
+
+            /// <summary>Ends the open request with an error code, quietly for <see cref="NoTextCode"/>.</summary>
+            public abstract Task EndRunAsync(string code, string text);
+
+            /// <summary>Plays the speech, the open request's answer or an announcement, and waits until it's played.</summary>
+            public abstract Task PlayAsync(PcmAudio audio, string text, bool reply, CancellationToken cancellationToken);
+
+            public abstract ValueTask CloseAsync();
 
             public async Task CancelAsync()
             {
@@ -862,10 +1076,10 @@ namespace RIoT2.Net.Devices.Catalog
                 catch (ObjectDisposedException) { }
             }
 
-            public void Dispose() => _cancel.Dispose();
+            public virtual void Dispose() => _cancel.Dispose();
         }
 
-        // One request: from the satellite's run-pipeline to its reply.
+        // One request: from the satellite's start to its reply.
         private sealed class Run(EndpointSettings settings, CancellationToken session)
         {
             private readonly CancellationTokenSource _cancel = CancellationTokenSource.CreateLinkedTokenSource(session);
@@ -877,6 +1091,7 @@ namespace RIoT2.Net.Devices.Catalog
             public RunPhase Phase { get; set; } = RunPhase.Listening;
             public CancellationToken Token => _cancel.Token;
             public CancellationToken ReplyWait => _replyWait.Token;
+            public bool HeardSpeech => _detector?.HeardSpeech ?? false;
 
             public EndpointResult Add(int rate, byte[] pcm)
             {

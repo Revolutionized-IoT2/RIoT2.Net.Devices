@@ -395,9 +395,9 @@ public class VoiceSatelliteTests
         }
     }
 
-    private sealed class TestVoiceSatellite : VoiceSatellite
+    internal sealed class TestVoiceSatellite : VoiceSatellite
     {
-        public TestVoiceSatellite() : base(NullLogger.Instance) => ReportUpdated += (_, report) => _reports.Enqueue((Report)report);
+        public TestVoiceSatellite(VoiceAudioCache? cache = null) : base(NullLogger.Instance, cache) => ReportUpdated += (_, report) => _reports.Enqueue((Report)report);
 
         private readonly ConcurrentQueue<Report> _reports = new();
 

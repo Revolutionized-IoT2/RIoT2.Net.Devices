@@ -5,6 +5,8 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
+    <!-- X25519 and ChaCha20-Poly1305 for the ESPHome native API's Noise encryption (VoiceSatellite): .NET has no X25519, and ChaCha20-Poly1305 only where the OS has it. -->
+    <PackageVersion Include="BouncyCastle.Cryptography" Version="2.7.0" />
     <PackageVersion Include="FluentFTP" Version="55.0.0" />
     <PackageVersion Include="Google.Apis.Auth" Version="1.76.0" />
     <PackageVersion Include="Microsoft.Azure.Relay" Version="3.1.1" />

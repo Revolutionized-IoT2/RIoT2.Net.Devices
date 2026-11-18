@@ -15,8 +15,17 @@ uploads a plugin zip as a GitHub release asset.
   `/audio/transcriptions`; text to speech from a Wyoming server (wyoming-piper), an OpenAI-compatible `/audio/speech`
   or Google Cloud Text-to-Speech. Parameters `host`, `port` (default `16700`), `language`, `sttEngine`, `sttUrl`,
   `sttModel`, `sttApiKey`, `ttsEngine`, `ttsUrl`, `ttsModel`, `ttsVoice`, `ttsApiKey`, `replyTimeoutSeconds`,
-  `maxRequestSeconds`, `silenceMs` and `speechThresholdDb`. No new packages. Guide:
+  `maxRequestSeconds`, `silenceMs` and `speechThresholdDb`. Guide:
   [voice-satellite.md](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/guides/voice-satellite.md).
+- Added: the Voice satellite also speaks the **ESPHome native API** (`protocol` `esphome`; hassmic's default, port
+  `26053`): Noise encryption with the `encryptionKey` (secret, base64 32 bytes) the device gives a satellite without
+  one (once: a note in `Data/` keeps it from being given again), the voice assistant over the connection, and the
+  reply fetched by the satellite from the node at
+  `GET /api/voice/audio/{token}` (WAV, kept an hour; `nodeBaseUrl`, default the node's `RIOT2_NODE_URL`). `speak`
+  without a request is an announcement. New reports and commands: `volume`, `mute`, `doNotDisturb`, `light` (the
+  light ring) and `wakeWord`; reports `button` and `timerRinging`; commands `timer` (the satellite rings it) and
+  `stopRinging`. `port` is now empty by default: `16700` for `wyoming`, `26053` for `esphome`. Uses
+  BouncyCastle.Cryptography 2.7.0 (MIT) for X25519 and ChaCha20-Poly1305.
 
 **New: Govee thermometers and hygrometers** (additive).
 

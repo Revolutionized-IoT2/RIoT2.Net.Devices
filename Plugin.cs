@@ -21,6 +21,7 @@ namespace RIoT2.Net.Devices
             AddService<INetatmoAuthClientFactory, NetatmoAuthClientFactory>();
             AddService<INetatmoWebhookHub, Services.Netatmo.NetatmoWebhookHub>();
             AddService<ICastAudioCache, Services.GoogleCast.CastAudioCache>();
+            AddService<IVoiceAudioCache, Services.Voice.VoiceAudioCache>();
 
             AddDevice<Web>();
             AddDevice<Catalog.Timer>();

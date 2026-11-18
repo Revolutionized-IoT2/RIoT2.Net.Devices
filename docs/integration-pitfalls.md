@@ -152,3 +152,27 @@ pitfalls are in [AGENTS.md](../AGENTS.md); the user-facing notes are in [cloud-d
 - A transcript is reported as a JSON string element: `ValueModel(string)` would parse "42" as a number.
 - The tests replace the engines (`CreateSpeechToText`, `CreateTextToSpeech`) and talk to a loopback stand-in for
   hassmic; the engines have their own tests against fake Wyoming and HTTP servers. Never reach a real Echo or API.
+
+### ESPHome native API
+
+- The node is the API client, as Home Assistant is. hassmic speaks api.proto 1.15; the client says 1.10 and uses
+  only what that has. Entities are found by `object_id` (`mute`, `do_not_disturb`, `light_ring`, `button`,
+  `timer_ringing`, `stop_ringing`), never by key: hassmic numbers its keys itself.
+- Encryption is `Noise_NNpsk0_25519_ChaChaPoly_SHA256` with the prologue `NoiseAPIInit\0\0`. A satellite without a
+  key takes only the all-zero PSK, and a `NoiseEncryptionSetKeyRequest` only over that encrypted link; after it, only
+  that key gets in. "Handshake MAC failure" is the wrong key. `EspHomeTests` checks the handshake against a vector
+  from the `noiseprotocol` package aioesphomeapi uses.
+- .NET has no X25519, and ChaCha20-Poly1305 only where the operating system has it (not on every Windows), so both
+  come from BouncyCastle. Don't switch to `System.Security.Cryptography.ChaCha20Poly1305`.
+- hassmic has no SPEAKER flag: it doesn't take the reply over the API. `TTS_END` carries a URL it fetches (WAV or
+  MP3), and the reply has played when its media player goes from playing back to idle. An announcement ends with
+  `VoiceAssistantAnnounceFinished`; `success: false` means do not disturb or busy.
+- hassmic may end a request itself (`VoiceAssistantAudio` `end`), and `VoiceAssistantRequest` `start: false` gives
+  it up: say nothing more about that request.
+- hassmic sends every setting's state again when one changes: report a state only when it changed (`button` events
+  always). `epoch_seconds` in `GetTimeResponse` is a fixed32, which hassmic insists on, and `timezone` is a POSIX rule
+  (`PosixTimeZone`: the TZif footer, or built from .NET's rules), not a zone's name.
+- The all-zero key doesn't authenticate the satellite, so the key is given only until a keyed connection has worked
+  once (`Data/voice-satellite-<hash>.keyed`, named by a hash of host, port and key). After that a refused key is an
+  error, never a reason to hand the key to whatever answers at the address.
+- Protobuf `ref struct` readers can't live across an `await`: parse a message in a synchronous helper first.
