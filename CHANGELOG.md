@@ -5,6 +5,19 @@ uploads a plugin zip as a GitHub release asset.
 
 ## [Unreleased]
 
+**New: voice satellites** (additive; released as 3.1.0, after 3.0.0).
+
+- Added: **Voice satellite** (`VoiceSatellite`), a Wyoming voice satellite such as an Amazon Echo running
+  echo-dot-assist's hassmic with `PROTO=wyoming`. The node keeps one connection to it, finds the end of each request
+  by its level, turns it into text and reports `transcript`; a workflow answers with the `speak` command, whose speech
+  the satellite plays. Report `state` (`idle`, `listening`, `thinking`, `speaking`, `offline`); commands `speak` and
+  `cancel`. Speech to text from a Wyoming server (wyoming-faster-whisper) or an OpenAI-compatible
+  `/audio/transcriptions`; text to speech from a Wyoming server (wyoming-piper), an OpenAI-compatible `/audio/speech`
+  or Google Cloud Text-to-Speech. Parameters `host`, `port` (default `16700`), `language`, `sttEngine`, `sttUrl`,
+  `sttModel`, `sttApiKey`, `ttsEngine`, `ttsUrl`, `ttsModel`, `ttsVoice`, `ttsApiKey`, `replyTimeoutSeconds`,
+  `maxRequestSeconds`, `silenceMs` and `speechThresholdDb`. No new packages. Guide:
+  [voice-satellite.md](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/guides/voice-satellite.md).
+
 **New: Govee thermometers and hygrometers** (additive).
 
 - Added: **Govee** (`Govee`), Govee Wi-Fi thermometers and hygrometers, such as a pool thermometer, through the

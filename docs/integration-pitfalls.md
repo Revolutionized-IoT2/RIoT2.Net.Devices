@@ -130,3 +130,25 @@ pitfalls are in [AGENTS.md](../AGENTS.md); the user-facing notes are in [cloud-d
   so a failed or cancelled announcement doesn't leave the speaker loud. `CastAudioController` is `[AllowAnonymous]`
   (a speaker can't sign in): the 128-bit random token is the credential, and only a 32-hex-digit token is looked up.
   The Cloud API key goes in the `X-Goog-Api-Key` header, never in the URL or a log.
+
+## Voice satellite
+
+- hassmic (echo-dot-assist) reads Wyoming with a flat parser: the data must come in its own block (`data_length`),
+  not inside the header, and it doesn't decode `\u` escapes, so `WyomingConnection` writes non-ASCII as UTF-8
+  (`UnsafeRelaxedJsonEscaping`). It takes payloads up to 1 MiB.
+- hassmic says `has_vad: false`: the node must find the end of the request (`EndpointDetector`) and send
+  `voice-stopped`, then `transcript`. Every request starts with digital silence; it says nothing about the room's
+  noise floor, so the detector ignores it.
+- hassmic ends a request quietly only on an `error` with the code `stt-no-text-recognized`; any other code shows the
+  error animation. Use it for nothing said, no reply and `cancel`.
+- Each event is one write, and writes to the satellite use the connection's token, not a command's: a cancelled
+  command must not leave half an event on the wire. Close the connection before awaiting the pinger.
+- A connection counts only once the satellite answered (`info` to `describe`): only then is it current, `idle`
+  reported and "Connected" logged. The reconnect waits start over only after a connection that lasted
+  (`StableAfter`), so a satellite that accepts and drops at once isn't retried every second.
+- `speak` makes its speech before it plays, and the connection may drop meanwhile: `PlayAsync` refuses a session
+  that is no longer current and never reports `offline` itself (the connection loop does). The session keeps its
+  token, so it can be read after the session is disposed.
+- A transcript is reported as a JSON string element: `ValueModel(string)` would parse "42" as a number.
+- The tests replace the engines (`CreateSpeechToText`, `CreateTextToSpeech`) and talk to a loopback stand-in for
+  hassmic; the engines have their own tests against fake Wyoming and HTTP servers. Never reach a real Echo or API.

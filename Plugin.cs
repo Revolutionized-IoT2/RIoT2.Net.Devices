@@ -47,6 +47,7 @@ namespace RIoT2.Net.Devices
             AddDevice<DefaPower>();
             AddDevice<GoogleCast>();
             AddDevice<Govee>();
+            AddDevice<VoiceSatellite>();
         }
     }
 }

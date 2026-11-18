@@ -70,14 +70,17 @@ namespace RIoT2.Net.Devices.Services.GoogleCast
         public static string Key(string engine, string language, string voice, string text) =>
             Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes($"{engine}\n{language}\n{voice}\n{text}")));
 
-        /// <summary>The Google Cloud Text-to-Speech request for MP3 audio. The API key goes in a header, not in the URL.</summary>
-        public static HttpRequestMessage CloudRequest(string text, string language, string? voice, string apiKey)
+        /// <summary>
+        /// The Google Cloud Text-to-Speech request, for MP3 audio by default; <c>LINEAR16</c> gives 16-bit PCM in a WAV file.
+        /// The API key goes in a header, not in the URL.
+        /// </summary>
+        public static HttpRequestMessage CloudRequest(string text, string language, string? voice, string apiKey, string audioEncoding = "MP3")
         {
             var body = new CloudSynthesizeRequest
             {
                 Input = new CloudInput { Text = text },
                 Voice = new CloudVoice { LanguageCode = language, Name = string.IsNullOrWhiteSpace(voice) ? null : voice.Trim() },
-                AudioConfig = new CloudAudioConfig { AudioEncoding = "MP3" }
+                AudioConfig = new CloudAudioConfig { AudioEncoding = audioEncoding }
             };
             var request = new HttpRequestMessage(HttpMethod.Post, CloudEndpoint)
             {
@@ -88,7 +91,7 @@ namespace RIoT2.Net.Devices.Services.GoogleCast
             return request;
         }
 
-        /// <summary>The MP3 audio of a Google Cloud Text-to-Speech answer; throws with Google's reason when it failed.</summary>
+        /// <summary>The audio of a Google Cloud Text-to-Speech answer; throws with Google's reason when it failed.</summary>
         public static async Task<byte[]> CloudAudioAsync(HttpResponseMessage response, CancellationToken cancellationToken)
         {
             var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);

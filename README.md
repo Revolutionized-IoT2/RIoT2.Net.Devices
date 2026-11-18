@@ -78,7 +78,7 @@ exposing webhooks.
 
 Every device, with its parameters, reports and commands, and the setup notes of the cloud devices:
 [docs/devices.md](docs/devices.md). The [hub's guides](https://github.com/Revolutionized-IoT2/.github/blob/main/docs/guides/README.md)
-cover Netatmo and Google Cast speakers step by step.
+cover Netatmo, Google Cast speakers and voice satellites step by step.
 
 Devices and plugin controllers use the platform configuration and HTTP contracts:
 
